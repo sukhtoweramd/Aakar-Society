@@ -79,7 +79,7 @@ export default function CommitteePanel() {
       </div>
       <div className="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 mono text-[11px]">
         <input className="field" type="email" placeholder="Email of committee member *" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="field" placeholder="Name and role (e.g. Ramesh Patel – Secretary)" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="field" placeholder="Name (e.g. Ramesh Patel)" value={name} onChange={(e) => setName(e.target.value)} />
         <button onClick={add} disabled={!!busy || !email.trim()} className="btn-navy px-4 py-2 tracking-[0.08em]">{busy === "add" ? "ADDING…" : "+ ADD COMMITTEE LOGIN"}</button>
       </div>
     </div>
