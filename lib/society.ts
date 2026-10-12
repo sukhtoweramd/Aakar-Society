@@ -16,7 +16,7 @@ export type Flat = {
 };
 
 export type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
-export type EventRow = { id: string; title: string | null; event_date: string | null; type: string | null; description: string | null };
+export type EventRow = { id: string; title: string | null; event_date: string | null; end_date?: string | null; type: string | null; description: string | null };
 export type Business = { id: string; flat_id: string | null; business_name: string | null; category: string | null; mobile: string | null; description: string | null };
 export type StoredFile = { key: string; name: string; url: string; size: number; uploaded: string | null };
 

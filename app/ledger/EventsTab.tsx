@@ -5,8 +5,21 @@ import type { EventRow, StoredFile } from "@/lib/society";
 import { deleteFile, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 
-const EMPTY = { title: "", event_date: "", type: "", description: "" };
-const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date TBD");
+const fmt = (x: string | null) => (x ? new Date(x + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date TBD");
+const EMPTY = { title: "", event_date: "", end_date: "", type: "", description: "" };
+const d = (s: string) => new Date(s + "T00:00:00");
+/** "20 Oct 2026", "20–28 Oct 2026", "28 Sept – 2 Oct 2026", "30 Dec 2026 – 2 Jan 2027" */
+function fmtRange(start: string | null, end?: string | null) {
+  if (!start) return "Date TBD";
+  if (!end || end <= start) return fmt(start);
+  const a = d(start), b = d(end);
+  const day = (x: Date) => x.getDate(), mon = (x: Date) => x.toLocaleDateString("en-IN", { month: "short" });
+  if (a.getFullYear() !== b.getFullYear()) return `${fmt(start)} – ${fmt(end)}`;
+  if (a.getMonth() !== b.getMonth()) return `${day(a)} ${mon(a)} – ${day(b)} ${mon(b)} ${b.getFullYear()}`;
+  return `${day(a)}–${day(b)} ${mon(b)} ${b.getFullYear()}`;
+}
+const days = (start: string | null, end?: string | null) => (start && end && end > start ? Math.round((d(end).getTime() - d(start).getTime()) / 86400000) + 1 : 1);
+
 
 /** Shrink big phone photos to max 2000px JPEG so they fit the 4 MB upload limit. */
 async function shrinkImage(file: File): Promise<File> {
@@ -60,12 +73,20 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
     return () => window.removeEventListener("keydown", key);
   }, [viewer]);
 
-  const clean = (o: typeof EMPTY) => ({ title: o.title.trim(), event_date: o.event_date || null, type: o.type.trim() || null, description: o.description.trim() || null });
+  const hasEnd = events.length === 0 || "end_date" in events[0];
+  const clean = (o: typeof EMPTY) => {
+    const row: any = { title: o.title.trim(), event_date: o.event_date || null, type: o.type.trim() || null, description: o.description.trim() || null };
+    if (o.end_date && o.event_date && o.end_date < o.event_date) throw new Error("The To date is before the From date.");
+    if (hasEnd) row.end_date = o.end_date && o.end_date !== o.event_date ? o.end_date : null;
+    else if (o.end_date) throw new Error("To date needs the one-line database step (end_date) to be run first.");
+    return row;
+  };
 
   async function add() {
     if (!form.title.trim()) { setError("Enter an event title"); return; }
     setBusy("add"); setError("");
-    const { error } = await supabase.from("events").insert([clean(form)]);
+    let row; try { row = clean(form); } catch (e: any) { setBusy(null); setError(e.message); return; }
+    const { error } = await supabase.from("events").insert([row]);
     setBusy(null);
     if (error) { setError(error.message); return; }
     setForm(EMPTY); load();
@@ -73,7 +94,8 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
   async function saveEdit() {
     if (!editId || !edit.title.trim()) return;
     setBusy("edit"); setError("");
-    const { error } = await supabase.from("events").update(clean(edit)).eq("id", editId);
+    let row; try { row = clean(edit); } catch (e: any) { setBusy(null); setError(e.message); return; }
+    const { error } = await supabase.from("events").update(row).eq("id", editId);
     setBusy(null);
     if (error) { setError(error.message); return; }
     setEditId(null); load();
@@ -106,9 +128,12 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
     try { await deleteFile({ key: p.key }); await loadPhotos(id); setViewer(null); } catch (e: any) { setError(e.message); }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = events.filter((e) => (e.event_date || "") >= today).sort((a, b) => (a.event_date || "").localeCompare(b.event_date || ""));
-  const past = events.filter((e) => !e.event_date || e.event_date < today);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; // local (IST) date
+  const lastDay = (e: EventRow) => e.end_date || e.event_date || "";
+  const ongoing = events.filter((e) => e.event_date && e.event_date <= today && lastDay(e) >= today);
+  const upcoming = events.filter((e) => (e.event_date || "") > today).sort((a, b) => (a.event_date || "").localeCompare(b.event_date || ""));
+  const past = events.filter((e) => !e.event_date || lastDay(e) < today);
 
   const Card = ({ e, isPast }: { e: EventRow; isPast: boolean }) => {
     const pics = photos[e.id] || [];
@@ -117,17 +142,18 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
       <div className={`border rounded-[4px] bg-[var(--surface)] ${open ? "border-[var(--gold)]" : "border-[var(--border)]"}`}>
         <button onClick={() => setOpenId(open ? null : e.id)} className="w-full text-left p-4 flex gap-4 items-start">
           <div className={`shrink-0 w-[64px] text-center border ${isPast ? "border-[var(--border)] bg-[var(--bg)]" : "border-[var(--navy)] bg-[var(--navy)] text-white"} py-2`}>
-            <div className="mono text-[10px] tracking-[0.1em]">{e.event_date ? new Date(e.event_date).toLocaleDateString("en-IN", { month: "short" }).toUpperCase() : "TBD"}</div>
-            <div className="serif text-[22px] leading-none">{e.event_date ? new Date(e.event_date).getDate() : "—"}</div>
-            <div className="mono text-[9px] opacity-70">{e.event_date ? new Date(e.event_date).getFullYear() : ""}</div>
+            <div className="mono text-[10px] tracking-[0.1em]">{e.event_date ? d(e.event_date).toLocaleDateString("en-IN", { month: "short" }).toUpperCase() : "TBD"}</div>
+            <div className="serif text-[22px] leading-none">{e.event_date ? d(e.event_date).getDate() : "—"}</div>
+            <div className="mono text-[9px] opacity-70">{e.event_date ? (days(e.event_date, e.end_date) > 1 ? `${days(e.event_date, e.end_date)} DAYS` : d(e.event_date).getFullYear()) : ""}</div>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <div className="serif text-[16px] font-bold">{e.title}</div>
               {e.type && <span className="mono text-[9px] tracking-[0.12em] border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5">{e.type.toUpperCase()}</span>}
+              {e.event_date && e.event_date <= today && lastDay(e) >= today && <span className="mono text-[9px] tracking-[0.12em] bg-emerald-600 text-white px-1.5 py-0.5">● ON NOW</span>}
             </div>
             {e.description && <div className="text-[13px] opacity-80 mt-1">{e.description}</div>}
-            <div className="mono text-[10px] opacity-60 mt-2">{fmt(e.event_date)} • 📷 {pics.length} photo{pics.length === 1 ? "" : "s"} • {open ? "click to close" : "click to open"}</div>
+            <div className="mono text-[10px] opacity-60 mt-2">{fmtRange(e.event_date, e.end_date)} • 📷 {pics.length} photo{pics.length === 1 ? "" : "s"} • {open ? "click to close" : "click to open"}</div>
           </div>
           {pics[0] && !open && <img src={pics[0].url} alt="" className="hidden sm:block h-16 w-24 object-cover border border-[var(--border)] shrink-0" loading="lazy" />}
         </button>
@@ -137,7 +163,8 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
             {editId === e.id ? (
               <div className="grid sm:grid-cols-2 gap-2 mono text-[11px] border border-[var(--gold)] bg-[#fffdf5] p-3">
                 <input className="field sm:col-span-2" value={edit.title} onChange={(x) => setEdit({ ...edit, title: x.target.value })} placeholder="Title" />
-                <input className="field" type="date" value={edit.event_date} onChange={(x) => setEdit({ ...edit, event_date: x.target.value })} />
+                <label className="flex items-center gap-2"><span className="w-10 opacity-60">FROM</span><input className="field" type="date" value={edit.event_date} onChange={(x) => setEdit({ ...edit, event_date: x.target.value })} /></label>
+                <label className="flex items-center gap-2"><span className="w-10 opacity-60">TO</span><input className="field" type="date" min={edit.event_date || undefined} value={edit.end_date} onChange={(x) => setEdit({ ...edit, end_date: x.target.value })} /></label>
                 <input className="field" value={edit.type} onChange={(x) => setEdit({ ...edit, type: x.target.value })} placeholder="Type" />
                 <input className="field sm:col-span-2" value={edit.description} onChange={(x) => setEdit({ ...edit, description: x.target.value })} placeholder="Details" />
                 <div className="flex gap-2 sm:col-span-2">
@@ -151,7 +178,7 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
                   {busy === `photos-${e.id}` ? progress || "UPLOADING…" : "📷 UPLOAD PHOTOS"}
                   <input type="file" hidden multiple accept="image/*" disabled={!!busy} onChange={(x) => { const fl = x.target.files; if (fl?.length) upload(e.id, fl); x.target.value = ""; }} />
                 </label>
-                <button onClick={() => { setEditId(e.id); setEdit({ title: e.title || "", event_date: e.event_date || "", type: e.type || "", description: e.description || "" }); }} className="btn-line mono text-[11px] px-4 py-2">EDIT EVENT</button>
+                <button onClick={() => { setEditId(e.id); setEdit({ title: e.title || "", event_date: e.event_date || "", end_date: e.end_date || "", type: e.type || "", description: e.description || "" }); }} className="btn-line mono text-[11px] px-4 py-2">EDIT EVENT</button>
                 <button onClick={() => remove(e)} className="mono text-[11px] px-3 py-2 text-red-600 ml-auto">DELETE EVENT</button>
               </div>
             )}
@@ -177,11 +204,15 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
       <div className="bg-[var(--navy)] text-[#fdfcf5] rounded-[4px] p-5 flex flex-wrap justify-between gap-3">
         <div>
           <div className="serif text-[22px] font-bold">Society Events & Photo Gallery</div>
-          <div className="mono text-[11px] opacity-80 mt-1">Upcoming {upcoming.length} • Past {past.length} • {canEdit ? "Click an event to see or add photos" : "Click an event to see its photos"}</div>
+          <div className="mono text-[11px] opacity-80 mt-1">{ongoing.length ? `On now ${ongoing.length} • ` : ""}Upcoming {upcoming.length} • Past {past.length} • {canEdit ? "Click an event to see or add photos" : "Click an event to see its photos"}</div>
         </div>
       </div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px] whitespace-pre-wrap">{error}</div>}
 
+      {ongoing.length > 0 && <div>
+        <div className="mono text-[10px] tracking-[0.2em] text-emerald-700 mb-2">● HAPPENING NOW</div>
+        <div className="space-y-2">{ongoing.map((e) => <Card key={e.id} e={e} isPast={false} />)}</div>
+      </div>}
       <div>
         <div className="mono text-[10px] tracking-[0.2em] text-[var(--muted)] mb-2">UPCOMING</div>
         <div className="space-y-2">
@@ -198,13 +229,14 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
       </div>
 
       {canEdit && <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5">
-        <div className="mono text-[11px] font-bold tracking-[0.12em]">+ ADD EVENT</div>
-        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mono text-[11px]">
+        <div className="mono text-[11px] font-bold tracking-[0.12em]">+ ADD EVENT <span className="font-normal opacity-60">• leave TO empty for a one-day event</span></div>
+        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-2 mono text-[11px]">
           <input className="field" placeholder="Event title *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className="field" type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
+          <label className="flex items-center gap-2"><span className="opacity-60 w-10">FROM</span><input className="field" type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label>
+          <label className="flex items-center gap-2"><span className="opacity-60 w-10">TO</span><input className="field" type="date" min={form.event_date || undefined} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></label>
           <input className="field" placeholder="Type (Festival, AGM…)" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} />
           <button onClick={add} disabled={!!busy} className="btn-navy px-4 py-2 tracking-[0.1em]">{busy === "add" ? "SAVING…" : "ADD EVENT"}</button>
-          <input className="field sm:col-span-2 lg:col-span-4" placeholder="Details" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="field sm:col-span-2 lg:col-span-5" placeholder="Details" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
       </div>}
 

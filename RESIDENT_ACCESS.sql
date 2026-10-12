@@ -15,6 +15,9 @@ alter table public.members add column if not exists office_address   text;
 alter table public.members add column if not exists office_phone     text;
 alter table public.members add column if not exists email            text;
 
+-- Multi-day events (Ganpati, Navratri…): optional last day
+alter table public.events add column if not exists end_date date;
+
 -- 1. Helper functions
 create or replace function public.is_committee() returns boolean
 language sql stable as $$
