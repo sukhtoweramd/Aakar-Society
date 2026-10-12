@@ -38,6 +38,20 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
               </button>
             );
           })}
+          {(() => {
+            const com = flats.filter((f) => f.is_committee);
+            const on = towerFilter === "COMMITTEE";
+            return (
+              <button onClick={() => filter("COMMITTEE")}
+                className={`w-full text-left border rounded-[6px] p-3.5 transition-all hover:shadow-sm hover:border-[var(--gold)] ${on ? "bg-amber-50 ring-1 ring-[var(--gold)] border-[var(--gold)]" : "bg-[var(--bg)] border-[var(--border)]"}`}>
+                <div className="flex justify-between items-center">
+                  <div className="serif text-[18px] font-bold"><span className="text-[var(--gold)]">★</span> COMMITTEE</div>
+                  <span className="mono text-[10px] opacity-60">{on ? "● SHOWING" : "↗ FILTER"}</span>
+                </div>
+                <div className="mono text-[11px] mt-1 opacity-70">{com.length ? `${com.length} member${com.length > 1 ? "s" : ""}: ${com.map((f) => f.owner_name?.split(/\s*[-–&,]\s*/)[0]).filter(Boolean).slice(0, 3).join(", ")}${com.length > 3 ? "…" : ""}` : "None marked yet"}</div>
+              </button>
+            );
+          })()}
           {towerFilter !== "ALL" && (
             <button onClick={() => { setTowerFilter("ALL"); go("INDEX"); }} className="w-full mono text-[11px] border border-[var(--border)] bg-white px-3 py-2.5 rounded-[4px] hover:border-[var(--gold)] font-medium">
               CLEAR FILTER • SHOW ALL {flats.length} FLATS

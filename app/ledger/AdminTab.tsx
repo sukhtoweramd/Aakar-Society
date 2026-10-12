@@ -5,6 +5,7 @@ import { DEFAULT_RATES, rupees } from "@/lib/society";
 import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
+import CommitteePanel from "./CommitteePanel";
 
 type Row = { maint: string; sqft: string; bhk: string };
 
@@ -135,6 +136,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       </div>
+
+      <CommitteePanel />
 
       <LoginsPanel ctx={ctx} />
 
