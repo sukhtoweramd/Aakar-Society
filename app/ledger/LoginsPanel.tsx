@@ -135,8 +135,8 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
           </div>
           <div className="mt-3 border border-[var(--border)] max-h-[420px] overflow-auto">
             <table className="w-full mono text-[11px]">
-              <thead className="bg-[var(--bg-soft)] sticky top-0"><tr className="text-left">
-                <th className="p-2">FLAT</th><th className="p-2">OWNER</th><th className="p-2">LOGIN</th><th className="p-2 text-right">ACTIONS</th>
+              <thead><tr className="text-left">
+                {["FLAT", "OWNER", "LOGIN", "ACTIONS"].map((h) => <th key={h} className={`p-2 sticky top-0 z-10 bg-[var(--bg-soft)] border-b border-[var(--border)] ${h === "ACTIONS" ? "text-right" : ""}`}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {list.map((f) => (
