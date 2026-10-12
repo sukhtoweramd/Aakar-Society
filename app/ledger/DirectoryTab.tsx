@@ -15,7 +15,7 @@ const cut = (s?: string | null) => { const t = (s || "").trim(); return t.length
 const num = (id: string) => parseInt(id.replace(/\D/g, ""), 10) || 0;
 
 export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
-  const { towerFilter, categories, myFlat, go, isCommittee } = ctx;
+  const { towerFilter, categories, homeFlat, go, selectFlat } = ctx;
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
@@ -47,7 +47,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       e.members.some((m) => (m.member_name || "").toLowerCase().includes(s) || (m.mobile || "").replace(/\s/g, "").includes(s.replace(/\s/g, "")))));
   if (towerFilter === "COMMITTEE") shown.sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }));
   const sharedCount = entries.filter((e) => e.consent).length;
-  const mine = entries.find((e) => e.flat_id === myFlat);
+  const mine = entries.find((e) => e.flat_id === homeFlat);
   const scope = filterName(towerFilter, categories);
 
   function printPdf() {
@@ -120,10 +120,10 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
         </div>
       </div>
 
-      {!isCommittee && mine && !mine.consent && (
+      {mine && !mine.consent && (
         <div className="border border-amber-300 bg-[#fff8d6] p-3 mono text-[11px] flex flex-wrap gap-3 items-center justify-between">
           <span>Your family details are not shared. Tick the consent box in MY FLAT to show your family names and mobiles here.</span>
-          <button onClick={() => go("DETAIL")} className="btn-navy px-3 py-1.5">OPEN MY FLAT</button>
+          <button onClick={() => { selectFlat(mine.flat_id); go("DETAIL"); }} className="btn-navy px-3 py-1.5">OPEN MY FLAT</button>
         </div>
       )}
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}

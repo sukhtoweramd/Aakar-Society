@@ -34,6 +34,7 @@ export default function Home() {
   const meta = (session?.user.app_metadata || {}) as Record<string, any>;
   const isCommittee = meta.role !== "resident";
   const myFlat: string | null = isCommittee ? null : String(meta.flat_id || "") || null;
+  const homeFlat: string | null = String(meta.flat_id || "") || null; // committee logins may be linked to their own flat
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -75,7 +76,7 @@ export default function Home() {
 
   const ctx: Ctx = {
     email: session.user.email || "",
-    isCommittee, myFlat,
+    isCommittee, myFlat, homeFlat,
     flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId,
     selectFlat: setSelectedId, go, reloadFlats,
   };
@@ -102,6 +103,7 @@ export default function Home() {
               <span className="h-3 w-px bg-white/20" />
               <span className={myFlat ? "" : "normal-case"}>{who}</span>
             </div>
+            {isCommittee && homeFlat && <button onClick={() => { setSelectedId(homeFlat); setTab("DETAIL"); window.scrollTo({ top: 0 }); }} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">MY FLAT {label({ id: homeFlat, flat_no: homeFlat } as any)}</button>}
             <InstallApp variant="bar" />
             <button onClick={() => setShowPassword(true)} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">PASSWORD</button>
             <button onClick={() => supabase.auth.signOut()} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-[var(--gold)] text-black border-[var(--gold)]">

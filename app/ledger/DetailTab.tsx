@@ -268,7 +268,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             </div>
 
             <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
-            <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee} onSaved={reloadFlats} />
+            <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">

@@ -137,7 +137,7 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
         </div>
       </div>
 
-      <CommitteePanel />
+      <CommitteePanel flats={ctx.flats} />
 
       <LoginsPanel ctx={ctx} />
 

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
+import { normaliseFlat } from "@/lib/residents";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
     const users = await committeeUsers(g.admin);
     return NextResponse.json({
       members: users
-        .map((u) => ({ id: u.id, email: u.email, name: (u.user_metadata as any)?.name || "", created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null, self: u.id === g.me.userId }))
+        .map((u) => ({ id: u.id, email: u.email, name: (u.user_metadata as any)?.name || "", flat_id: (u.app_metadata as any)?.flat_id || null, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null, self: u.id === g.me.userId }))
         .sort((a, b) => (a.email || "").localeCompare(b.email || "")),
     });
   } catch (e: any) {
@@ -53,13 +54,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   try {
     const members = await committeeUsers(admin);
+    // Optional link to the committee member's own flat ("A301"); "" / null = not linked
+    const rawFlat = String(body.flat_id ?? "").trim();
+    const flatId = rawFlat ? normaliseFlat(rawFlat) : null;
+    if (rawFlat && !flatId) return NextResponse.json({ error: `"${rawFlat}" is not a flat number like A-301.` }, { status: 400 });
     if (body.action === "add") {
       const email = String(body.email || "").trim().toLowerCase();
       const name = String(body.name || "").trim().slice(0, 80);
       if (!EMAIL.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
       if (email.endsWith("@flats.aakarsociety.app")) return NextResponse.json({ error: "That is a flat login address." }, { status: 400 });
       const password = newPassword();
-      const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee" }, user_metadata: { name, added_by: me.email } });
+      const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email } });
       if (error) return NextResponse.json({ error: /already/i.test(error.message) ? "A login with this email already exists." : error.message }, { status: 400 });
       return NextResponse.json({ ok: true, email, password });
     }
@@ -70,6 +75,11 @@ export async function POST(req: NextRequest) {
       const { error } = await admin.auth.admin.updateUserById(target.id, { password });
       if (error) throw error;
       return NextResponse.json({ ok: true, email: target.email, password });
+    }
+    if (body.action === "link") {
+      const { error } = await admin.auth.admin.updateUserById(target.id, { app_metadata: { role: "committee", flat_id: flatId } });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
     }
     if (body.action === "remove") {
       if (target.id === me.userId) return NextResponse.json({ error: "You cannot remove your own login." }, { status: 400 });
