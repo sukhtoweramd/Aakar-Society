@@ -3,7 +3,7 @@ import { floorOf, isOccupied, label, ownerText, rupees, statusText } from "@/lib
 import type { Ctx } from "./ctx";
 
 export default function IndexTab({ ctx }: { ctx: Ctx }) {
-  const { flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId, selectFlat, go } = ctx;
+  const { flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId, selectFlat, go, isCommittee, myFlat } = ctx;
   const q = search.trim().toLowerCase();
   const list = flats.filter((f) =>
     (towerFilter === "ALL" || f.tower === towerFilter) &&
@@ -16,7 +16,7 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
         <div>
           <div className="serif text-[20px] font-bold">Flat Index</div>
           <div className="mono text-[11px] opacity-60 mt-1">
-            {flats.length} flats ledger • Click any flat card to view full DETAIL • Tower filter {towerFilter === "ALL" ? "OFF" : `ON: Tower ${towerFilter}`}
+            {flats.length} flats {isCommittee ? "ledger • Click any flat card to view full DETAIL" : "directory • Click your own flat to open MY FLAT"} • Tower filter {towerFilter === "ALL" ? "OFF" : `ON: Tower ${towerFilter}`}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -36,16 +36,16 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
         {list.map((f) => {
           const terrace = terraceIds.has(f.id);
           return (
-            <button key={f.id} onClick={() => { selectFlat(f.id); go("DETAIL"); }}
+            <button key={f.id} onClick={() => { if (isCommittee) { selectFlat(f.id); go("DETAIL"); } else if (f.id === myFlat) go("DETAIL"); }}
               className={`text-left border rounded-[3px] p-3 transition-all hover:shadow-sm group ${terrace ? "bg-[#fff8d6] border-amber-300 hover:border-amber-500" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)]"} ${selectedId === f.id ? "ring-1 ring-[var(--gold)]" : ""}`}>
               <div className="flex justify-between items-start">
                 <div className="mono text-[11px] font-bold tracking-[0.08em]">{label(f)}{f.is_committee && <span className="text-[var(--gold)] ml-1">★</span>}</div>
                 <span title={statusText(f)} className={`h-2 w-2 rounded-full ${isOccupied(f) ? "bg-emerald-500" : "bg-amber-400"}`} />
               </div>
               <div className={`serif text-[12px] mt-1 leading-tight truncate ${f.owner_name ? "" : "opacity-40"}`}>{f.owner_name ? ownerText(f) : "—"}</div>
-              <div className="mono text-[9px] mt-2 opacity-60">{f.bhk || "—"} • {f.tower} • F{floorOf(f)}</div>
-              <div className="mono text-[9px] mt-1 flex justify-between"><span>{rupees(f.maintenance)}</span><span>{f.sqft ? `${f.sqft} sqft` : ""}</span></div>
-              <div className="mono text-[8px] mt-2 opacity-0 group-hover:opacity-60 transition-opacity">CLICK → DETAIL ↗</div>
+              <div className="mono text-[9px] mt-2 opacity-60">{f.bhk ? `${f.bhk} • ` : ""}{f.tower} • F{floorOf(f)}</div>
+              {isCommittee && <div className="mono text-[9px] mt-1 flex justify-between"><span>{rupees(f.maintenance)}</span><span>{f.sqft ? `${f.sqft} sqft` : ""}</span></div>}
+              {(isCommittee || f.id === myFlat) && <div className="mono text-[8px] mt-2 opacity-0 group-hover:opacity-60 transition-opacity">{f.id === myFlat ? "MY FLAT ↗" : "CLICK → DETAIL ↗"}</div>}
             </button>
           );
         })}

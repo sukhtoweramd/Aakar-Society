@@ -47,7 +47,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
           <div className="serif text-[22px] font-bold">Society Notices</div>
           <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored in R2</div>
-          <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] p-4 space-y-2 mono text-[11px]">
+          {ctx.isCommittee && <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] p-4 space-y-2 mono text-[11px]">
             <div className="grid sm:grid-cols-[1fr_140px] gap-2">
               <input className="field" placeholder="Notice title *" value={n.title} onChange={(e) => setN({ ...n, title: e.target.value })} />
               <select className="field" value={n.tower} onChange={(e) => setN({ ...n, tower: e.target.value })}>
@@ -59,7 +59,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
               <input key={fileKey} type="file" accept=".pdf,.jpg,.jpeg,.png,.docx" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-[11px]" />
               <button onClick={publish} disabled={!!busy} className="btn-navy px-5 py-2 tracking-[0.1em]">{busy === "notice" ? "PUBLISHING…" : "PUBLISH"}</button>
             </div>
-          </div>
+          </div>}
           <div className="mt-4 space-y-2">
             {notices.map((x) => (
               <div key={x.id} className="border border-[var(--border)] bg-[var(--surface)] p-4 flex justify-between gap-3">
@@ -74,7 +74,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                     {x.file_url && <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="ml-2 underline text-[var(--navy)] opacity-100">📎 View file</a>}
                   </div>
                 </div>
-                <button onClick={() => removeNotice(x)} className="mono text-[10px] text-red-600 self-start shrink-0">DELETE</button>
+                {ctx.isCommittee && <button onClick={() => removeNotice(x)} className="mono text-[10px] text-red-600 self-start shrink-0">DELETE</button>}
               </div>
             ))}
             {notices.length === 0 && <div className="mono text-[11px] opacity-60">No notices yet.</div>}

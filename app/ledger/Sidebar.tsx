@@ -3,9 +3,10 @@ import { SOCIETY, rupees } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function Sidebar({ ctx }: { ctx: Ctx }) {
-  const { categories, towerFilter, setTowerFilter, setSearch, go, flats } = ctx;
+  const { categories: allCats, towerFilter, setTowerFilter, setSearch, go, flats, isCommittee } = ctx;
+  const categories = isCommittee ? allCats : []; // residents don't see other flats' charges
   const filter = (t: string) => { setTowerFilter(towerFilter === t ? "ALL" : t); setSearch(""); go("INDEX"); };
-  const towers = Array.from(new Set(categories.map((c) => c.tower)));
+  const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   const occupied = flats.filter((f) => f.owner_name).length;
 
   return (

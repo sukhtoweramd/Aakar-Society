@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { EventRow, StoredFile } from "@/lib/society";
 import { deleteFile, listFiles, uploadFile } from "@/lib/ledgerClient";
+import type { Ctx } from "./ctx";
 
 const EMPTY = { title: "", event_date: "", type: "", description: "" };
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date TBD");
@@ -24,7 +25,8 @@ async function shrinkImage(file: File): Promise<File> {
   }
 }
 
-export default function EventsTab() {
+export default function EventsTab({ ctx }: { ctx: Ctx }) {
+  const canEdit = ctx.isCommittee;
   const [events, setEvents] = useState<EventRow[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Record<string, StoredFile[]>>({});
@@ -143,7 +145,7 @@ export default function EventsTab() {
                   <button onClick={() => setEditId(null)} className="btn-line px-4 py-2">CANCEL</button>
                 </div>
               </div>
-            ) : (
+            ) : canEdit && (
               <div className="flex flex-wrap gap-2">
                 <label className="btn-gold mono text-[11px] px-4 py-2 tracking-[0.06em] cursor-pointer">
                   {busy === `photos-${e.id}` ? progress || "UPLOADING…" : "📷 UPLOAD PHOTOS"}
@@ -154,7 +156,7 @@ export default function EventsTab() {
               </div>
             )}
             {pics.length === 0 ? (
-              <div className="border border-dashed border-[var(--border)] p-6 text-center mono text-[11px] opacity-60">No photos yet. Select several photos at once with UPLOAD PHOTOS.</div>
+              <div className="border border-dashed border-[var(--border)] p-6 text-center mono text-[11px] opacity-60">{canEdit ? "No photos yet. Select several photos at once with UPLOAD PHOTOS." : "No photos for this event yet."}</div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {pics.map((p, i) => (
@@ -175,7 +177,7 @@ export default function EventsTab() {
       <div className="bg-[var(--navy)] text-[#fdfcf5] rounded-[4px] p-5 flex flex-wrap justify-between gap-3">
         <div>
           <div className="serif text-[22px] font-bold">Society Events & Photo Gallery</div>
-          <div className="mono text-[11px] opacity-80 mt-1">Upcoming {upcoming.length} • Past {past.length} • Click an event to see or add photos</div>
+          <div className="mono text-[11px] opacity-80 mt-1">Upcoming {upcoming.length} • Past {past.length} • {canEdit ? "Click an event to see or add photos" : "Click an event to see its photos"}</div>
         </div>
       </div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px] whitespace-pre-wrap">{error}</div>}
@@ -195,7 +197,7 @@ export default function EventsTab() {
         </div>
       </div>
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5">
+      {canEdit && <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5">
         <div className="mono text-[11px] font-bold tracking-[0.12em]">+ ADD EVENT</div>
         <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mono text-[11px]">
           <input className="field" placeholder="Event title *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -204,7 +206,7 @@ export default function EventsTab() {
           <button onClick={add} disabled={!!busy} className="btn-navy px-4 py-2 tracking-[0.1em]">{busy === "add" ? "SAVING…" : "ADD EVENT"}</button>
           <input className="field sm:col-span-2 lg:col-span-4" placeholder="Details" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
-      </div>
+      </div>}
 
       {viewer && (
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" onClick={() => setViewer(null)}>
@@ -212,7 +214,7 @@ export default function EventsTab() {
             <span>{viewer.i + 1} / {viewer.list.length}</span>
             <div className="flex gap-3">
               <a href={viewer.list[viewer.i].url} target="_blank" rel="noopener noreferrer" className="underline">Open full size</a>
-              <button onClick={() => { const id = viewer.list[viewer.i].key.split("/")[1]; removePhoto(id, viewer.list[viewer.i]); }} className="text-red-300">Delete</button>
+              {canEdit && <button onClick={() => { const id = viewer.list[viewer.i].key.split("/")[1]; removePhoto(id, viewer.list[viewer.i]); }} className="text-red-300">Delete</button>}
               <button onClick={() => setViewer(null)} className="text-[18px] leading-none">✕</button>
             </div>
           </div>

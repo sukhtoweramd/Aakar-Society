@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY } from "@/lib/society";
+import { flatEmail, normaliseFlat } from "@/lib/residents";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,9 +14,12 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
+    // Residents type their flat number (A-101); committee members type their email.
+    const flat = email.includes("@") ? null : normaliseFlat(email);
+    if (!email.includes("@") && !flat) { setBusy(false); setError("Enter your email, or your flat number like A-101"); return; }
+    const { error } = await supabase.auth.signInWithPassword({ email: flat ? flatEmail(flat) : email.trim(), password: pass });
     setBusy(false);
-    if (error) setError(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
+    if (error) setError(error.message === "Invalid login credentials" ? "Wrong flat number / email or password" : error.message);
   }
 
   return (
@@ -47,12 +51,12 @@ export default function Login() {
             </div>
           </div>
           <form onSubmit={submit} className="p-8 md:p-10">
-            <div className="serif text-[22px] font-bold">Committee Login</div>
-            <div className="mono text-[11px] opacity-60 mt-1">Members directory, vault and charges are for committee members only.</div>
+            <div className="serif text-[22px] font-bold">Member Login</div>
+            <div className="mono text-[11px] opacity-60 mt-1">Residents: log in with your flat number. Committee: log in with your email.</div>
             <div className="mt-6 space-y-4">
               <label className="block">
-                <div className="mono text-[10px] tracking-[0.16em]">EMAIL</div>
-                <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className="field mt-1 mono" placeholder="you@example.com" />
+                <div className="mono text-[10px] tracking-[0.16em]">FLAT NUMBER OR EMAIL</div>
+                <input type="text" autoComplete="username" autoCapitalize="characters" required value={email} onChange={(e) => setEmail(e.target.value)} className="field mt-1 mono" placeholder="A-101  or  you@example.com" />
               </label>
               <label className="block">
                 <div className="mono text-[10px] tracking-[0.16em]">PASSWORD</div>
@@ -60,7 +64,7 @@ export default function Login() {
               </label>
               {error && <div className="mono text-[12px] text-red-700 border border-red-200 bg-red-50 px-3 py-2">{error}</div>}
               <button disabled={busy} className="btn-navy w-full mono text-[12px] tracking-[0.16em] py-3">{busy ? "CHECKING…" : "LOGIN"}</button>
-              <div className="mono text-[10px] opacity-50 text-center">New committee member? Ask the admin to add your email in Supabase.</div>
+              <div className="mono text-[10px] opacity-50 text-center">No password yet, or forgot it? Ask the society committee.</div>
             </div>
           </form>
         </div>

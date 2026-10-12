@@ -4,27 +4,23 @@ import { supabase } from "@/lib/supabaseClient";
 import { floorOf, isOccupied, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
+import MembersPanel from "./MembersPanel";
 
-type Member = { id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null };
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
-  const { flats, categories, selectedId, selectFlat, go, reloadFlats } = ctx;
-  const f = flats.find((x) => x.id === selectedId) || null;
+  const { flats, categories, selectedId, selectFlat, go, reloadFlats, isCommittee, myFlat } = ctx;
+  const f = flats.find((x) => x.id === (isCommittee ? selectedId : myFlat)) || null;
   const [docs, setDocs] = useState<StoredFile[]>([]);
   const [vault, setVault] = useState<StoredFile[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Flat>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [newMember, setNewMember] = useState({ name: "", relation: "", mobile: "" });
 
   async function loadExtras(id: string) {
     setError("");
     listFiles(`flats/${id}`).then(setDocs).catch((e) => setError(e.message));
     listFiles("vault").then(setVault).catch(() => {});
-    const { data } = await supabase.from("members").select("*").eq("flat_id", id);
-    setMembers((data as Member[]) || []);
   }
   useEffect(() => { if (f) { loadExtras(f.id); setEditing(false); } }, [f?.id]);
 
@@ -46,9 +42,15 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
   async function save() {
     setBusy("save"); setError("");
+    const personal: any = { owner_name: form.owner_name?.trim() || null, email: form.email?.trim() || null };
+    if (!isCommittee) {
+      const { error } = await supabase.from("flats").update(personal).eq("id", f!.id);
+      setBusy(null);
+      if (error) { setError(error.message); return; }
+      setEditing(false); reloadFlats(); return;
+    }
     const upd: any = {
-      owner_name: form.owner_name?.trim() || null,
-      email: form.email?.trim() || null,
+      ...personal,
       status: form.status || null,
       is_committee: !!form.is_committee,
       bhk: form.bhk?.trim() || null,
@@ -71,18 +73,6 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     if (!confirm(`Delete "${d.name}"?`)) return;
     try { await deleteFile({ key: d.key }); await loadExtras(f!.id); } catch (e: any) { setError(e.message); }
   }
-  async function addMember() {
-    if (!newMember.name.trim()) return;
-    const { error } = await supabase.from("members").insert([{ flat_id: f!.id, name: newMember.name.trim(), relation: newMember.relation.trim() || null, mobile: newMember.mobile.trim() || null }]);
-    if (error) { setError(error.message); return; }
-    setNewMember({ name: "", relation: "", mobile: "" });
-    loadExtras(f!.id);
-  }
-  async function removeMember(m: Member) {
-    if (!confirm(`Remove ${m.name}?`)) return;
-    const { error } = await supabase.from("members").delete().eq("id", m.id);
-    if (error) setError(error.message); else loadExtras(f!.id);
-  }
 
   const Box = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="border border-[var(--border)] p-4 bg-[var(--bg)]"><div className="mono text-[10px] opacity-60">{title}</div>{children}</div>
@@ -93,14 +83,14 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
-            <div className="mono text-[10px] tracking-[0.2em] opacity-60">FLAT DETAIL • SELECTED</div>
+            <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
             <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)]"> ★</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
             <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? " • ★ Committee" : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
-            <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>
+            {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
             <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
-            <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : "EDIT FLAT"}</button>
+            <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
           </div>
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
@@ -109,6 +99,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
             <label className="sm:col-span-2">OWNER NAME<input className="field mt-1" value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
             <label className="sm:col-span-2">EMAIL<input className="field mt-1" type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+            {isCommittee && <>
             <label>STATUS
               <select className="field mt-1" value={form.status || ""} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 <option value="filled">filled (occupied)</option><option value="pending">pending</option>
@@ -118,6 +109,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <label>MAINTENANCE ₹<input className="field mt-1" type="number" value={form.maintenance ?? ""} onChange={(e) => setForm({ ...form, maintenance: e.target.value as any })} /></label>
             {hasSqft && <label>SQFT<input className="field mt-1" type="number" value={form.sqft ?? ""} onChange={(e) => setForm({ ...form, sqft: e.target.value as any })} /></label>}
             <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={!!form.is_committee} onChange={(e) => setForm({ ...form, is_committee: e.target.checked })} /> COMMITTEE MEMBER ★</label>
+            </>}
+            {!isCommittee && <div className="sm:col-span-2 lg:col-span-4 opacity-60 text-[10px]">Charges, BHK, area and status are managed by the committee.</div>}
             <div className="sm:col-span-2 lg:col-span-4 flex gap-2">
               <button onClick={save} disabled={busy === "save"} className="btn-navy px-5 py-2 text-[11px] tracking-[0.1em]">{busy === "save" ? "SAVING…" : "SAVE TO LEDGER"}</button>
               <button onClick={() => setEditing(false)} className="btn-line px-4 py-2 text-[11px]">CANCEL</button>
@@ -161,24 +154,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <div className="border border-[var(--border)] p-4 bg-[var(--surface)]">
-              <div className="mono text-[10px] font-bold tracking-[0.14em]">FAMILY MEMBERS</div>
-              {members.length === 0 && <div className="mono text-[11px] opacity-60 mt-2">No members recorded for this flat.</div>}
-              <div className="mt-2 space-y-1">
-                {members.map((m) => (
-                  <div key={m.id} className="flex justify-between items-center mono text-[11px] border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5">
-                    <span>{m.name}{m.relation ? ` • ${m.relation}` : ""}{m.mobile ? ` • ${m.mobile}` : ""}</span>
-                    <button onClick={() => removeMember(m)} className="text-red-600 text-[10px]">✕</button>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_0.7fr_0.8fr_auto] gap-2 mono text-[11px]">
-                <input className="field" placeholder="Name" value={newMember.name} onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} />
-                <input className="field" placeholder="Relation" value={newMember.relation} onChange={(e) => setNewMember({ ...newMember, relation: e.target.value })} />
-                <input className="field" placeholder="Mobile" value={newMember.mobile} onChange={(e) => setNewMember({ ...newMember, mobile: e.target.value })} />
-                <button onClick={addMember} className="btn-navy px-3 py-2 text-[11px]">+ ADD</button>
-              </div>
-            </div>
+            <MembersPanel flatId={f.id} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">
@@ -205,19 +181,19 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           </div>
 
           <div className="border border-[var(--border)] rounded-[3px] overflow-hidden self-start">
-            <div className="bg-[var(--navy)] text-white mono text-[10px] tracking-[0.16em] p-3">OTHER FLATS • TOWER {f.tower}</div>
+            {isCommittee && <><div className="bg-[var(--navy)] text-white mono text-[10px] tracking-[0.16em] p-3">OTHER FLATS • TOWER {f.tower}</div>
             <div className="divide-y divide-[var(--border)] max-h-[380px] overflow-auto">
               {flats.filter((m) => m.tower === f.tower).map((m) => (
                 <button key={m.id} onClick={() => selectFlat(m.id)} className={`w-full text-left p-3 flex justify-between gap-2 mono text-[11px] hover:bg-[var(--bg)] ${m.id === f.id ? "bg-amber-50" : "bg-[var(--surface)]"}`}>
                   <span className="truncate">{label(m)} • {m.owner_name || "—"}</span><span className="opacity-60 shrink-0">{rupees(m.maintenance)}</span>
                 </button>
               ))}
-            </div>
+            </div></>}
             <div className="p-3 bg-[var(--bg-soft)] border-t border-[var(--border)] mono text-[10px]">
               <div className="font-bold tracking-[0.12em]">QUICK ACTIONS</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button onClick={() => go("VAULT")} className="btn-navy px-2 py-1">OPEN VAULT 🔒</button>
-                <button onClick={() => go("ADMIN")} className="btn-line px-2 py-1">CHARGES</button>
+                {isCommittee && <button onClick={() => go("ADMIN")} className="btn-line px-2 py-1">CHARGES</button>}
                 <button onClick={() => go("BUSINESS")} className="btn-line px-2 py-1">BUSINESS</button>
               </div>
               <div className="mt-3 space-y-1">

@@ -17,13 +17,21 @@ function safeFolder(raw: string): string | null {
   return null;
 }
 const unauthorized = () => NextResponse.json({ error: "Please log in again." }, { status: 401 });
+const forbidden = () => NextResponse.json({ error: "Only the committee can change this." }, { status: 403 });
+// Residents may read society folders and their own flat, and may only write to their own flat folder.
+const canRead = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
+  me.isCommittee || !folder.startsWith("flats/") || folder === `flats/${me.flatId}`;
+const canWrite = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
+  me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`);
 
 export async function GET(req: NextRequest) {
-  if (!(await getAuthedClient(req))) return unauthorized();
+  const me = await getAuthedClient(req);
+  if (!me) return unauthorized();
   const r2 = getR2();
   if (!r2) return NextResponse.json({ files: [], warning: "File storage (R2) is not configured." });
   const folder = safeFolder(req.nextUrl.searchParams.get("folder") || "");
   if (!folder) return NextResponse.json({ error: "Bad folder" }, { status: 400 });
+  if (!canRead(me, folder)) return forbidden();
   try {
     const files: any[] = [];
     let token: string | undefined;
@@ -45,7 +53,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await getAuthedClient(req))) return unauthorized();
+  const me = await getAuthedClient(req);
+  if (!me) return unauthorized();
   const r2 = getR2();
   if (!r2) return NextResponse.json({ error: "File storage (R2) is not configured in Vercel environment variables." }, { status: 500 });
   try {
@@ -55,6 +64,7 @@ export async function POST(req: NextRequest) {
     const slot = String(form.get("slot") || "").replace(/[^a-z0-9-]/g, "");
     if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
     if (!folder) return NextResponse.json({ error: "Bad folder" }, { status: 400 });
+    if (!canWrite(me, folder)) return forbidden();
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (!ALLOWED_EXT[ext]) return NextResponse.json({ error: `Allowed files: ${Object.keys(ALLOWED_EXT).join(", ").toUpperCase()}` }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is larger than 4 MB." }, { status: 400 });
@@ -71,7 +81,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await getAuthedClient(req))) return unauthorized();
+  const me = await getAuthedClient(req);
+  if (!me) return unauthorized();
   const r2 = getR2();
   if (!r2) return NextResponse.json({ ok: true });
   const { url, key: rawKey } = await req.json().catch(() => ({}));
@@ -80,6 +91,7 @@ export async function DELETE(req: NextRequest) {
   if (!key) return NextResponse.json({ ok: true });
   const folder = safeFolder(key.slice(0, key.lastIndexOf("/")));
   if (!folder) return NextResponse.json({ error: "Bad file" }, { status: 400 });
+  if (!canWrite(me, folder)) return forbidden();
   try {
     await r2.client.send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: key }));
     return NextResponse.json({ ok: true });

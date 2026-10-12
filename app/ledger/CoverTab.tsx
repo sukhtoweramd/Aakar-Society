@@ -1,12 +1,12 @@
 "use client";
 import { SOCIETY, label, ownerText } from "@/lib/society";
-import type { Ctx, Tab } from "./ctx";
+import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "INDEX", title: "ALL FLATS", desc: "Grid of all flats A/B/C" },
   { id: "FLOOR", title: "FLOOR PLANS", desc: "Tower-wise plans in R2" },
   { id: "DETAIL", title: "MEMBER DETAIL", desc: "Owner, charges, documents" },
-  { id: "BUSINESS", title: "BUSINESS DIR", desc: "Resident services" },
+  { id: "BUSINESS", title: "BUSINESS DIR", desc: "Members' professions" },
   { id: "VAULT", title: "VAULT 🔒", desc: "Society legal documents" },
   { id: "NOTICES", title: "NOTICES", desc: "Society notices" },
   { id: "EVENTS", title: "EVENTS", desc: "Events & photo gallery" },
@@ -57,7 +57,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                   <div className="opacity-60 mb-1">COMMITTEE</div>
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
                   {committee.map((f) => (
-                    <button key={f.id} onClick={() => { selectFlat(f.id); go("DETAIL"); }} className="w-full flex justify-between hover:underline text-left">
+                    <button key={f.id} onClick={() => { if (ctx.isCommittee) { selectFlat(f.id); go("DETAIL"); } }} className="w-full flex justify-between hover:underline text-left">
                       <span className="truncate pr-2">{ownerText(f)}</span><span>{label(f)}</span>
                     </button>
                   ))}
@@ -71,7 +71,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
             <div><div className="font-bold tracking-[0.16em]">03 • CHARGES</div><div className="opacity-70 mt-1">Control panel for maintenance per category. Yellow = terrace ownership.</div></div>
           </div>
           <div className="mt-8 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-            {TILES.map((m) => (
+            {TILES.filter((m) => ctx.isCommittee || RESIDENT_TABS.includes(m.id)).map((m) => (
               <button key={m.id} onClick={() => go(m.id)} className="text-left border border-[var(--border)] bg-[var(--bg)] p-3 hover:border-[var(--gold)] mono">
                 <div className="text-[11px] font-bold tracking-[0.12em]">{m.id}</div>
                 <div className="serif text-[13px] font-bold mt-1">{m.title}</div>

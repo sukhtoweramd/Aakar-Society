@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react";
 import { VAULT_SLOTS, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
+import type { Ctx } from "./ctx";
 
-export default function VaultTab() {
+export default function VaultTab({ ctx }: { ctx: Ctx }) {
+  const canEdit = ctx.isCommittee;
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function VaultTab() {
         </div>
         <div className="mono text-[10px] border border-white/20 p-2 bg-white/5 self-start">
           <div>Bucket: aakar-vault/vault</div>
-          <div className="text-[var(--gold)]">Committee access only</div>
+          <div className="text-[var(--gold)]">{canEdit ? "Committee can upload" : "View only"}</div>
         </div>
       </div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
@@ -66,11 +68,11 @@ export default function VaultTab() {
               <div className="mt-4 flex flex-wrap gap-2 items-center">
                 {f ? <a href={f.url} target="_blank" rel="noopener noreferrer" className="btn-navy mono text-[11px] px-3 py-1.5 inline-block">VIEW</a>
                    : <span className="mono text-[11px] px-3 py-1.5 border border-dashed border-[var(--border)] opacity-60">NO FILE</span>}
-                <label className="btn-gold mono text-[11px] px-3 py-1.5 inline-flex items-center gap-2">
+                {canEdit && <label className="btn-gold mono text-[11px] px-3 py-1.5 inline-flex items-center gap-2">
                   {busy === s.id ? "UPLOADING…" : f ? "REPLACE" : "UPLOAD"}
                   <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx" disabled={!!busy} onChange={(e) => { const x = e.target.files?.[0]; e.target.value = ""; if (x) upload(x, s.id); }} />
-                </label>
-                {f && <button onClick={() => remove(f)} className="mono text-[10px] text-red-600 ml-auto">DELETE</button>}
+                </label>}
+                {canEdit && f && <button onClick={() => remove(f)} className="mono text-[10px] text-red-600 ml-auto">DELETE</button>}
               </div>
             </div>
           );
@@ -79,16 +81,16 @@ export default function VaultTab() {
       <div className="border border-[var(--border)] bg-[var(--surface)] p-4">
         <div className="flex flex-wrap justify-between items-center gap-3">
           <div className="mono text-[11px] font-bold tracking-[0.12em]">OTHER SOCIETY DOCUMENTS</div>
-          <label className="btn-navy mono text-[11px] px-3 py-1.5 cursor-pointer">
+          {canEdit && <label className="btn-navy mono text-[11px] px-3 py-1.5 cursor-pointer">
             {busy === "other" ? "UPLOADING…" : "+ UPLOAD DOCUMENT"}
             <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" disabled={!!busy} onChange={(e) => { const x = e.target.files?.[0]; e.target.value = ""; if (x) upload(x); }} />
-          </label>
+          </label>}
         </div>
         <div className="mt-3 space-y-1">
           {others.map((f) => (
             <div key={f.key} className="flex justify-between items-center gap-2 mono text-[11px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2">
               <a href={f.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{f.name}</a>
-              <span className="flex gap-3 items-center shrink-0"><span className="opacity-50 text-[10px]">{fmtDate(f.uploaded)} • {fmtSize(f.size)}</span><button onClick={() => remove(f)} className="text-red-600 text-[10px]">✕</button></span>
+              <span className="flex gap-3 items-center shrink-0"><span className="opacity-50 text-[10px]">{fmtDate(f.uploaded)} • {fmtSize(f.size)}</span>{canEdit && <button onClick={() => remove(f)} className="text-red-600 text-[10px]">✕</button>}</span>
             </div>
           ))}
           {loaded && others.length === 0 && <div className="mono text-[11px] opacity-60">No other documents yet (AGM minutes, audit reports, etc.).</div>}

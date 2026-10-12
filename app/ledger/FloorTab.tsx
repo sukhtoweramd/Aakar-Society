@@ -37,7 +37,9 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
             <div className="serif text-[24px] font-bold">Floor Plans • Sukh Tower</div>
             <div className="mono text-[11px] opacity-60 mt-1">Architectural drawings • Terrace logic annotated • Stored permanently in R2 (aakar-vault/floor-plans)</div>
           </div>
-          <div className="mono text-[10px] px-3 py-2 border rounded-[3px] bg-emerald-50 border-emerald-200 text-emerald-800">● COMMITTEE • You can upload floor plans</div>
+          {ctx.isCommittee
+            ? <div className="mono text-[10px] px-3 py-2 border rounded-[3px] bg-emerald-50 border-emerald-200 text-emerald-800">● COMMITTEE • You can upload floor plans</div>
+            : <div className="mono text-[10px] px-3 py-2 border rounded-[3px] bg-amber-50 border-amber-200 text-amber-800">● VIEW ONLY</div>}
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
         <div className="mt-6 grid md:grid-cols-3 gap-4">
@@ -79,19 +81,19 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
                   {ter && <div>Floor {ter.floors}: Terrace {ter.ids.length} flats • {ter.bhk} • {rupees(ter.maint)}</div>}
                   {(std?.sqft || ter?.sqft) && <div className="opacity-60">Built-up {std?.sqft ?? "—"} → {ter?.sqft ?? "—"} sqft</div>}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                {ctx.isCommittee && <div className="mt-3 flex flex-wrap gap-2">
                   <label className="btn-gold mono text-[10px] px-3 py-1.5 tracking-[0.04em] inline-flex items-center">
                     {busy === t ? "UPLOADING…" : "UPLOAD FLOOR PLAN PDF/DWG"}
                     <input type="file" hidden accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg" disabled={!!busy}
                       onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(t, f); }} />
                   </label>
-                </div>
+                </div>}
                 {files.length > 0 && (
                   <div className="mt-3 space-y-1">
                     {files.map((f) => (
                       <div key={f.key} className="flex items-center justify-between gap-2 mono text-[10px] border border-[var(--border)] bg-white px-2 py-1">
                         <a href={f.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{f.name}</a>
-                        <button onClick={() => remove(f)} className="text-red-600 shrink-0">✕</button>
+                        {ctx.isCommittee && <button onClick={() => remove(f)} className="text-red-600 shrink-0">✕</button>}
                       </div>
                     ))}
                   </div>

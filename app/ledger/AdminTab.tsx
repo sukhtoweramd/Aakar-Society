@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { DEFAULT_RATES, rupees } from "@/lib/society";
 import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
+import LoginsPanel from "./LoginsPanel";
 
 type Row = { maint: string; sqft: string; bhk: string };
 
@@ -134,6 +135,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       </div>
+
+      <LoginsPanel ctx={ctx} />
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 flex flex-wrap justify-between gap-4 items-center">
         <div>

@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
-import { TABS, type Ctx, type Tab } from "./ledger/ctx";
+import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
+import ChangePassword from "./ledger/ChangePassword";
+import { label } from "@/lib/society";
 import Login from "./ledger/Login";
 import Sidebar from "./ledger/Sidebar";
 import CoverTab from "./ledger/CoverTab";
@@ -26,6 +28,10 @@ export default function Home() {
   const [towerFilter, setTowerFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const meta = (session?.user.app_metadata || {}) as Record<string, any>;
+  const isCommittee = meta.role !== "resident";
+  const myFlat: string | null = isCommittee ? null : String(meta.flat_id || "") || null;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -34,12 +40,20 @@ export default function Home() {
   }, []);
 
   async function reloadFlats() {
+    // Committee sees every flat. Residents get the directory (names only) plus full details of their own flat.
     const { data, error } = await supabase.from("flats").select("*");
     if (error) { setLoadError(`Could not load flats: ${error.message}`); return; }
+    let list = (data || []) as Flat[];
+    if (!isCommittee) {
+      const dir = await supabase.from("flat_directory").select("*");
+      if (dir.error) { setLoadError(`Could not load directory: ${dir.error.message}`); return; }
+      const own = new Map(list.map((f) => [f.id, f]));
+      list = ((dir.data || []) as Flat[]).map((d) => own.get(d.id) || ({ ...d, bhk: null, maintenance: null, email: null } as Flat));
+    }
     setLoadError("");
-    const list = ((data || []) as Flat[]).sort(sortFlats);
+    list.sort(sortFlats);
     setFlats(list);
-    setSelectedId((cur) => cur ?? list[0]?.id ?? null);
+    setSelectedId((cur) => (isCommittee ? cur ?? list[0]?.id ?? null : myFlat));
   }
   useEffect(() => { if (session) reloadFlats(); }, [session?.user.id]);
 
@@ -52,9 +66,14 @@ export default function Home() {
 
   if (checking) return <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
   if (!session) return <Login />;
+  const mustChange = !isCommittee && !(session.user.user_metadata as any)?.password_changed;
+  if (mustChange || showPassword) return <ChangePassword forced={mustChange} who={myFlat ? `Flat ${myFlat}` : session.user.email || ""} onDone={() => setShowPassword(false)} />;
+  const visibleTabs = isCommittee ? [...TABS] : RESIDENT_TABS;
+  const who = myFlat ? `FLAT ${label({ id: myFlat, flat_no: myFlat } as any)}` : session.user.email;
 
   const ctx: Ctx = {
     email: session.user.email || "",
+    isCommittee, myFlat,
     flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId,
     selectFlat: setSelectedId, go, reloadFlats,
   };
@@ -79,8 +98,9 @@ export default function Home() {
             <div className="hidden md:flex items-center gap-4 opacity-80 mr-2 text-[11px]">
               <span>SUKH TOWER • MIRAMBICA ROAD</span>
               <span className="h-3 w-px bg-white/20" />
-              <span className="normal-case">{session.user.email}</span>
+              <span className={myFlat ? "" : "normal-case"}>{who}</span>
             </div>
+            <button onClick={() => setShowPassword(true)} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">PASSWORD</button>
             <button onClick={() => supabase.auth.signOut()} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-[var(--gold)] text-black border-[var(--gold)]">
               LOGOUT
             </button>
@@ -99,10 +119,10 @@ export default function Home() {
             </div>
           </div>
           <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
-            {TABS.map((m) => (
+            {visibleTabs.map((m) => (
               <button key={m} onClick={() => go(m)}
                 className={`mono text-[12px] tracking-[0.06em] px-3.5 py-2 rounded-[4px] border transition-all shrink-0 font-semibold ${tab === m ? "bg-[var(--navy)] text-white border-[var(--navy)] shadow-sm" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)] hover:bg-[var(--bg-soft)]"}`}>
-                {m === "VAULT" ? "VAULT 🔒" : m}
+                {m === "VAULT" ? "VAULT 🔒" : m === "DETAIL" && !isCommittee ? "MY FLAT" : m}
               </button>
             ))}
           </nav>
@@ -121,17 +141,17 @@ export default function Home() {
           {tab === "FLOOR" && <FloorTab ctx={ctx} />}
           {tab === "DETAIL" && <DetailTab ctx={ctx} />}
           {tab === "BUSINESS" && <BusinessTab ctx={ctx} />}
-          {tab === "VAULT" && <VaultTab />}
+          {tab === "VAULT" && <VaultTab ctx={ctx} />}
           {tab === "NOTICES" && <NoticesTab ctx={ctx} />}
-          {tab === "EVENTS" && <EventsTab />}
-          {tab === "ADMIN" && <AdminTab ctx={ctx} />}
-          {tab === "REPORTS" && <ReportsTab ctx={ctx} />}
+          {tab === "EVENTS" && <EventsTab ctx={ctx} />}
+          {tab === "ADMIN" && isCommittee && <AdminTab ctx={ctx} />}
+          {tab === "REPORTS" && isCommittee && <ReportsTab ctx={ctx} />}
         </main>
       </div>
 
       <footer className="border-t border-[var(--border)] mt-8 mono text-[10px] px-6 py-4 opacity-60 flex flex-wrap gap-4 justify-between max-w-[1600px] mx-auto">
         <span>AAKAR CO-OP HOUSING SOCIETY {SOCIETY.reg} • Sukh Tower • Mirambica Road Naranpura • Ahmedabad • EST 1994</span>
-        <span>Logged in: {session.user.email}</span>
+        <span>Logged in: {who}{isCommittee ? " • Committee" : " • Resident"}</span>
       </footer>
     </div>
   );

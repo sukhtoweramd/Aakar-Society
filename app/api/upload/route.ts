@@ -20,6 +20,7 @@ const toInt = (v?: string) => (v === undefined || isNaN(parseInt(v, 10)) ? undef
 export async function POST(req: NextRequest) {
   const auth = await getAuthedClient(req);
   if (!auth) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
+  if (!auth.isCommittee) return NextResponse.json({ error: "Committee only." }, { status: 403 });
   try {
     const form = await req.formData();
     const file = form.get("file");
