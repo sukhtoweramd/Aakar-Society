@@ -36,21 +36,40 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   function exportPDF() {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
-    const html = `<html><head><title>Aakar Co-op - Directory</title><style>
-      body{font-family:Inter,Arial,sans-serif;padding:24px;color:#1a1a18}
-      .head{border-bottom:2px solid #0f1d3d;padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}
-      h1{margin:0;color:#0f1d3d;font-size:22px;letter-spacing:.04em} .sub{font-size:11px;color:#7a7568;letter-spacing:.08em}
-      .meta{font-size:11px;color:#444;margin:8px 0 14px} table{width:100%;border-collapse:collapse;font-size:11px}
-      th,td{border:1px solid #e8e2d1;padding:5px 7px;text-align:left} th{background:#0f1d3d;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      tr:nth-child(even) td{background:#fdfcf5;-webkit-print-color-adjust:exact;print-color-adjust:exact} .gold{color:#b8932a}
-      .charges{font-size:11px;border:1px solid #e8e2d1;background:#fdfcf5;padding:8px 10px;margin-bottom:12px;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      @page{size:A4 landscape;margin:12mm}
+    const today = new Date().toLocaleDateString("en-IN");
+    const html = `<html><head><title>Aakar Co-op - Directory ${esc(today)}</title><style>
+      @page{size:A4 landscape;margin:12mm 10mm 14mm;
+        @bottom-left{content:"Aakar Co-op Housing Society Ltd. • ${esc(SOCIETY.reg)} • Directory ${esc(today)}";font:9px Inter,Arial,sans-serif;color:#7a7568}
+        @bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Inter,Arial,sans-serif;color:#7a7568}}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      thead{display:table-header-group} tr{break-inside:avoid;page-break-inside:avoid}
+      .title td{border:0;border-bottom:2px solid #0f1d3d;padding:0 0 8px}
+      .title .row{display:flex;justify-content:space-between;align-items:flex-end}
+      h1{margin:0;color:#0f1d3d;font-size:18px;letter-spacing:.04em} .sub{font-size:10px;color:#7a7568;letter-spacing:.08em}
+      .gap td{border:0;height:8px;padding:0}
+      th{border:1px solid #0f1d3d;padding:5px 7px;text-align:left;background:#0f1d3d;color:#fff}
+      tbody td{border:1px solid #e8e2d1;padding:5px 7px;text-align:left}
+      tbody tr.r:nth-child(even) td{background:#fdfcf5} .gold{color:#b8932a}
+      .intro td{border:0;padding:0 0 10px}
+      .meta{font-size:11px;color:#444;margin-bottom:8px}
+      .charges{font-size:11px;border:1px solid #e8e2d1;background:#fdfcf5;padding:8px 10px;line-height:1.6}
+      @media screen{body{padding:24px}}
     </style></head><body>
-      <div class="head"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD.</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT</div></div>
-      <div class="meta">Date: ${esc(new Date().toLocaleDateString("en-IN"))} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • Monthly maintenance: ${esc(rupees(monthly))} • By: ${esc(email)}</div>
-      ${chargeLines.length ? `<div class="charges"><b>Flat types & monthly maintenance</b><br>${chargeLines.map(esc).join("<br>")}</div>` : ""}
-      <table><tr><th>Flat</th><th>Owner</th><th>Profession / Business</th><th>Spouse</th><th>Mobile</th><th>Email</th></tr>
-      ${list.map((f) => { const x = fam(f); return `<tr><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ' <span class="gold">★</span>' : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
+      <table>
+        <thead>
+          <tr class="title"><td colspan="6"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD.</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT • ${esc(scope.toUpperCase())}</div></div></td></tr>
+          <tr class="gap"><td colspan="6"></td></tr>
+          <tr><th style="width:7%">Flat</th><th style="width:24%">Owner</th><th style="width:22%">Profession / Business</th><th style="width:16%">Spouse</th><th style="width:11%">Mobile</th><th>Email</th></tr>
+        </thead>
+        <tbody>
+          <tr class="intro"><td colspan="6">
+            <div class="meta">Date: ${esc(today)} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • Monthly maintenance: ${esc(rupees(monthly))} • By: ${esc(email)}</div>
+            ${chargeLines.length ? `<div class="charges"><b>Flat types & monthly maintenance</b><br>${chargeLines.map(esc).join("<br>")}</div>` : ""}
+          </td></tr>
+          ${list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ' <span class="gold">★</span>' : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
+        </tbody>
       </table></body></html>`;
     w.document.write(html);
     w.document.close();
