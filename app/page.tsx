@@ -6,14 +6,16 @@ import { supabase } from "@/lib/supabaseClient";
 type Flat = { id: string; tower: string | null; floor: number | null; flat_no: string | null; bhk: string | null; maintenance: number | null; email: string | null; owner_name: string | null; is_committee: boolean | null; status: string | null; r2_url?: string | null };
 type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
 
-// "101" in tower A -> "A-101"; "A-101" stays "A-101"
+// Stored as "A1001" -> shown as "A-1001"
 const flatLabel = (f: Flat) => {
-  const no = f.flat_no || f.id;
-  return !f.tower || no.toUpperCase().startsWith(`${f.tower.toUpperCase()}-`) ? no : `${f.tower}-${no}`;
+  const no = (f.flat_no || f.id || "").toUpperCase();
+  const m = no.match(/^([A-Z])-?(\d+)$/);
+  if (m) return `${m[1]}-${m[2]}`;
+  return f.tower && /^\d+$/.test(no) ? `${f.tower}-${no}` : no;
 };
 const statusColor = (s: string | null) => {
   const v = (s || "").toLowerCase();
-  if (["sold", "occupied", "approved", "active", "paid"].includes(v)) return { border: "border-green-500", pill: "bg-green-100 text-green-700" };
+  if (["filled", "sold", "occupied", "approved", "active", "paid"].includes(v)) return { border: "border-green-500", pill: "bg-green-100 text-green-700" };
   if (["pending", "vacant", "available"].includes(v)) return { border: "border-amber-400", pill: "bg-amber-100 text-amber-700" };
   return { border: "border-slate-300", pill: "bg-slate-100 text-slate-600" };
 };
@@ -50,7 +52,8 @@ export default function Home() {
   async function loadFlats() {
     const { data, error } = await supabase.from("flats").select("*").order("tower").order("flat_no");
     if (error) setLoadError(`Could not load flats: ${error.message}`);
-    else setFlats(data || []);
+    // Sort A101, A102 … A1001 numerically (database text order would put A1001 first)
+    else setFlats((data || []).sort((a: Flat, b: Flat) => (a.tower || "").localeCompare(b.tower || "") || (parseInt((a.flat_no || a.id).replace(/\D/g, "")) || 0) - (parseInt((b.flat_no || b.id).replace(/\D/g, "")) || 0)));
   }
   async function loadNotices() {
     const { data, error } = await supabase.from("notices").select("*").order("created_at", { ascending: false });

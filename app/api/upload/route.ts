@@ -35,9 +35,12 @@ export async function POST(req: NextRequest) {
     rows.forEach((r, i) => {
       const tower = pick(r, ["tower", "wing"])?.toUpperCase();
       let flatNo = pick(r, ["flatno", "flat", "flatnumber"]);
-      if (!tower || !flatNo) { problems.push(`Row ${i + 2}: Tower and Flat No are required`); return; }
-      flatNo = flatNo.toUpperCase().startsWith(`${tower}-`) ? flatNo.toUpperCase() : `${tower}-${flatNo}`;
-      const id = pick(r, ["id", "flatid"]) || flatNo;
+      if (!tower || !["A", "B", "C"].includes(tower) || !flatNo) { problems.push(`Row ${i + 2}: Tower must be A, B or C and Flat No is required`); return; }
+      // Normalise "A-1001", "a1001" or "1001" (with Tower A) to the stored format "A1001".
+      const digits = flatNo.toUpperCase().replace(/^[A-Z]\s*-?\s*/, "");
+      if (!/^\d+$/.test(digits)) { problems.push(`Row ${i + 2}: flat no "${flatNo}" should look like 1001 or ${tower}1001`); return; }
+      flatNo = `${tower}${digits}`;
+      const id = flatNo;
       if (seen.has(id)) { problems.push(`Row ${i + 2}: duplicate flat ${id}`); return; }
       seen.add(id);
       // Only send columns that are filled in, so blanks don't wipe existing data.

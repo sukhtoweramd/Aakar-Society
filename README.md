@@ -22,5 +22,5 @@ Keep **Authentication → Sign In / Providers → "Allow new users to sign up" t
 3. Never commit real keys to this repo – it is public.
 
 ## Excel import columns
-`Tower, Floor, Flat No, Owner Name, BHK, Maintenance, Email, Committee, Status` (only Tower and Flat No are required).
-Rows are matched to existing flats by ID (e.g. `A-101`); blank cells leave existing values unchanged.
+`Tower, Floor, Flat No, Owner Name, BHK, Maintenance, Email, Committee, Status` (Status: `filled` or `pending`) (only Tower and Flat No are required).
+Flat No can be written `1001`, `A1001` or `A-1001`; it is stored as `A1001` and matched to the existing flat; blank cells leave existing values unchanged.
