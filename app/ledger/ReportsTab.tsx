@@ -1,5 +1,7 @@
 "use client";
-import { filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, statusText } from "@/lib/society";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -11,10 +13,19 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   const withOwner = list.filter((f) => f.owner_name).length;
   const monthly = list.reduce((n, f) => n + (f.maintenance || 0), 0);
   const scope = filterName(towerFilter, categories);
+  const [members, setMembers] = useState<MemberLite[]>([]);
+  useEffect(() => {
+    supabase.from("members").select("*").then(({ data }) => setMembers((data as MemberLite[]) || []));
+  }, []);
+  const fam = (f: (typeof flats)[number]) => familySummary(f, members);
+  // Charges summary for the PDF heading, per category (e.g. "Tower A floors 1-9: 3BHK • 1500 sqft • ₹3,500")
+  const shownIds = new Set(list.map((f) => f.id));
+  const chargeLines = categories.filter((c) => c.ids.some((id) => shownIds.has(id)))
+    .map((c) => `${c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`}: ${[c.bhk, c.sqft ? `${c.sqft} sqft` : "", c.maint != null ? `${rupees(c.maint)}/month` : ""].filter(Boolean).join(" • ")}`);
 
   function exportCSV() {
-    const headers = ["Flat", "Tower", "Floor", "Owner Name", "BHK", "Sqft", "Maintenance", "Email", "Committee", "Status"];
-    const rows = list.map((f) => [label(f), f.tower ?? "", floorOf(f), f.owner_name ?? "", f.bhk ?? "", f.sqft ?? "", f.maintenance ?? "", f.email ?? "", f.is_committee ? "Yes" : "", f.status ?? ""]);
+    const headers = ["Flat", "Tower", "Floor", "Owner Name", "Profession / Business", "Spouse", "Mobile", "Email", "Family Members", "BHK", "Sqft", "Maintenance", "Committee", "Status"];
+    const rows = list.map((f) => { const x = fam(f); return [label(f), f.tower ?? "", floorOf(f), f.owner_name ?? "", x.profession, x.spouse?.name ?? "", x.mobile, f.email ?? "", x.count || "", f.bhk ?? "", f.sqft ?? "", f.maintenance ?? "", f.is_committee ? "Yes" : "", f.status ?? ""]; });
     const csv = "﻿" + [headers, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
@@ -32,11 +43,14 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
       .meta{font-size:11px;color:#444;margin:8px 0 14px} table{width:100%;border-collapse:collapse;font-size:11px}
       th,td{border:1px solid #e8e2d1;padding:5px 7px;text-align:left} th{background:#0f1d3d;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       tr:nth-child(even) td{background:#fdfcf5;-webkit-print-color-adjust:exact;print-color-adjust:exact} .gold{color:#b8932a}
+      .charges{font-size:11px;border:1px solid #e8e2d1;background:#fdfcf5;padding:8px 10px;margin-bottom:12px;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      @page{size:A4 landscape;margin:12mm}
     </style></head><body>
       <div class="head"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD.</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT</div></div>
       <div class="meta">Date: ${esc(new Date().toLocaleDateString("en-IN"))} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • Monthly maintenance: ${esc(rupees(monthly))} • By: ${esc(email)}</div>
-      <table><tr><th>Flat</th><th>Owner</th><th>BHK</th><th>Sqft</th><th>Maint.</th><th>Email</th><th>Status</th></tr>
-      ${list.map((f) => `<tr><td>${esc(label(f))}</td><td>${esc(f.owner_name)}${f.is_committee ? ' <span class="gold">★</span>' : ""}</td><td>${esc(f.bhk)}</td><td>${esc(f.sqft)}</td><td>${esc(f.maintenance)}</td><td>${esc(f.email)}</td><td>${esc(statusText(f))}</td></tr>`).join("")}
+      ${chargeLines.length ? `<div class="charges"><b>Flat types & monthly maintenance</b><br>${chargeLines.map(esc).join("<br>")}</div>` : ""}
+      <table><tr><th>Flat</th><th>Owner</th><th>Profession / Business</th><th>Spouse</th><th>Mobile</th><th>Email</th></tr>
+      ${list.map((f) => { const x = fam(f); return `<tr><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ' <span class="gold">★</span>' : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
       </table></body></html>`;
     w.document.write(html);
     w.document.close();

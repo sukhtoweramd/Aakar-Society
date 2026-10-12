@@ -22,7 +22,7 @@ const toRow = (f: Form) => ({
   office_address: f.office_address.trim() || null, office_phone: f.office_phone.trim() || null,
 });
 
-export default function MembersPanel({ flatId }: { flatId: string }) {
+export default function MembersPanel({ flatId, ownerName, ownerEmail }: { flatId: string; ownerName?: string | null; ownerEmail?: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [editId, setEditId] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<Form>(BLANK);
@@ -43,6 +43,11 @@ export default function MembersPanel({ flatId }: { flatId: string }) {
     const res = editId === "new"
       ? await supabase.from("members").insert([{ ...row, flat_id: flatId }])
       : await supabase.from("members").update(row).eq("id", editId!);
+    if (!res.error && row.is_head) {
+      // only one head of family per flat
+      const others = members.filter((m) => m.is_head && m.id !== editId).map((m) => m.id);
+      if (others.length) await supabase.from("members").update({ is_head: false }).in("id", others);
+    }
     setBusy(false);
     if (res.error) {
       setError(/column/i.test(res.error.message) ? `${res.error.message} — the database step for member professions hasn't been run yet.` : res.error.message);
@@ -57,6 +62,9 @@ export default function MembersPanel({ flatId }: { flatId: string }) {
   }
 
   const set = (k: keyof Form, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  // "BHUPESH D MEHTA & HINA B MEHTA" -> first owner "BHUPESH D MEHTA"
+  const firstOwner = (ownerName || "").split(/\s*(?:&|,|\band\b)\s*/i)[0].trim();
+  const ownerMissing = !!firstOwner && !members.some((m) => m.is_head || (m.name || "").trim().toLowerCase() === firstOwner.toLowerCase());
   const editor = (
     <div className="border border-[var(--gold)] bg-[#fffdf5] p-3 mono text-[11px] space-y-3">
       <div>
@@ -67,7 +75,7 @@ export default function MembersPanel({ flatId }: { flatId: string }) {
           <input className="field" type="number" placeholder="Age" value={form.age} onChange={(e) => set("age", e.target.value)} />
           <input className="field" placeholder="Mobile" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
           <input className="field" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          <label className="flex items-center gap-2 px-1"><input type="checkbox" checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family</label>
+          <label className="flex items-center gap-2 px-1"><input type="checkbox" checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / Owner</label>
         </div>
       </div>
       <div>
@@ -97,6 +105,12 @@ export default function MembersPanel({ flatId }: { flatId: string }) {
         {editId === null && <button onClick={() => { setForm(BLANK); setEditId("new"); }} className="btn-navy mono text-[11px] px-3 py-1.5">+ ADD MEMBER</button>}
       </div>
       {error && <div className="mt-2 border border-red-200 bg-red-50 text-red-700 p-2 mono text-[11px]">{error}</div>}
+      {ownerMissing && editId === null && (
+        <div className="mt-3 border border-amber-300 bg-[#fff8d6] p-3 mono text-[11px] flex flex-wrap gap-3 items-center justify-between">
+          <span>Owner <b>{firstOwner}</b> is not in the family list yet. Add them so their profession and mobile show in reports and the business directory.</span>
+          <button onClick={() => { setForm({ ...BLANK, name: firstOwner, relation: "Self", is_head: true, email: ownerEmail || "" }); setEditId("new"); }} className="btn-navy px-3 py-1.5 shrink-0">+ ADD OWNER AS FAMILY MEMBER</button>
+        </div>
+      )}
       {editId === "new" && <div className="mt-3">{editor}</div>}
       {members.length === 0 && editId !== "new" && <div className="mono text-[11px] opacity-60 mt-2">No members recorded for this flat.</div>}
       <div className="mt-3 space-y-2">

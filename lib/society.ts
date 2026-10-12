@@ -134,3 +134,20 @@ export function filterName(filter: string, categories: Category[]): string {
   if (c) return c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`;
   return `Tower ${filter}`;
 }
+
+/** Family-member summary used by reports: head (owner), spouse, profession, mobile. */
+export type MemberLite = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; email?: string | null; is_head: boolean | null; occupation?: string | null; business_name?: string | null };
+const SPOUSE = /^(wife|husband|spouse|mrs\.?|mr\.?)$/i;
+export function familySummary(flat: Flat, members: MemberLite[]) {
+  const mine = members.filter((m) => m.flat_id === flat.id);
+  const owner = (flat.owner_name || "").toLowerCase();
+  const head =
+    mine.find((m) => m.is_head) ||
+    mine.find((m) => /^self$/i.test(m.relation || "")) ||
+    mine.find((m) => m.name && owner.includes(m.name.toLowerCase())) ||
+    null;
+  const spouse = mine.find((m) => m !== head && SPOUSE.test((m.relation || "").trim())) || null;
+  const profession = head ? [head.occupation, head.business_name].filter(Boolean).join(" • ") : "";
+  const mobile = head?.mobile || spouse?.mobile || "";
+  return { head, spouse, profession, mobile, count: mine.length };
+}

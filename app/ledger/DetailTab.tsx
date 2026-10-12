@@ -154,7 +154,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <MembersPanel flatId={f.id} />
+            <MembersPanel flatId={f.id} ownerName={f.owner_name} ownerEmail={f.email} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">
