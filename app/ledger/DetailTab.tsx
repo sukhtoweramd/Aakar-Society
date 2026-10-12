@@ -5,6 +5,7 @@ import { floorOf, isOccupied, label, ownerText, rupees, statusText, unitOf, VAUL
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
+import ConsentCard from "./ConsentCard";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -155,6 +156,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             </div>
 
             <MembersPanel flatId={f.id} ownerName={f.owner_name} ownerEmail={f.email} />
+            <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee} onSaved={reloadFlats} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">

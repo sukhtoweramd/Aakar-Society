@@ -6,6 +6,7 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "INDEX", title: "ALL FLATS", desc: "Grid of all flats A/B/C" },
   { id: "FLOOR", title: "FLOOR PLANS", desc: "Tower-wise plans in R2" },
   { id: "DETAIL", title: "MEMBER DETAIL", desc: "Owner, charges, documents" },
+  { id: "DIRECTORY", title: "MEMBER DIRECTORY", desc: "Families & mobiles (with consent)" },
   { id: "BUSINESS", title: "BUSINESS DIR", desc: "Members' professions" },
   { id: "VAULT", title: "VAULT 🔒", desc: "Society legal documents" },
   { id: "NOTICES", title: "NOTICES", desc: "Society notices" },
