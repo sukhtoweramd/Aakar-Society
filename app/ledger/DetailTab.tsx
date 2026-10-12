@@ -17,6 +17,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const [form, setForm] = useState<Partial<Flat>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [familyVersion, setFamilyVersion] = useState(0); // bump to make the family list reload
 
   async function loadExtras(id: string) {
     setError("");
@@ -64,16 +65,24 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       if (t && !rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
         if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
-          await supabase.from("members").delete().eq("flat_id", f!.id);
+          const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
         }
         if ("directory_consent" in f!) personal.directory_consent = false; // the tenant decides on sharing
+      }
+      // Rented -> owner lives here again: the tenant's family has left.
+      if (!t && rented) {
+        const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
+        if (fam?.length && confirm(`The tenant has left ${label(f!)}. Remove the tenant's ${fam.length} family member(s) from the list?\n\nOK = remove, Cancel = keep them`)) {
+          const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
+        }
+        if ("directory_consent" in f!) personal.directory_consent = false;
       }
     }
     if (!isCommittee) {
       const { error } = await supabase.from("flats").update(personal).eq("id", f!.id);
       setBusy(null);
       if (error) { setError(error.message); return; }
-      setEditing(false); reloadFlats(); return;
+      setEditing(false); setFamilyVersion((v) => v + 1); reloadFlats(); return;
     }
     const upd: any = {
       ...personal,
@@ -88,19 +97,32 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     setBusy(null);
     if (error) { setError(error.message); return; }
     setEditing(false);
+    setFamilyVersion((v) => v + 1);
     reloadFlats();
+  }
+
+  // Delete every family member of this flat; report if the database refused (0 rows removed).
+  async function clearFamily(): Promise<string | null> {
+    const { data: before } = await supabase.from("members").select("id").eq("flat_id", f!.id);
+    if (!before?.length) return null;
+    const { data, error } = await supabase.from("members").delete().eq("flat_id", f!.id).select("id");
+    if (error) return error.message;
+    if ((data?.length || 0) < before.length) return "Some family members could not be removed. Please remove them with ✕ in the family list.";
+    return null;
   }
 
   async function tenantMovedOut() {
     if (!confirm(`Tenant ${f!.tenant_name || ""} has moved out of ${label(f!)}?\n\nThis will:\n• remove the tenant and the tenant's family members\n• turn off directory sharing\n• mark the flat as owner-occupied (enter a new tenant with EDIT FLAT if it is rented again)`)) return;
     setBusy("out"); setError("");
-    const del = await supabase.from("members").delete().eq("flat_id", f!.id);
+    const famErr = await clearFamily();
+    if (famErr) { setBusy(null); setError(famErr); return; }
     const upd: any = { occupancy: "owner", tenant_name: null, tenant_from: null, agreement_until: null, owner_address: null };
     if ("directory_consent" in f!) upd.directory_consent = false;
-    const { error } = del.error ? del : await supabase.from("flats").update(upd).eq("id", f!.id);
+    const { error } = await supabase.from("flats").update(upd).eq("id", f!.id);
     setBusy(null);
     if (error) { setError(error.message); return; }
-    alert(`Done. Now reset the ${label(f!)} flat login password (ADMIN → Flat logins → Reset) so the old tenant can no longer log in.`);
+    alert(`Done. The tenant and family have been removed. Now reset the ${label(f!)} flat login password (ADMIN → Flat logins → Reset) so the old tenant can no longer log in.`);
+    setFamilyVersion((v) => v + 1);
     reloadFlats();
   }
 
@@ -245,7 +267,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <MembersPanel flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
+            <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee} onSaved={reloadFlats} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
