@@ -1,10 +1,9 @@
 "use client";
-import { SOCIETY, rupees } from "@/lib/society";
+import { SOCIETY } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function Sidebar({ ctx }: { ctx: Ctx }) {
-  const { categories: allCats, towerFilter, setTowerFilter, setSearch, go, flats, isCommittee } = ctx;
-  const categories = isCommittee ? allCats : []; // residents don't see other flats' charges
+  const { towerFilter, setTowerFilter, setSearch, go, flats } = ctx;
   const filter = (t: string) => { setTowerFilter(towerFilter === t ? "ALL" : t); setSearch(""); go("INDEX"); };
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   const occupied = flats.filter((f) => f.owner_name).length;
@@ -23,40 +22,22 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
         <div className="p-3 space-y-3">
-          {categories.filter((c) => !c.terrace).map((c) => (
-            <button key={c.key} onClick={() => filter(c.key)}
-              className={`w-full text-left border rounded-[6px] p-3.5 transition-all hover:shadow-sm hover:border-[var(--gold)] bg-[var(--bg)] border-[var(--border)] ${towerFilter === c.key ? "ring-1 ring-[var(--gold)] border-[var(--gold)]" : ""}`}>
-              <div className="mono text-[11px] tracking-[0.06em] font-semibold">{c.label}</div>
-              <div className="serif text-[14px] mt-2 font-semibold">{c.range} • {c.ids.length} FLATS</div>
-              <div className="mt-3 grid grid-cols-2 gap-2 mono text-[11px]">
-                <div className="border border-[var(--border)] bg-white/80 p-2.5 rounded-[4px]">MAINT<br /><span className="text-[15px] serif font-bold">{rupees(c.maint)}</span></div>
-                <div className="border border-[var(--border)] bg-white/80 p-2.5 rounded-[4px]">SQFT<br /><span className="text-[15px] serif font-bold">{c.sqft ?? "—"}</span></div>
-              </div>
-              <div className="mono text-[11px] mt-2.5 opacity-60 flex justify-between">
-                <span>{c.bhk || "—"} • Standard</span><span className="opacity-50">↗ FILTER</span>
-              </div>
-            </button>
-          ))}
-          <div className="grid grid-cols-1 gap-2">
-            {categories.filter((c) => c.terrace).map((c) => (
-              <button key={c.key} onClick={() => filter(c.key)}
-                className={`w-full text-left border rounded-[6px] p-3 bg-[#fff8d6] border-amber-300 hover:border-amber-500 transition-colors ${towerFilter === c.key ? "ring-1 ring-amber-500" : ""}`}>
-                <div className="flex justify-between items-center gap-2">
-                  <div className="mono text-[11px] tracking-[0.04em] font-bold">{c.label}</div>
-                  <span className="mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 rounded-[2px] font-bold shrink-0">TERRACE • OWNER</span>
-                </div>
-                <div className="mono text-[11px] mt-1.5 opacity-70">{c.range} • {rupees(c.maint)} • {c.sqft ?? "—"} sqft • Click to show these {c.ids.length}</div>
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {towers.map((t) => (
+          {towers.map((t) => {
+            const inT = flats.filter((f) => f.tower === t);
+            const floors = Math.max(0, ...inT.map((f) => f.floor ?? Math.floor((parseInt(f.id.replace(/\D/g, ""), 10) || 0) / 100)));
+            const owners = inT.filter((f) => f.owner_name).length;
+            const on = towerFilter === t;
+            return (
               <button key={t} onClick={() => filter(t)}
-                className={`text-left border border-dashed p-2.5 mono text-[11px] transition-colors hover:border-[var(--gold)] rounded-[4px] ${towerFilter === t ? "bg-amber-50 border-[var(--gold)]" : "border-[var(--border)]"}`}>
-                TOWER {t}<br />{flats.filter((f) => f.tower === t).length} FLATS
+                className={`w-full text-left border rounded-[6px] p-3.5 transition-all hover:shadow-sm hover:border-[var(--gold)] ${on ? "bg-amber-50 ring-1 ring-[var(--gold)] border-[var(--gold)]" : "bg-[var(--bg)] border-[var(--border)]"}`}>
+                <div className="flex justify-between items-center">
+                  <div className="serif text-[18px] font-bold">TOWER {t}</div>
+                  <span className="mono text-[10px] opacity-60">{on ? "● SHOWING" : "↗ FILTER"}</span>
+                </div>
+                <div className="mono text-[11px] mt-1 opacity-70">{inT.length} flats • {floors} floors • {owners} owners recorded</div>
               </button>
-            ))}
-          </div>
+            );
+          })}
           {towerFilter !== "ALL" && (
             <button onClick={() => { setTowerFilter("ALL"); go("INDEX"); }} className="w-full mono text-[11px] border border-[var(--border)] bg-white px-3 py-2.5 rounded-[4px] hover:border-[var(--gold)] font-medium">
               CLEAR FILTER • SHOW ALL {flats.length} FLATS
