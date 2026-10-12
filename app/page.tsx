@@ -13,6 +13,7 @@ import DetailTab from "./ledger/DetailTab";
 import BusinessTab from "./ledger/BusinessTab";
 import VaultTab from "./ledger/VaultTab";
 import NoticesTab from "./ledger/NoticesTab";
+import EventsTab from "./ledger/EventsTab";
 import AdminTab from "./ledger/AdminTab";
 import ReportsTab from "./ledger/ReportsTab";
 
@@ -122,6 +123,7 @@ export default function Home() {
           {tab === "BUSINESS" && <BusinessTab ctx={ctx} />}
           {tab === "VAULT" && <VaultTab />}
           {tab === "NOTICES" && <NoticesTab ctx={ctx} />}
+          {tab === "EVENTS" && <EventsTab />}
           {tab === "ADMIN" && <AdminTab ctx={ctx} />}
           {tab === "REPORTS" && <ReportsTab ctx={ctx} />}
         </main>

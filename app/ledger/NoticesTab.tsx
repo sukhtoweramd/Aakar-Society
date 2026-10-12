@@ -1,28 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import type { EventRow, Notice } from "@/lib/society";
+import type { Notice } from "@/lib/society";
 import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 
 export default function NoticesTab({ ctx }: { ctx: Ctx }) {
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [events, setEvents] = useState<EventRow[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [n, setN] = useState({ title: "", content: "", tower: "Common" });
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
-  const [ev, setEv] = useState({ title: "", event_date: "", type: "", description: "" });
 
   async function load() {
-    const [a, b] = await Promise.all([
-      supabase.from("notices").select("*").order("created_at", { ascending: false }),
-      supabase.from("events").select("*").order("event_date", { ascending: false }),
-    ]);
-    if (a.error || b.error) setError((a.error || b.error)!.message);
+    const a = await supabase.from("notices").select("*").order("created_at", { ascending: false });
+    if (a.error) setError(a.error.message);
     setNotices((a.data as Notice[]) || []);
-    setEvents((b.data as EventRow[]) || []);
   }
   useEffect(() => { load(); }, []);
 
@@ -44,28 +38,12 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
     if (x.file_url) deleteFile({ url: x.file_url }).catch(() => {});
     load();
   }
-  async function addEvent() {
-    if (!ev.title.trim()) { setError("Enter an event title"); return; }
-    setBusy("event"); setError("");
-    const { error } = await supabase.from("events").insert([{ title: ev.title.trim(), event_date: ev.event_date || null, type: ev.type.trim() || null, description: ev.description.trim() || null }]);
-    setBusy(null);
-    if (error) { setError(error.message); return; }
-    setEv({ title: "", event_date: "", type: "", description: "" }); load();
-  }
-  async function removeEvent(x: EventRow) {
-    if (!confirm(`Delete event "${x.title}"?`)) return;
-    const { error } = await supabase.from("events").delete().eq("id", x.id);
-    if (error) setError(error.message); else load();
-  }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = events.filter((e) => (e.event_date || "") >= today).reverse();
-  const past = events.filter((e) => !e.event_date || e.event_date < today);
 
   return (
     <div className="space-y-4 fade-in">
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
-      <div className="grid xl:grid-cols-[1.3fr_1fr] gap-4 items-start">
+      <div className="max-w-[900px]">
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
           <div className="serif text-[22px] font-bold">Society Notices</div>
           <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored in R2</div>
@@ -103,38 +81,6 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
 
-        <div className="bg-[var(--navy)] text-[#fdfcf5] rounded-[4px] p-6">
-          <div className="serif text-[20px] font-bold">Events</div>
-          <div className="mono text-[11px] opacity-70">Upcoming {upcoming.length} • Past {past.length}</div>
-          {[["UPCOMING", upcoming], ["PAST", past]].map(([title, rows]) => (
-            <div key={title as string} className="mt-4">
-              <div className="mono text-[10px] tracking-[0.2em] text-[var(--gold)]">{title as string}</div>
-              <div className="mt-2 space-y-2">
-                {(rows as EventRow[]).map((e) => (
-                  <div key={e.id} className="border border-white/15 bg-white/5 p-3 flex justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-[13px]">{e.title}</div>
-                      <div className="mono text-[10px] opacity-70">{e.event_date ? new Date(e.event_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date TBD"}{e.type ? ` • ${e.type}` : ""}</div>
-                      {e.description && <div className="text-[12px] opacity-80 mt-1">{e.description}</div>}
-                    </div>
-                    <button onClick={() => removeEvent(e)} className="mono text-[10px] text-red-300 self-start">✕</button>
-                  </div>
-                ))}
-                {(rows as EventRow[]).length === 0 && <div className="mono text-[11px] opacity-50">None</div>}
-              </div>
-            </div>
-          ))}
-          <div className="mt-5 border-t border-white/15 pt-4 space-y-2 mono text-[11px] text-[var(--ink)]">
-            <div className="text-[10px] tracking-[0.2em] text-[var(--gold)]">+ ADD EVENT</div>
-            <input className="field" placeholder="Event title *" value={ev.title} onChange={(e) => setEv({ ...ev, title: e.target.value })} />
-            <div className="grid grid-cols-2 gap-2">
-              <input className="field" type="date" value={ev.event_date} onChange={(e) => setEv({ ...ev, event_date: e.target.value })} />
-              <input className="field" placeholder="Type (Festival, AGM…)" value={ev.type} onChange={(e) => setEv({ ...ev, type: e.target.value })} />
-            </div>
-            <input className="field" placeholder="Details" value={ev.description} onChange={(e) => setEv({ ...ev, description: e.target.value })} />
-            <button onClick={addEvent} disabled={!!busy} className="w-full bg-[var(--gold)] text-black py-2 rounded-[2px] font-semibold tracking-[0.1em] disabled:opacity-60">{busy === "event" ? "SAVING…" : "ADD EVENT"}</button>
-          </div>
-        </div>
       </div>
     </div>
   );

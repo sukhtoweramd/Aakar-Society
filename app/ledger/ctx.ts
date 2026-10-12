@@ -1,6 +1,6 @@
 import type { Category, Flat } from "@/lib/society";
 
-export const TABS = ["COVER", "INDEX", "FLOOR", "DETAIL", "BUSINESS", "VAULT", "NOTICES", "ADMIN", "REPORTS"] as const;
+export const TABS = ["COVER", "INDEX", "FLOOR", "DETAIL", "BUSINESS", "VAULT", "NOTICES", "EVENTS", "ADMIN", "REPORTS"] as const;
 export type Tab = (typeof TABS)[number];
 
 export type Ctx = {

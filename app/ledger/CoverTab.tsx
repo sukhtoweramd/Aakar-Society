@@ -8,7 +8,8 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "DETAIL", title: "MEMBER DETAIL", desc: "Owner, charges, documents" },
   { id: "BUSINESS", title: "BUSINESS DIR", desc: "Resident services" },
   { id: "VAULT", title: "VAULT 🔒", desc: "Society legal documents" },
-  { id: "NOTICES", title: "NOTICES", desc: "Notices & events" },
+  { id: "NOTICES", title: "NOTICES", desc: "Society notices" },
+  { id: "EVENTS", title: "EVENTS", desc: "Events & photo gallery" },
   { id: "ADMIN", title: "ADMIN", desc: "Charges control panel" },
   { id: "REPORTS", title: "REPORTS", desc: "CSV / PDF directory" },
 ];
@@ -69,7 +70,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
             <div><div className="font-bold tracking-[0.16em]">02 • VAULT</div><div className="opacity-70 mt-1">Legal documents stored in the Society Document Vault on Cloudflare R2.</div></div>
             <div><div className="font-bold tracking-[0.16em]">03 • CHARGES</div><div className="opacity-70 mt-1">Control panel for maintenance per category. Yellow = terrace ownership.</div></div>
           </div>
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {TILES.map((m) => (
               <button key={m.id} onClick={() => go(m.id)} className="text-left border border-[var(--border)] bg-[var(--bg)] p-3 hover:border-[var(--gold)] mono">
                 <div className="text-[11px] font-bold tracking-[0.12em]">{m.id}</div>
@@ -82,7 +83,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
         <div className="bg-[var(--bg-soft)] border-t border-[var(--border)] mono text-[10px] px-4 md:px-8 py-3 flex flex-wrap gap-4">
           <span>COVER PAGE • AAKAR CO-OP SOCIETY RECORD</span>
           <span className="opacity-50">•</span>
-          <span className="opacity-70">Use top nav to browse INDEX, FLOOR, DETAIL, BUSINESS, VAULT, NOTICES, ADMIN, REPORTS</span>
+          <span className="opacity-70">Use top nav to browse INDEX, FLOOR, DETAIL, BUSINESS, VAULT, NOTICES, EVENTS, ADMIN, REPORTS</span>
         </div>
       </div>
     </div>

@@ -7,11 +7,12 @@ import { getR2, MAX_FILE_BYTES, ALLOWED_EXT } from "@/lib/r2Client";
 
 export const dynamic = "force-dynamic";
 
-// Allowed folders: notices/, vault/, flats/A1001/, floor-plans/A/
+// Allowed folders: notices/, vault/, flats/A1001/, floor-plans/A/, events/<event id>/
 function safeFolder(raw: string): string | null {
   const f = raw.replace(/^\/+|\/+$/g, "");
   if (f === "notices" || f === "vault") return f;
   if (/^flats\/[A-Z]\d{1,5}$/.test(f)) return f;
+  if (/^events\/[0-9a-f-]{36}$/.test(f)) return f;
   if (/^floor-plans\/[A-Z]$/.test(f)) return f;
   return null;
 }
