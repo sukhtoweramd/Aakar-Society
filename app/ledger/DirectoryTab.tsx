@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { SOCIETY, filterName } from "@/lib/society";
+import { SOCIETY, byCommitteeRole, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
@@ -9,6 +9,9 @@ type Entry = { flat_id: string; tower: string | null; owner_name: string | null;
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const flatLabel = (id: string) => { const m = id.match(/^([A-Z])(\d+)$/); return m ? `${m[1]}-${m[2]}` : id; };
+// Long names are cut to keep the portrait page tidy, e.g. "BHUPESH D MEHTA & HINA B MEH…"
+const MAX_NAME = 36;
+const cut = (s?: string | null) => { const t = (s || "").trim(); return t.length > MAX_NAME ? t.slice(0, MAX_NAME - 1).trimEnd() + "…" : t; };
 const num = (id: string) => parseInt(id.replace(/\D/g, ""), 10) || 0;
 
 export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
@@ -42,6 +45,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     (!onlyShared || e.consent) &&
     (!s || flatLabel(e.flat_id).toLowerCase().includes(s) || (e.owner_name || "").toLowerCase().includes(s) || (e.tenant || "").toLowerCase().includes(s) ||
       e.members.some((m) => (m.member_name || "").toLowerCase().includes(s) || (m.mobile || "").replace(/\s/g, "").includes(s.replace(/\s/g, "")))));
+  if (towerFilter === "COMMITTEE") shown.sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }));
   const sharedCount = entries.filter((e) => e.consent).length;
   const mine = entries.find((e) => e.flat_id === myFlat);
   const scope = filterName(towerFilter, categories);
@@ -53,31 +57,35 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const sharing = shown.filter((e) => e.consent).length;
     const flatBlock = (e: Entry) => {
       const name = e.tenant
-        ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "not recorded")}</span>`
-        : e.owner_name ? `<b>${esc(e.owner_name)}</b>` : `<span class="muted">Owner not recorded</span>`;
+        ? `<b>${esc(cut(e.tenant))}</b> <span class="muted">(tenant)</span><div class="muted small">Owner: ${esc(cut(e.owner_name) || "not recorded")}</div>`
+        : e.owner_name ? `<b>${esc(cut(e.owner_name))}</b>` : `<span class="muted">Owner not recorded</span>`;
       const role = e.is_committee ? ` <span class="gold">★ ${esc(e.role || "Committee")}</span>` : "";
       const note = e.consent ? (e.members.length ? "" : ' <span class="muted">· no family members added yet</span>') : ' <span class="muted">· details not shared</span>';
-      const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(m.member_name)}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
+      const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(cut(m.member_name))}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
       // one <tbody> per flat so a family is never split across two pages
       return `<tbody class="grp"><tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${name}${role}${note}</td></tr>${fam}</tbody>`;
     };
-    const towers = Array.from(new Set(shown.map((e) => e.tower || "?")));
-    const sections = towers.map((t, i) => {
-      const list = shown.filter((e) => (e.tower || "?") === t);
+    // Committee filter: one "COMMITTEE" section ordered Chairman, Secretary, Treasurer …; otherwise one section per tower.
+    const committeeOnly = towerFilter === "COMMITTEE";
+    const groups: [string, Entry[]][] = committeeOnly
+      ? [["COMMITTEE", [...shown].sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }))]]
+      : Array.from(new Set(shown.map((e) => e.tower || "?"))).map((t) => [`TOWER ${t}`, shown.filter((e) => (e.tower || "?") === t)]);
+    const docTitle = committeeOnly ? "COMMITTEE DIRECTORY" : "MEMBER DIRECTORY";
+    const sections = groups.map(([t, list], i) => {
       return `<table class="${i ? "newpage" : ""}"><thead>
-        <tr class="title"><td colspan="4"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — MEMBER DIRECTORY</h1>
+        <tr class="title"><td colspan="4"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — ${docTitle}</h1>
           <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • Family details only for flats that gave consent</div></div>
-          <div class="tower">TOWER ${esc(t)}</div></div></td></tr>
+          <div class="tower">${esc(t)}</div></div></td></tr>
         <tr class="gap"><td colspan="4"></td></tr>
-        <tr><th style="width:10%">Flat</th><th style="width:46%">Resident / family member</th><th style="width:18%">Relation</th><th>Mobile</th></tr>
+        <tr><th style="width:13%">Flat</th><th style="width:47%">Resident / family member</th><th style="width:17%">Relation</th><th style="width:23%">Mobile</th></tr>
       </thead>${list.map(flatBlock).join("")}</table>`;
     }).join("");
-    w.document.write(`<html><head><title>Aakar Co-op - Member Directory ${esc(today)}</title><style>
+    w.document.write(`<html><head><title>Aakar Co-op - ${committeeOnly ? "Committee" : "Member"} Directory ${esc(today)}</title><style>
       @page{size:A4 portrait;margin:12mm 10mm 15mm;
-        @bottom-left{content:"Aakar Co-op • Member Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8px Inter,Arial,sans-serif;color:#7a7568}
+        @bottom-left{content:"Aakar Co-op • ${committeeOnly ? "Committee" : "Member"} Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8px Inter,Arial,sans-serif;color:#7a7568}
         @bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Inter,Arial,sans-serif;color:#7a7568}}
       *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
-      table{width:100%;border-collapse:collapse;font-size:11px} thead{display:table-header-group}
+      table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed} td{overflow:hidden;white-space:nowrap;text-overflow:ellipsis} .small{font-size:9.5px;margin-top:1px} thead{display:table-header-group}
       tbody.grp{break-inside:avoid;page-break-inside:avoid} tr{break-inside:avoid}
       table.newpage{break-before:page;page-break-before:always}
       .title td{border:0;border-bottom:2px solid #0f1d3d;padding:0 0 7px} .row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-right:3px}
@@ -89,7 +97,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       .gap td{border:0;height:6px;padding:0}
       .bar{position:sticky;top:0;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;font-size:13px;margin:-24px -24px 18px}
       .bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
-      @media screen{body{padding:24px;max-width:900px;margin:auto} table{margin-bottom:28px}}
+      @media screen{body{padding:24px;max-width:794px;margin:auto} table{margin-bottom:28px}}
       @media print{.bar{display:none}}
     </style></head><body>
       <div class="bar"><button onclick="window.print()">PRINT / SAVE AS PDF</button>
@@ -102,7 +110,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     <div className="space-y-4 fade-in">
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 flex flex-wrap justify-between gap-3 items-start">
         <div>
-          <div className="serif text-[22px] font-bold">Member Directory</div>
+          <div className="serif text-[22px] font-bold">{towerFilter === "COMMITTEE" ? "Committee Directory" : "Member Directory"}</div>
           <div className="mono text-[11px] opacity-60 mt-1">{scope} • {sharedCount} of {entries.length} flats share family details • Use it to know who is who in the society WhatsApp group</div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
