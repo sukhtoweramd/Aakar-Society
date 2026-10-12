@@ -50,27 +50,52 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
     const today = new Date().toLocaleDateString("en-IN");
-    const body = shown.map((e) => {
-      const head = `<tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${e.tenant ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "—")}</span>` : `<b>${esc(e.owner_name || "—")}</b>`}${e.is_committee ? ` <span class="gold">★ ${esc(e.role || "Committee")}</span>` : ""}${e.consent ? "" : ' <span class="muted">· details not shared</span>'}</td></tr>`;
-      const fam = e.members.map((m) => `<tr><td></td><td>${esc(m.member_name)}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
-      return head + fam;
+    const sharing = shown.filter((e) => e.consent).length;
+    const flatBlock = (e: Entry) => {
+      const name = e.tenant
+        ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "not recorded")}</span>`
+        : e.owner_name ? `<b>${esc(e.owner_name)}</b>` : `<span class="muted">Owner not recorded</span>`;
+      const role = e.is_committee ? ` <span class="gold">★ ${esc(e.role || "Committee")}</span>` : "";
+      const note = e.consent ? (e.members.length ? "" : ' <span class="muted">· no family members added yet</span>') : ' <span class="muted">· details not shared</span>';
+      const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(m.member_name)}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
+      // one <tbody> per flat so a family is never split across two pages
+      return `<tbody class="grp"><tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${name}${role}${note}</td></tr>${fam}</tbody>`;
+    };
+    const towers = Array.from(new Set(shown.map((e) => e.tower || "?")));
+    const sections = towers.map((t, i) => {
+      const list = shown.filter((e) => (e.tower || "?") === t);
+      return `<table class="${i ? "newpage" : ""}"><thead>
+        <tr class="title"><td colspan="4"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — MEMBER DIRECTORY</h1>
+          <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • Family details only for flats that gave consent</div></div>
+          <div class="tower">TOWER ${esc(t)}</div></div></td></tr>
+        <tr class="gap"><td colspan="4"></td></tr>
+        <tr><th style="width:10%">Flat</th><th style="width:46%">Resident / family member</th><th style="width:18%">Relation</th><th>Mobile</th></tr>
+      </thead>${list.map(flatBlock).join("")}</table>`;
     }).join("");
     w.document.write(`<html><head><title>Aakar Co-op - Member Directory ${esc(today)}</title><style>
-      @page{size:A4 portrait;margin:12mm 10mm 14mm;
-        @bottom-left{content:"Aakar Co-op • Member Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8.5px Inter,Arial,sans-serif;color:#7a7568}
+      @page{size:A4 portrait;margin:12mm 10mm 15mm;
+        @bottom-left{content:"Aakar Co-op • Member Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8px Inter,Arial,sans-serif;color:#7a7568}
         @bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Inter,Arial,sans-serif;color:#7a7568}}
-      *{-webkit-print-color-adjust:exact;print-color-adjust:exact} body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
-      table{width:100%;border-collapse:collapse;font-size:11px} thead{display:table-header-group} tr{break-inside:avoid}
-      .title td{border:0;border-bottom:2px solid #0f1d3d;padding:0 0 8px} h1{margin:0;color:#0f1d3d;font-size:17px} .sub{font-size:10px;color:#7a7568}
-      th{background:#0f1d3d;color:#fff;text-align:left;padding:5px 7px} td{padding:4px 7px;border-bottom:1px solid #eee7d6;vertical-align:top}
-      tr.flat td{background:#f7f2e4;border-top:1px solid #e8e2d1} .gold{color:#b8932a;font-weight:600} .muted{color:#7a7568;font-weight:400}
-      .gap td{border:0;height:6px;padding:0} @media screen{body{padding:24px}}
-    </style></head><body><table><thead>
-      <tr class="title"><td colspan="4"><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — MEMBER DIRECTORY</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(scope)} • ${esc(today)} • Family details only for flats that gave consent</div></td></tr>
-      <tr class="gap"><td colspan="4"></td></tr>
-      <tr><th style="width:10%">Flat</th><th style="width:44%">Resident / family member</th><th style="width:18%">Relation</th><th>Mobile</th></tr>
-    </thead><tbody>${body}</tbody></table></body></html>`);
-    w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
+      table{width:100%;border-collapse:collapse;font-size:11px} thead{display:table-header-group}
+      tbody.grp{break-inside:avoid;page-break-inside:avoid} tr{break-inside:avoid}
+      table.newpage{break-before:page;page-break-before:always}
+      .title td{border:0;border-bottom:2px solid #0f1d3d;padding:0 0 7px} .row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-right:3px}
+      h1{margin:0;color:#0f1d3d;font-size:15px;letter-spacing:.02em} .sub{font-size:9.5px;color:#7a7568;margin-top:2px}
+      .tower{font-size:14px;font-weight:700;color:#0f1d3d;border:1.5px solid #0f1d3d;padding:3px 10px;white-space:nowrap}
+      th{background:#0f1d3d;color:#fff;text-align:left;padding:5px 7px} td{padding:4px 7px;vertical-align:top}
+      tr.flat td{background:#f7f2e4;border-top:1px solid #d9d1bb} tr.fam td{border-top:1px dotted #e8e2d1}
+      .gold{color:#b8932a;font-weight:600} .muted{color:#7a7568;font-weight:400}
+      .gap td{border:0;height:6px;padding:0}
+      .bar{position:sticky;top:0;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;font-size:13px;margin:-24px -24px 18px}
+      .bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
+      @media screen{body{padding:24px;max-width:900px;margin:auto} table{margin-bottom:28px}}
+      @media print{.bar{display:none}}
+    </style></head><body>
+      <div class="bar"><button onclick="window.print()">PRINT / SAVE AS PDF</button>
+        <span>${shown.length} flats • ${sharing} sharing family details • Heading repeats and page numbers appear in the print preview (choose "Save as PDF").</span></div>
+      ${sections}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
   }
 
   return (
