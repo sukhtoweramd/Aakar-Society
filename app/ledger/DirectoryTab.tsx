@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
-type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null };
-type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; consent: boolean; tenant: string | null; members: Row[] };
+type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
+type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; role: string | null; consent: boolean; tenant: string | null; members: Row[] };
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const flatLabel = (id: string) => { const m = id.match(/^([A-Z])(\d+)$/); return m ? `${m[1]}-${m[2]}` : id; };
@@ -28,7 +28,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
   const entries: Entry[] = useMemo(() => {
     const map = new Map<string, Entry>();
     for (const r of rows || []) {
-      if (!map.has(r.flat_id)) map.set(r.flat_id, { flat_id: r.flat_id, tower: r.tower, owner_name: r.owner_name, is_committee: !!r.is_committee, consent: !!r.consent, tenant: r.occupancy === "tenant" ? r.tenant_name || "Tenant" : null, members: [] });
+      if (!map.has(r.flat_id)) map.set(r.flat_id, { flat_id: r.flat_id, tower: r.tower, owner_name: r.owner_name, is_committee: !!r.is_committee, role: r.committee_role || null, consent: !!r.consent, tenant: r.occupancy === "tenant" ? r.tenant_name || "Tenant" : null, members: [] });
       if (r.member_id) map.get(r.flat_id)!.members.push(r);
     }
     const list = Array.from(map.values());
@@ -51,7 +51,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
     const today = new Date().toLocaleDateString("en-IN");
     const body = shown.map((e) => {
-      const head = `<tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${e.tenant ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "—")}</span>` : `<b>${esc(e.owner_name || "—")}</b>`}${e.is_committee ? ' <span class="gold">★ Committee</span>' : ""}${e.consent ? "" : ' <span class="muted">· details not shared</span>'}</td></tr>`;
+      const head = `<tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${e.tenant ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "—")}</span>` : `<b>${esc(e.owner_name || "—")}</b>`}${e.is_committee ? ` <span class="gold">★ ${esc(e.role || "Committee")}</span>` : ""}${e.consent ? "" : ' <span class="muted">· details not shared</span>'}</td></tr>`;
       const fam = e.members.map((m) => `<tr><td></td><td>${esc(m.member_name)}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
       return head + fam;
     }).join("");
@@ -100,7 +100,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
           <div key={e.flat_id} className={`border rounded-[4px] p-4 bg-[var(--surface)] ${e.consent ? "border-[var(--border)]" : "border-dashed border-[var(--border)]"}`}>
             <div className="flex justify-between items-start gap-2">
               <div>
-                <div className="mono text-[11px] font-bold tracking-[0.08em]">{flatLabel(e.flat_id)}{e.is_committee && <span className="text-[var(--gold)] ml-1">★ Committee</span>}</div>
+                <div className="mono text-[11px] font-bold tracking-[0.08em]">{flatLabel(e.flat_id)}{e.is_committee && <span className="text-[var(--gold)] ml-1">★ {e.role || "Committee"}</span>}</div>
                 {e.tenant ? <>
                   <div className="serif text-[15px] font-bold mt-0.5">{e.tenant} <span className="mono text-[9px] bg-[var(--navy)] text-white px-1 align-middle">TENANT</span></div>
                   <div className="mono text-[10px] opacity-60">Owner: {e.owner_name || "not recorded"}</div>

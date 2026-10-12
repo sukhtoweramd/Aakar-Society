@@ -1,5 +1,5 @@
 "use client";
-import { SOCIETY } from "@/lib/society";
+import { SOCIETY, byCommitteeRole } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function Sidebar({ ctx }: { ctx: Ctx }) {
@@ -39,7 +39,7 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
             );
           })}
           {(() => {
-            const com = flats.filter((f) => f.is_committee);
+            const com = flats.filter((f) => f.is_committee).sort(byCommitteeRole);
             const on = towerFilter === "COMMITTEE";
             return (
               <button onClick={() => filter("COMMITTEE")}
@@ -48,7 +48,7 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
                   <div className="serif text-[18px] font-bold"><span className="text-[var(--gold)]">★</span> COMMITTEE</div>
                   <span className="mono text-[10px] opacity-60">{on ? "● SHOWING" : "↗ FILTER"}</span>
                 </div>
-                <div className="mono text-[11px] mt-1 opacity-70">{com.length ? `${com.length} member${com.length > 1 ? "s" : ""}: ${com.map((f) => f.owner_name?.split(/\s*[-–&,]\s*/)[0]).filter(Boolean).slice(0, 3).join(", ")}${com.length > 3 ? "…" : ""}` : "None marked yet"}</div>
+                <div className="mono text-[11px] mt-1 opacity-70">{com.length ? `${com.length} member${com.length > 1 ? "s" : ""}: ${com.map((f) => (f.owner_name ? f.owner_name.split(/\s*[-–&,]\s*/)[0] + (f.committee_role ? ` (${f.committee_role})` : "") : null)).filter(Boolean).slice(0, 3).join(", ")}${com.length > 3 ? "…" : ""}` : "None marked yet"}</div>
               </button>
             );
           })()}

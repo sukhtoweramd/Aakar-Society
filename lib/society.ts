@@ -20,6 +20,7 @@ export type Flat = {
   tenant_name?: string | null;
   tenant_from?: string | null;
   agreement_until?: string | null;
+  committee_role?: string | null; // COMMITTEE_ROLES.sql
 };
 
 export type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
@@ -52,6 +53,13 @@ export const label = (f: Flat) => {
 export const isOccupied = (f: Flat) => ["filled", "occupied", "sold", "approved"].includes((f.status || "").toLowerCase());
 export const statusText = (f: Flat) => (isOccupied(f) ? "Occupied" : f.status ? f.status[0].toUpperCase() + f.status.slice(1) : "Pending");
 export const ownerText = (f: Flat) => f.owner_name?.trim() || "Owner not recorded";
+/** Committee designations, in display order. Anything else is typed in under "Other". */
+export const COMMITTEE_ROLES = ["Chairman", "Secretary", "Treasurer", "Committee Member", "Co-opted Member", "Social Committee"];
+const roleRank = (r?: string | null) => { const i = COMMITTEE_ROLES.findIndex((x) => x.toLowerCase() === (r || "").toLowerCase()); return i < 0 ? (r ? COMMITTEE_ROLES.length : 99) : i; };
+/** Sort committee flats: Chairman, Secretary, Treasurer … then others. */
+export const byCommitteeRole = (a: Pick<Flat, "committee_role">, b: Pick<Flat, "committee_role">) => roleRank(a.committee_role) - roleRank(b.committee_role);
+/** "★ Secretary" or "★ Committee" */
+export const committeeBadge = (f: Pick<Flat, "is_committee" | "committee_role">) => (f.is_committee ? `★ ${f.committee_role?.trim() || "Committee"}` : "");
 export const isRented = (f: Pick<Flat, "occupancy">) => f.occupancy === "tenant";
 /** Who lives in the flat: the tenant when rented out, otherwise the owner. */
 export const residentName = (f: Flat) => (isRented(f) ? f.tenant_name?.trim() || "" : f.owner_name?.trim() || "");

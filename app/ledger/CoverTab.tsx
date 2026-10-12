@@ -1,5 +1,5 @@
 "use client";
-import { SOCIETY, label, ownerText } from "@/lib/society";
+import { SOCIETY, label, ownerText, byCommitteeRole } from "@/lib/society";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
@@ -18,7 +18,7 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
 export default function CoverTab({ ctx }: { ctx: Ctx }) {
   const { flats, go, selectFlat } = ctx;
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
-  const committee = flats.filter((f) => f.is_committee);
+  const committee = flats.filter((f) => f.is_committee).sort(byCommitteeRole);
 
   return (
     <div className="space-y-6 fade-in">
@@ -59,7 +59,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
                   {committee.map((f) => (
                     <button key={f.id} onClick={() => { if (ctx.isCommittee) { selectFlat(f.id); go("DETAIL"); } }} className="w-full flex justify-between hover:underline text-left">
-                      <span className="truncate pr-2">{ownerText(f)}</span><span>{label(f)}</span>
+                      <span className="truncate pr-2">{ownerText(f)}{f.committee_role && <span className="opacity-60"> • {f.committee_role}</span>}</span><span>{label(f)}</span>
                     </button>
                   ))}
                 </div>

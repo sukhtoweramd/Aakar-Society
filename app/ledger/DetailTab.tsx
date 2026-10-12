@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
+import { COMMITTEE_ROLES, committeeBadge, floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
@@ -79,6 +79,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       ...personal,
       status: form.status || null,
       is_committee: !!form.is_committee,
+      ...("committee_role" in f! ? { committee_role: form.is_committee ? form.committee_role?.trim() || "Committee Member" : null } : {}),
       bhk: form.bhk?.trim() || null,
       maintenance: form.maintenance === null || form.maintenance === undefined || (form.maintenance as any) === "" ? null : Number(form.maintenance),
     };
@@ -123,8 +124,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         <div className="flex flex-wrap justify-between gap-4">
           <div>
             <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
-            <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)]"> ★</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
-            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? " • ★ Committee" : ""}</div>
+            <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)] text-[16px] align-middle ml-2 mono">{committeeBadge(f)}</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
+            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
             {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
@@ -172,7 +173,21 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <label>BHK<input className="field mt-1" value={form.bhk || ""} onChange={(e) => setForm({ ...form, bhk: e.target.value })} /></label>
             <label>MAINTENANCE ₹<input className="field mt-1" type="number" value={form.maintenance ?? ""} onChange={(e) => setForm({ ...form, maintenance: e.target.value as any })} /></label>
             {hasSqft && <label>SQFT<input className="field mt-1" type="number" value={form.sqft ?? ""} onChange={(e) => setForm({ ...form, sqft: e.target.value as any })} /></label>}
-            <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={!!form.is_committee} onChange={(e) => setForm({ ...form, is_committee: e.target.checked })} /> COMMITTEE MEMBER ★</label>
+            <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={!!form.is_committee} onChange={(e) => setForm({ ...form, is_committee: e.target.checked, committee_role: e.target.checked ? form.committee_role || "Committee Member" : null })} /> COMMITTEE MEMBER ★</label>
+            {form.is_committee && "committee_role" in f && (() => {
+              const preset = COMMITTEE_ROLES.includes(form.committee_role || "");
+              const other = !preset && form.committee_role !== undefined && form.committee_role !== null;
+              return <>
+                <label>DESIGNATION
+                  <select className="field mt-1" value={preset ? form.committee_role! : other ? "__other" : "Committee Member"}
+                    onChange={(e) => setForm({ ...form, committee_role: e.target.value === "__other" ? "" : e.target.value })}>
+                    {COMMITTEE_ROLES.map((r) => <option key={r}>{r}</option>)}
+                    <option value="__other">Other…</option>
+                  </select>
+                </label>
+                {other && <label>OTHER DESIGNATION<input className="field mt-1" placeholder="e.g. Joint Secretary" value={form.committee_role || ""} onChange={(e) => setForm({ ...form, committee_role: e.target.value })} /></label>}
+              </>;
+            })()}
             </>}
             {!isCommittee && <div className="sm:col-span-2 lg:col-span-4 opacity-60 text-[10px]">Charges, BHK, area and status are managed by the committee.</div>}
             <div className="sm:col-span-2 lg:col-span-4 flex gap-2">

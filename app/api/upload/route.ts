@@ -59,7 +59,15 @@ export async function POST(req: NextRequest) {
       if (tenant !== undefined) { rec.tenant_name = tenant; rec.occupancy = "tenant"; }
       set("owner_mobile", pick(r, ["ownermobile", "ownerphone"]));
       const committee = pick(r, ["committee", "iscommittee"]);
-      if (committee !== undefined) rec.is_committee = ["yes", "y", "true", "1"].includes(committee.toLowerCase());
+      // "Committee" column: Yes/No, or a designation such as "Secretary" (marks the flat as committee too)
+      if (committee !== undefined) {
+        const c = committee.trim(), lc = c.toLowerCase();
+        if (["no", "n", "false", "0"].includes(lc)) rec.is_committee = false;
+        else if (["yes", "y", "true", "1"].includes(lc)) rec.is_committee = true;
+        else { rec.is_committee = true; rec.committee_role = c; }
+      }
+      set("committee_role", pick(r, ["designation", "committeerole", "role", "post"]));
+      if (rec.committee_role) rec.is_committee = true;
       records.push(rec);
     });
 

@@ -1,5 +1,5 @@
 "use client";
-import { filterName, inFilter, floorOf, isOccupied, label, ownerText, rupees, statusText } from "@/lib/society";
+import { filterName, inFilter, floorOf, isOccupied, label, ownerText, rupees, statusText, committeeBadge } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function IndexTab({ ctx }: { ctx: Ctx }) {
@@ -39,10 +39,11 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
             <button key={f.id} onClick={() => { if (isCommittee) { selectFlat(f.id); go("DETAIL"); } else if (f.id === myFlat) go("DETAIL"); }}
               className={`text-left border rounded-[3px] p-3 transition-all hover:shadow-sm group ${terrace ? "bg-[#fff8d6] border-amber-300 hover:border-amber-500" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)]"} ${selectedId === f.id ? "ring-1 ring-[var(--gold)]" : ""}`}>
               <div className="flex justify-between items-start">
-                <div className="mono text-[11px] font-bold tracking-[0.08em]">{label(f)}{f.is_committee && <span className="text-[var(--gold)] ml-1">★</span>}</div>
+                <div className="mono text-[11px] font-bold tracking-[0.08em]">{label(f)}{f.is_committee && <span className="text-[var(--gold)] ml-1" title={committeeBadge(f)}>★</span>}</div>
                 <span title={statusText(f)} className={`h-2 w-2 rounded-full ${isOccupied(f) ? "bg-emerald-500" : "bg-amber-400"}`} />
               </div>
               <div className={`serif text-[12px] mt-1 leading-tight truncate ${f.owner_name ? "" : "opacity-40"}`}>{f.owner_name ? ownerText(f) : "—"}</div>
+              {f.is_committee && <div className="mono text-[9px] mt-1 text-[var(--gold)] font-bold truncate">{committeeBadge(f)}</div>}
               {f.occupancy === "tenant" && <div className="mono text-[9px] mt-1 truncate"><span className="bg-[var(--navy)] text-white px-1 mr-1">ON RENT</span>{f.tenant_name || ""}</div>}
               <div className="mono text-[9px] mt-2 opacity-60">{f.bhk ? `${f.bhk} • ` : ""}{f.tower} • F{floorOf(f)}</div>
               {isCommittee && <div className="mono text-[9px] mt-1 flex justify-between"><span>{rupees(f.maintenance)}</span><span>{f.sqft ? `${f.sqft} sqft` : ""}</span></div>}
