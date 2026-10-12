@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
       set("maintenance", toInt(pick(r, ["maintenance", "maintenanceamount"])));
       set("email", pick(r, ["email", "emailid"]));
       set("status", pick(r, ["status"]));
+      // Optional owner/tenant columns: "Tenant Name" (fills it and marks the flat as rented), "Owner Mobile"
+      const tenant = pick(r, ["tenantname", "tenant"]);
+      if (tenant !== undefined) { rec.tenant_name = tenant; rec.occupancy = "tenant"; }
+      set("owner_mobile", pick(r, ["ownermobile", "ownerphone"]));
       const committee = pick(r, ["committee", "iscommittee"]);
       if (committee !== undefined) rec.is_committee = ["yes", "y", "true", "1"].includes(committee.toLowerCase());
       records.push(rec);

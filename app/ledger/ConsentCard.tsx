@@ -38,7 +38,7 @@ export default function ConsentCard({ flat, email, isCommittee, onSaved }: { fla
         <input type="checkbox" className="mt-1 h-4 w-4" checked={on} disabled={busy} onChange={toggle} />
         <span className="text-[13px] leading-snug">
           <b>Share our family details with society members.</b> Other logged-in members can see our family members&apos; names, relation and mobile numbers in the DIRECTORY tab.
-          <span className="block mono text-[10px] opacity-60 mt-1">Without this, only the flat number and owner name are shown (as on the board near the lift). You can change this any time.</span>
+          <span className="block mono text-[10px] opacity-60 mt-1">Without this, only the flat number and owner (or tenant) name are shown, as on the board near the lift. You can change this any time.</span>
         </span>
       </label>
       {flat.directory_consent_at && (

@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
-type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean };
-type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; consent: boolean; members: Row[] };
+type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null };
+type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; consent: boolean; tenant: string | null; members: Row[] };
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const flatLabel = (id: string) => { const m = id.match(/^([A-Z])(\d+)$/); return m ? `${m[1]}-${m[2]}` : id; };
@@ -28,7 +28,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
   const entries: Entry[] = useMemo(() => {
     const map = new Map<string, Entry>();
     for (const r of rows || []) {
-      if (!map.has(r.flat_id)) map.set(r.flat_id, { flat_id: r.flat_id, tower: r.tower, owner_name: r.owner_name, is_committee: !!r.is_committee, consent: !!r.consent, members: [] });
+      if (!map.has(r.flat_id)) map.set(r.flat_id, { flat_id: r.flat_id, tower: r.tower, owner_name: r.owner_name, is_committee: !!r.is_committee, consent: !!r.consent, tenant: r.occupancy === "tenant" ? r.tenant_name || "Tenant" : null, members: [] });
       if (r.member_id) map.get(r.flat_id)!.members.push(r);
     }
     const list = Array.from(map.values());
@@ -40,7 +40,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
   const shown = entries.filter((e) =>
     (towerFilter === "ALL" || (towerFilter === "COMMITTEE" ? e.is_committee : e.tower === towerFilter)) &&
     (!onlyShared || e.consent) &&
-    (!s || flatLabel(e.flat_id).toLowerCase().includes(s) || (e.owner_name || "").toLowerCase().includes(s) ||
+    (!s || flatLabel(e.flat_id).toLowerCase().includes(s) || (e.owner_name || "").toLowerCase().includes(s) || (e.tenant || "").toLowerCase().includes(s) ||
       e.members.some((m) => (m.member_name || "").toLowerCase().includes(s) || (m.mobile || "").replace(/\s/g, "").includes(s.replace(/\s/g, "")))));
   const sharedCount = entries.filter((e) => e.consent).length;
   const mine = entries.find((e) => e.flat_id === myFlat);
@@ -51,7 +51,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
     const today = new Date().toLocaleDateString("en-IN");
     const body = shown.map((e) => {
-      const head = `<tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3"><b>${esc(e.owner_name || "—")}</b>${e.is_committee ? ' <span class="gold">★ Committee</span>' : ""}${e.consent ? "" : ' <span class="muted">· details not shared</span>'}</td></tr>`;
+      const head = `<tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${e.tenant ? `<b>${esc(e.tenant)}</b> <span class="muted">(tenant) · Owner: ${esc(e.owner_name || "—")}</span>` : `<b>${esc(e.owner_name || "—")}</b>`}${e.is_committee ? ' <span class="gold">★ Committee</span>' : ""}${e.consent ? "" : ' <span class="muted">· details not shared</span>'}</td></tr>`;
       const fam = e.members.map((m) => `<tr><td></td><td>${esc(m.member_name)}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
       return head + fam;
     }).join("");
@@ -68,7 +68,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     </style></head><body><table><thead>
       <tr class="title"><td colspan="4"><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — MEMBER DIRECTORY</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(scope)} • ${esc(today)} • Family details only for flats that gave consent</div></td></tr>
       <tr class="gap"><td colspan="4"></td></tr>
-      <tr><th style="width:10%">Flat</th><th style="width:44%">Owner / family member</th><th style="width:18%">Relation</th><th>Mobile</th></tr>
+      <tr><th style="width:10%">Flat</th><th style="width:44%">Resident / family member</th><th style="width:18%">Relation</th><th>Mobile</th></tr>
     </thead><tbody>${body}</tbody></table></body></html>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
   }
@@ -101,7 +101,10 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
             <div className="flex justify-between items-start gap-2">
               <div>
                 <div className="mono text-[11px] font-bold tracking-[0.08em]">{flatLabel(e.flat_id)}{e.is_committee && <span className="text-[var(--gold)] ml-1">★ Committee</span>}</div>
-                <div className="serif text-[15px] font-bold mt-0.5">{e.owner_name || <span className="opacity-40">Owner not recorded</span>}</div>
+                {e.tenant ? <>
+                  <div className="serif text-[15px] font-bold mt-0.5">{e.tenant} <span className="mono text-[9px] bg-[var(--navy)] text-white px-1 align-middle">TENANT</span></div>
+                  <div className="mono text-[10px] opacity-60">Owner: {e.owner_name || "not recorded"}</div>
+                </> : <div className="serif text-[15px] font-bold mt-0.5">{e.owner_name || <span className="opacity-40">Owner not recorded</span>}</div>}
               </div>
               {!e.consent && <span className="mono text-[9px] opacity-50 shrink-0">details not shared</span>}
             </div>

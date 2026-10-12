@@ -7,7 +7,7 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
   const q = search.trim().toLowerCase();
   const list = flats.filter((f) =>
     inFilter(f, towerFilter, categories) &&
-    (!q || label(f).toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || (f.owner_name || "").toLowerCase().includes(q)));
+    (!q || label(f).toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || (f.owner_name || "").toLowerCase().includes(q) || (f.tenant_name || "").toLowerCase().includes(q)));
   const terraceIds = new Set(categories.filter((c) => c.terrace).flatMap((c) => c.ids));
 
   return (
@@ -43,6 +43,7 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
                 <span title={statusText(f)} className={`h-2 w-2 rounded-full ${isOccupied(f) ? "bg-emerald-500" : "bg-amber-400"}`} />
               </div>
               <div className={`serif text-[12px] mt-1 leading-tight truncate ${f.owner_name ? "" : "opacity-40"}`}>{f.owner_name ? ownerText(f) : "—"}</div>
+              {f.occupancy === "tenant" && <div className="mono text-[9px] mt-1 truncate"><span className="bg-[var(--navy)] text-white px-1 mr-1">ON RENT</span>{f.tenant_name || ""}</div>}
               <div className="mono text-[9px] mt-2 opacity-60">{f.bhk ? `${f.bhk} • ` : ""}{f.tower} • F{floorOf(f)}</div>
               {isCommittee && <div className="mono text-[9px] mt-1 flex justify-between"><span>{rupees(f.maintenance)}</span><span>{f.sqft ? `${f.sqft} sqft` : ""}</span></div>}
               {(isCommittee || f.id === myFlat) && <div className="mono text-[8px] mt-2 opacity-0 group-hover:opacity-60 transition-opacity">{f.id === myFlat ? "MY FLAT ↗" : "CLICK → DETAIL ↗"}</div>}

@@ -13,6 +13,13 @@ export type Flat = {
   is_committee: boolean | null;
   status: string | null;
   r2_url?: string | null;
+  // Owner / tenant (TENANTS.sql)
+  occupancy?: "owner" | "tenant" | null;
+  owner_mobile?: string | null;
+  owner_address?: string | null;
+  tenant_name?: string | null;
+  tenant_from?: string | null;
+  agreement_until?: string | null;
 };
 
 export type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
@@ -45,6 +52,9 @@ export const label = (f: Flat) => {
 export const isOccupied = (f: Flat) => ["filled", "occupied", "sold", "approved"].includes((f.status || "").toLowerCase());
 export const statusText = (f: Flat) => (isOccupied(f) ? "Occupied" : f.status ? f.status[0].toUpperCase() + f.status.slice(1) : "Pending");
 export const ownerText = (f: Flat) => f.owner_name?.trim() || "Owner not recorded";
+export const isRented = (f: Pick<Flat, "occupancy">) => f.occupancy === "tenant";
+/** Who lives in the flat: the tenant when rented out, otherwise the owner. */
+export const residentName = (f: Flat) => (isRented(f) ? f.tenant_name?.trim() || "" : f.owner_name?.trim() || "");
 export const rupees = (n: number | null | undefined) => (n == null ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
 
 export const sortFlats = (a: Flat, b: Flat) => (a.tower || "").localeCompare(b.tower || "") || flatNumber(a) - flatNumber(b);
@@ -142,11 +152,12 @@ export type MemberLite = { flat_id: string; name: string | null; relation: strin
 const SPOUSE = /^(wife|husband|spouse|mrs\.?|mr\.?)$/i;
 export function familySummary(flat: Flat, members: MemberLite[]) {
   const mine = members.filter((m) => m.flat_id === flat.id);
-  const owner = (flat.owner_name || "").toLowerCase();
+  // The family list belongs to whoever lives there: the tenant if rented out.
+  const owner = residentName(flat).toLowerCase();
   const head =
     mine.find((m) => m.is_head) ||
     mine.find((m) => /^self$/i.test(m.relation || "")) ||
-    mine.find((m) => m.name && owner.includes(m.name.toLowerCase())) ||
+    (owner ? mine.find((m) => m.name && owner.includes(m.name.toLowerCase())) : undefined) ||
     null;
   const spouse = mine.find((m) => m !== head && SPOUSE.test((m.relation || "").trim())) || null;
   const profession = head ? [head.occupation, head.business_name].filter(Boolean).join(" • ") : "";

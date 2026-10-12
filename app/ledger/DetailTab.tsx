@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { floorOf, isOccupied, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
+import { floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
@@ -39,11 +39,36 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const cat = categories.find((c) => c.ids.includes(f.id));
   const terrace = !!cat?.terrace;
   const hasSqft = "sqft" in f;
+  const tenantReady = "occupancy" in f; // TENANTS.sql has been run
+  const rented = isRented(f);
+  const lockOwner = !isCommittee && rented; // a tenant can't change the owner's details
+  const agreementOver = rented && !!f.agreement_until && new Date(f.agreement_until) < new Date(new Date().toDateString());
   const vaultDocs = VAULT_SLOTS.map((s) => ({ ...s, file: vault.find((v) => v.key.startsWith(`vault/${s.id}.`)) })).filter((s) => s.file);
 
   async function save() {
     setBusy("save"); setError("");
     const personal: any = { owner_name: form.owner_name?.trim() || null, email: form.email?.trim() || null };
+    if (tenantReady) {
+      const t = form.occupancy === "tenant";
+      if (t && !form.tenant_name?.trim()) { setBusy(null); setError("Enter the tenant's name"); return; }
+      Object.assign(personal, {
+        occupancy: t ? "tenant" : "owner",
+        owner_mobile: form.owner_mobile?.trim() || null,
+        owner_address: t ? form.owner_address?.trim() || null : null,
+        tenant_name: t ? form.tenant_name!.trim() : null,
+        tenant_from: t ? form.tenant_from || null : null,
+        agreement_until: t ? form.agreement_until || null : null,
+      });
+      if (lockOwner) { delete personal.owner_name; delete personal.email; delete personal.owner_mobile; delete personal.owner_address; delete personal.occupancy; }
+      // Owner-occupied -> rented out: the owner's family no longer lives here.
+      if (t && !rented) {
+        const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
+        if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
+          await supabase.from("members").delete().eq("flat_id", f!.id);
+        }
+        if ("directory_consent" in f!) personal.directory_consent = false; // the tenant decides on sharing
+      }
+    }
     if (!isCommittee) {
       const { error } = await supabase.from("flats").update(personal).eq("id", f!.id);
       setBusy(null);
@@ -62,6 +87,19 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     setBusy(null);
     if (error) { setError(error.message); return; }
     setEditing(false);
+    reloadFlats();
+  }
+
+  async function tenantMovedOut() {
+    if (!confirm(`Tenant ${f!.tenant_name || ""} has moved out of ${label(f!)}?\n\nThis will:\n• remove the tenant and the tenant's family members\n• turn off directory sharing\n• mark the flat as owner-occupied (enter a new tenant with EDIT FLAT if it is rented again)`)) return;
+    setBusy("out"); setError("");
+    const del = await supabase.from("members").delete().eq("flat_id", f!.id);
+    const upd: any = { occupancy: "owner", tenant_name: null, tenant_from: null, agreement_until: null, owner_address: null };
+    if ("directory_consent" in f!) upd.directory_consent = false;
+    const { error } = del.error ? del : await supabase.from("flats").update(upd).eq("id", f!.id);
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    alert(`Done. Now reset the ${label(f!)} flat login password (ADMIN → Flat logins → Reset) so the old tenant can no longer log in.`);
     reloadFlats();
   }
 
@@ -86,9 +124,10 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           <div>
             <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
             <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)]"> ★</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
-            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? " • ★ Committee" : ""}</div>
+            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? " • ★ Committee" : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
+            {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
             {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
             <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
             <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
@@ -98,8 +137,32 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
         {editing && (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
-            <label className="sm:col-span-2">OWNER NAME<input className="field mt-1" value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
-            <label className="sm:col-span-2">EMAIL<input className="field mt-1" type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+            {tenantReady && (
+              <div className="sm:col-span-2 lg:col-span-4">
+                WHO LIVES IN THIS FLAT?
+                <div className="flex flex-wrap gap-4 mt-1">
+                  {(["owner", "tenant"] as const).map((o) => (
+                    <label key={o} className={`flex items-center gap-2 border px-3 py-2 cursor-pointer ${(form.occupancy || "owner") === o ? "border-[var(--navy)] bg-white font-bold" : "border-[var(--border)]"} ${lockOwner ? "opacity-60 cursor-not-allowed" : ""}`}>
+                      <input type="radio" name="occ" disabled={lockOwner} checked={(form.occupancy || "owner") === o} onChange={() => setForm({ ...form, occupancy: o })} />
+                      {o === "owner" ? "Owner lives here" : "Given on rent (tenant lives here)"}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {form.occupancy === "tenant" && <>
+              <div className="sm:col-span-2 lg:col-span-4 text-[10px] tracking-[0.14em] opacity-60 border-t border-[var(--border)] pt-2">TENANT • the family list below will be the tenant&apos;s family</div>
+              <label className="sm:col-span-2">TENANT NAME *<input className="field mt-1" value={form.tenant_name || ""} onChange={(e) => setForm({ ...form, tenant_name: e.target.value })} /></label>
+              <label>LIVING HERE FROM<input className="field mt-1" type="date" value={form.tenant_from || ""} onChange={(e) => setForm({ ...form, tenant_from: e.target.value })} /></label>
+              <label>RENT AGREEMENT UNTIL<input className="field mt-1" type="date" value={form.agreement_until || ""} onChange={(e) => setForm({ ...form, agreement_until: e.target.value })} /></label>
+              <div className="sm:col-span-2 lg:col-span-4 text-[10px] tracking-[0.14em] opacity-60 border-t border-[var(--border)] pt-2">OWNER (does not live here){lockOwner ? " • only the committee can change these" : ""}</div>
+            </>}
+            <label className="sm:col-span-2">OWNER NAME<input className="field mt-1" disabled={lockOwner} value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
+            <label className="sm:col-span-2">OWNER EMAIL<input className="field mt-1" type="email" disabled={lockOwner} value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+            {tenantReady && form.occupancy === "tenant" && <>
+              <label>OWNER MOBILE<input className="field mt-1" disabled={lockOwner} value={form.owner_mobile || ""} onChange={(e) => setForm({ ...form, owner_mobile: e.target.value })} /></label>
+              <label className="lg:col-span-3">OWNER&apos;S PRESENT ADDRESS<input className="field mt-1" disabled={lockOwner} value={form.owner_address || ""} onChange={(e) => setForm({ ...form, owner_address: e.target.value })} /></label>
+            </>}
             {isCommittee && <>
             <label>STATUS
               <select className="field mt-1" value={form.status || ""} onChange={(e) => setForm({ ...form, status: e.target.value })}>
@@ -121,10 +184,22 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
         <div className="mt-6 grid md:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="space-y-3">
+            {rented && (
+              <div className={`border p-4 ${agreementOver ? "border-red-300 bg-red-50" : "border-[var(--gold)] bg-[#fffdf5]"}`}>
+                <div className="mono text-[10px] opacity-60">GIVEN ON RENT • TENANT LIVES HERE</div>
+                <div className="serif text-[18px] font-bold mt-1">{f.tenant_name || "Tenant name not recorded"}</div>
+                <div className="mono text-[10px] mt-1 opacity-70">
+                  {f.tenant_from ? `From ${fmtDate(f.tenant_from)}` : "Start date not recorded"} • {f.agreement_until ? `Agreement until ${fmtDate(f.agreement_until)}` : "Agreement end date not recorded"}
+                </div>
+                {agreementOver && <div className="mono text-[10px] mt-1 text-red-700 font-bold">Rent agreement date has passed. Please upload the renewed agreement below and update the date.</div>}
+                <div className="mono text-[10px] mt-1 opacity-60">Keep the rent agreement and police verification in FLAT DOCUMENTS below.</div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <Box title="OWNER">
+              <Box title={rented ? "OWNER • DOES NOT LIVE HERE" : "OWNER"}>
                 <div className={`serif text-[18px] font-bold mt-1 ${f.owner_name ? "" : "opacity-40"}`}>{ownerText(f)}</div>
                 <div className="mono text-[10px] mt-2 opacity-60 break-all">{f.email ? `Email: ${f.email}` : "Email not recorded"}</div>
+                {rented && <div className="mono text-[10px] mt-1 opacity-60 break-words">{[f.owner_mobile && `Mobile: ${f.owner_mobile}`, f.owner_address].filter(Boolean).join(" • ") || "Owner mobile / address not recorded"}</div>}
               </Box>
               <Box title="STATUS">
                 <div className={`serif text-[18px] font-bold mt-1 ${isOccupied(f) ? "text-emerald-700" : "text-amber-600"}`}>{statusText(f)}</div>
@@ -155,14 +230,14 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <MembersPanel flatId={f.id} ownerName={f.owner_name} ownerEmail={f.email} />
+            <MembersPanel flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee} onSaved={reloadFlats} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div>
                   <div className="mono text-[10px] font-bold tracking-[0.14em]">FLAT DOCUMENTS • R2</div>
-                  <div className="mono text-[11px] mt-1 opacity-70">Sale deed, share certificate, receipts for {label(f)}. Max 4 MB each.</div>
+                  <div className="mono text-[11px] mt-1 opacity-70">{rented ? "Rent agreement, police verification, sale deed, share certificate" : "Sale deed, share certificate, receipts"} for {label(f)}. Max 4 MB each.</div>
                 </div>
                 <label className="btn-navy mono text-[11px] px-4 py-2 cursor-pointer">
                   {busy === "doc" ? "UPLOADING…" : "UPLOAD DOCUMENT"}
