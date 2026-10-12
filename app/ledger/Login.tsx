@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY } from "@/lib/society";
 import { flatEmail, normaliseFlat } from "@/lib/residents";
+import { InstallApp } from "./PwaRegister";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -65,6 +66,7 @@ export default function Login() {
               {error && <div className="mono text-[12px] text-red-700 border border-red-200 bg-red-50 px-3 py-2">{error}</div>}
               <button disabled={busy} className="btn-navy w-full mono text-[12px] tracking-[0.16em] py-3">{busy ? "CHECKING…" : "LOGIN"}</button>
               <div className="mono text-[10px] opacity-50 text-center">No password yet, or forgot it? Ask the society committee.</div>
+              <InstallApp variant="card" />
             </div>
           </form>
         </div>

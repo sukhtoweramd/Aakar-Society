@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
 import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
 import ChangePassword from "./ledger/ChangePassword";
+import { InstallApp } from "./ledger/PwaRegister";
 import { label } from "@/lib/society";
 import Login from "./ledger/Login";
 import Sidebar from "./ledger/Sidebar";
@@ -100,6 +101,7 @@ export default function Home() {
               <span className="h-3 w-px bg-white/20" />
               <span className={myFlat ? "" : "normal-case"}>{who}</span>
             </div>
+            <InstallApp variant="bar" />
             <button onClick={() => setShowPassword(true)} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">PASSWORD</button>
             <button onClick={() => supabase.auth.signOut()} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-[var(--gold)] text-black border-[var(--gold)]">
               LOGOUT
