@@ -94,7 +94,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         <div className="flex flex-wrap justify-between gap-4">
           <div>
             <div className="mono text-[10px] tracking-[0.2em] opacity-60">FLAT DETAIL • SELECTED</div>
-            <div className="serif text-[32px] font-bold mt-1">{label(f)} <span className="text-[var(--gold)]">• {f.id}</span></div>
+            <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)]"> ★</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
             <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? " • ★ Committee" : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
