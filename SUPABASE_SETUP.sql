@@ -4,6 +4,7 @@
 
 -- 1. New columns the app needs (added only if missing)
 alter table public.flats   add column if not exists r2_url     text;   -- per-flat document in R2
+alter table public.flats   add column if not exists sqft       integer; -- built-up area (Admin charges panel)
 alter table public.notices add column if not exists file_url   text;   -- notice attachment in R2
 alter table public.notices add column if not exists created_by text;   -- email of committee member
 

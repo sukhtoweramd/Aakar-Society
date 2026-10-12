@@ -2,4 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-body { font-family: Inter, system-ui, sans-serif; }
+/* Society Ledger theme: Beige #fdfcf5 • Navy #0f1d3d • Gold #d4af37 */
+:root {
+  --bg: #fdfcf5;
+  --bg-soft: #f7f2e4;
+  --navy: #0f1d3d;
+  --navy-light: #1b2d5a;
+  --gold: #d4af37;
+  --gold-soft: #f1e6b8;
+  --surface: #fff;
+  --border: #e8e2d1;
+  --ink: #1a1a18;
+  --muted: #7a7568;
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-heading: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { font-variant-ligatures: common-ligatures; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-weight: 400; letter-spacing: -0.01em; line-height: 1.6; font-size: 14px; }
+.serif { font-family: var(--font-heading); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.mono { font-family: var(--font-body); font-weight: 500; letter-spacing: 0.02em; line-height: 1.5; }
+.dashed { border-style: dashed; }
+.gold-ring { box-shadow: 0 0 0 1px var(--gold) inset; }
+h1, h2, h3 { font-family: var(--font-heading); font-weight: 700; letter-spacing: -0.025em; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+@keyframes fadeIn { 0% { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.2s ease; }
+.field { width: 100%; font-size: 13px; border: 1px solid var(--border); background: #fff; padding: 0.55rem 0.75rem; border-radius: 2px; outline: none; }
+.field:focus { border-color: var(--gold); }
+.btn-navy { background: var(--navy); color: #fff; border: 1px solid var(--navy); border-radius: 2px; }
+.btn-navy:hover { background: var(--navy-light); }
+.btn-navy:disabled, .btn-line:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-line { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; }
+.btn-line:hover { border-color: var(--gold); background: var(--bg-soft); }
+.btn-gold { background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 2px; cursor: pointer; font-weight: 600; }
+.btn-gold:hover { background: #fef3c7; }

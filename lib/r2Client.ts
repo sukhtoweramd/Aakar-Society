@@ -16,9 +16,13 @@ export function getR2() {
 }
 
 export const MAX_FILE_BYTES = 4 * 1024 * 1024; // Vercel limits request bodies to ~4.5 MB
-export const ALLOWED_TYPES: Record<string, string> = {
-  "application/pdf": "pdf",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+export const ALLOWED_EXT: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  dwg: "application/acad",
+  dxf: "application/dxf",
 };

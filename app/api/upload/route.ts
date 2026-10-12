@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       set("floor", toInt(pick(r, ["floor"])));
       set("owner_name", pick(r, ["ownername", "owner", "name"]));
       set("bhk", pick(r, ["bhk", "type"]));
+      set("sqft", toInt(pick(r, ["sqft", "areasqft", "area", "builtup"])));
       set("maintenance", toInt(pick(r, ["maintenance", "maintenanceamount"])));
       set("email", pick(r, ["email", "emailid"]));
       set("status", pick(r, ["status"]));
