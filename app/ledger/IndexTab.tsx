@@ -1,12 +1,12 @@
 "use client";
-import { floorOf, isOccupied, label, ownerText, rupees, statusText } from "@/lib/society";
+import { filterName, inFilter, floorOf, isOccupied, label, ownerText, rupees, statusText } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function IndexTab({ ctx }: { ctx: Ctx }) {
   const { flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId, selectFlat, go, isCommittee, myFlat } = ctx;
   const q = search.trim().toLowerCase();
   const list = flats.filter((f) =>
-    (towerFilter === "ALL" || f.tower === towerFilter) &&
+    inFilter(f, towerFilter, categories) &&
     (!q || label(f).toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || (f.owner_name || "").toLowerCase().includes(q)));
   const terraceIds = new Set(categories.filter((c) => c.terrace).flatMap((c) => c.ids));
 
@@ -16,14 +16,14 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
         <div>
           <div className="serif text-[20px] font-bold">Flat Index</div>
           <div className="mono text-[11px] opacity-60 mt-1">
-            {flats.length} flats {isCommittee ? "ledger • Click any flat card to view full DETAIL" : "directory • Click your own flat to open MY FLAT"} • Tower filter {towerFilter === "ALL" ? "OFF" : `ON: Tower ${towerFilter}`}
+            {flats.length} flats {isCommittee ? "ledger • Click any flat card to view full DETAIL" : "directory • Click your own flat to open MY FLAT"} • Filter {towerFilter === "ALL" ? "OFF" : `ON: ${filterName(towerFilter, categories)}`}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search A-101, owner…"
             className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 w-[180px] sm:w-[220px] rounded-[2px] outline-none focus:border-[var(--gold)]" />
           <div className="mono text-[10px] border border-[var(--border)] px-2 py-2 bg-[var(--bg)]">{list.length} results</div>
-          {towerFilter !== "ALL" && <button onClick={() => setTowerFilter("ALL")} className="mono text-[10px] bg-[var(--navy)] text-white px-2 py-2">CLEAR {towerFilter}</button>}
+          {towerFilter !== "ALL" && <button onClick={() => setTowerFilter("ALL")} className="mono text-[10px] bg-[var(--navy)] text-white px-2 py-2">CLEAR FILTER ✕</button>}
         </div>
       </div>
       <div className="flex flex-wrap gap-4 mono text-[10px] opacity-70 px-1">
@@ -52,7 +52,7 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
       </div>
       {list.length === 0 && (
         <div className="border border-dashed border-[var(--border)] bg-[var(--surface)] p-8 text-center mono text-[12px] opacity-60">
-          No flats found for filter {towerFilter} + search &quot;{search}&quot; • <button onClick={() => { setSearch(""); setTowerFilter("ALL"); }} className="underline">Clear</button>
+          No flats found for {filterName(towerFilter, categories)} + search &quot;{search}&quot; • <button onClick={() => { setSearch(""); setTowerFilter("ALL"); }} className="underline">Clear</button>
         </div>
       )}
     </div>

@@ -121,3 +121,16 @@ export const VAULT_SLOTS = [
   { id: "fire-noc", name: "Fire NOC" },
   { id: "lift-amc", name: "Lift AMC" },
 ];
+
+/** Sidebar filter: "ALL", a tower letter ("A"), or a category key ("A_TERRACE" / "A_STD"). */
+export function inFilter(f: Flat, filter: string, categories: Category[]): boolean {
+  if (filter === "ALL") return true;
+  if (filter.includes("_")) return !!categories.find((c) => c.key === filter)?.ids.includes(f.id);
+  return f.tower === filter;
+}
+export function filterName(filter: string, categories: Category[]): string {
+  if (filter === "ALL") return "All towers";
+  const c = categories.find((x) => x.key === filter);
+  if (c) return c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`;
+  return `Tower ${filter}`;
+}

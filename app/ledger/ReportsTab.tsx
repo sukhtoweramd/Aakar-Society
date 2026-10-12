@@ -1,16 +1,16 @@
 "use client";
-import { floorOf, isOccupied, label, rupees, SOCIETY, statusText } from "@/lib/society";
+import { filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, statusText } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 export default function ReportsTab({ ctx }: { ctx: Ctx }) {
-  const { flats, email, towerFilter } = ctx;
-  const list = towerFilter === "ALL" ? flats : flats.filter((f) => f.tower === towerFilter);
+  const { flats, email, towerFilter, categories } = ctx;
+  const list = flats.filter((f) => inFilter(f, towerFilter, categories));
   const occupied = list.filter(isOccupied).length;
   const withOwner = list.filter((f) => f.owner_name).length;
   const monthly = list.reduce((n, f) => n + (f.maintenance || 0), 0);
-  const scope = towerFilter === "ALL" ? "All towers" : `Tower ${towerFilter}`;
+  const scope = filterName(towerFilter, categories);
 
   function exportCSV() {
     const headers = ["Flat", "Tower", "Floor", "Owner Name", "BHK", "Sqft", "Maintenance", "Email", "Committee", "Status"];
@@ -18,7 +18,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
     const csv = "﻿" + [headers, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
-    a.href = url; a.download = `Aakar_Society_Directory${towerFilter === "ALL" ? "" : `_Tower_${towerFilter}`}.csv`; a.click();
+    a.href = url; a.download = `Aakar_Society_Directory${towerFilter === "ALL" ? "" : `_${towerFilter}`}.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
@@ -56,7 +56,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
       </div>
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="serif text-[22px] font-bold">Directory Reports</div>
-        <div className="mono text-[11px] opacity-60 mt-1">Scope: {scope} • Use the tower filter in the sidebar to export one tower only</div>
+        <div className="mono text-[11px] opacity-60 mt-1">Scope: {scope} • Click a tower or floor card in the sidebar to export only those flats</div>
         <div className="mt-5 grid sm:grid-cols-2 gap-4">
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mono text-[11px] font-bold tracking-[0.12em]">CSV / EXCEL</div>

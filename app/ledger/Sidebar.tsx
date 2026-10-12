@@ -24,8 +24,8 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
         </div>
         <div className="p-3 space-y-3">
           {categories.filter((c) => !c.terrace).map((c) => (
-            <button key={c.key} onClick={() => filter(c.tower)}
-              className={`w-full text-left border rounded-[6px] p-3.5 transition-all hover:shadow-sm hover:border-[var(--gold)] bg-[var(--bg)] border-[var(--border)] ${towerFilter === c.tower ? "ring-1 ring-[var(--gold)] border-[var(--gold)]" : ""}`}>
+            <button key={c.key} onClick={() => filter(c.key)}
+              className={`w-full text-left border rounded-[6px] p-3.5 transition-all hover:shadow-sm hover:border-[var(--gold)] bg-[var(--bg)] border-[var(--border)] ${towerFilter === c.key ? "ring-1 ring-[var(--gold)] border-[var(--gold)]" : ""}`}>
               <div className="mono text-[11px] tracking-[0.06em] font-semibold">{c.label}</div>
               <div className="serif text-[14px] mt-2 font-semibold">{c.range} • {c.ids.length} FLATS</div>
               <div className="mt-3 grid grid-cols-2 gap-2 mono text-[11px]">
@@ -39,13 +39,13 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
           ))}
           <div className="grid grid-cols-1 gap-2">
             {categories.filter((c) => c.terrace).map((c) => (
-              <button key={c.key} onClick={() => filter(c.tower)}
-                className={`w-full text-left border rounded-[6px] p-3 bg-[#fff8d6] border-amber-300 hover:border-amber-500 transition-colors ${towerFilter === c.tower ? "ring-1 ring-amber-500" : ""}`}>
+              <button key={c.key} onClick={() => filter(c.key)}
+                className={`w-full text-left border rounded-[6px] p-3 bg-[#fff8d6] border-amber-300 hover:border-amber-500 transition-colors ${towerFilter === c.key ? "ring-1 ring-amber-500" : ""}`}>
                 <div className="flex justify-between items-center gap-2">
                   <div className="mono text-[11px] tracking-[0.04em] font-bold">{c.label}</div>
                   <span className="mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 rounded-[2px] font-bold shrink-0">TERRACE • OWNER</span>
                 </div>
-                <div className="mono text-[11px] mt-1.5 opacity-70">{c.range} • {rupees(c.maint)} • {c.sqft ?? "—"} sqft • Click to filter {c.tower}</div>
+                <div className="mono text-[11px] mt-1.5 opacity-70">{c.range} • {rupees(c.maint)} • {c.sqft ?? "—"} sqft • Click to show these {c.ids.length}</div>
               </button>
             ))}
           </div>
