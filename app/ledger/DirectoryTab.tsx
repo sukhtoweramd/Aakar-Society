@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { SOCIETY, byCommitteeRole, filterName } from "@/lib/society";
+import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
@@ -35,7 +35,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       if (r.member_id) map.get(r.flat_id)!.members.push(r);
     }
     const list = Array.from(map.values());
-    list.forEach((e) => e.members.sort((a, b) => Number(b.is_head) - Number(a.is_head) || (a.member_name || "").localeCompare(b.member_name || "")));
+    list.forEach((e) => e.members.sort((a, b) => byFamilyOrder({ ...a, name: a.member_name }, { ...b, name: b.member_name })));
     return list.sort((a, b) => (a.tower || "").localeCompare(b.tower || "") || num(a.flat_id) - num(b.flat_id));
   }, [rows]);
 

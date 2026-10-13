@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { byFamilyOrder } from "@/lib/society";
 
 export type Member = {
   id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
@@ -33,7 +34,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   async function load() {
     const { data, error } = await supabase.from("members").select("*").eq("flat_id", flatId);
     if (error) setError(error.message);
-    setMembers(((data as Member[]) || []).sort((a, b) => Number(!!b.is_head) - Number(!!a.is_head) || (a.name || "").localeCompare(b.name || "")));
+    setMembers(((data as Member[]) || []).sort(byFamilyOrder));
   }
   useEffect(() => { load(); setEditId(null); }, [flatId]);
 

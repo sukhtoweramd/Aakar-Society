@@ -2,7 +2,7 @@
 // Printable one-page A4 "Flat profile card" built from live data.
 import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
-import { committeeBadge, label, SOCIETY, sortFlats, type Flat } from "./society";
+import { byFamilyOrder, committeeBadge, label, SOCIETY, sortFlats, type Flat } from "./society";
 
 type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; office_address?: string | null; office_phone?: string | null };
@@ -14,9 +14,6 @@ export type CardData = { flat: Flat & Record<string, any>; members: Member[]; ve
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const d = (s?: string | null) => (s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "");
 const rupee = (n: any) => (n == null ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
-// Family order on the card: self, spouse, children, parents, others
-const REL = [/^self$/i, /^(wife|husband|spouse)$/i, /^(son|daughter)$/i, /^(father|mother)$/i];
-const relRank = (r?: string | null) => { const i = REL.findIndex((x) => x.test((r || "").trim())); return i < 0 ? REL.length : i; };
 const fileName = (key: string) => key.split("/").pop()!.replace(/^\d{10,}_/, "");
 
 async function rows<T>(table: string, flatIds: string[] | null): Promise<T[]> {
@@ -42,7 +39,7 @@ export async function loadCards(flats: Flat[]): Promise<CardData[]> {
     for (const o of r2) if (!typed.some((t) => t.key === o.key)) docs.push({ type: "Document (type not set)", name: fileName(o.key), date: o.uploaded });
     return {
       flat: f as any,
-      members: members.filter((m) => m.flat_id === f.id).sort((a, b) => Number(!!b.is_head) - Number(!!a.is_head) || relRank(a.relation) - relRank(b.relation) || (b.age ?? 0) - (a.age ?? 0)),
+      members: members.filter((m) => m.flat_id === f.id).sort(byFamilyOrder),
       vehicles: vehicles.filter((v) => v.flat_id === f.id).sort((a, b) => (a.created_at || "").localeCompare(b.created_at || "")),
       contacts: contacts.filter((c) => c.flat_id === f.id),
       docs: docs.sort((a, b) => (a.date || "").localeCompare(b.date || "")),
