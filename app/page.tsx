@@ -6,6 +6,7 @@ import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
 import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
 import ChangePassword from "./ledger/ChangePassword";
 import { InstallApp } from "./ledger/PwaRegister";
+import LoginBanner, { clearBannerDismissal } from "./ledger/LoginBanner";
 import { label } from "@/lib/society";
 import Login from "./ledger/Login";
 import Sidebar from "./ledger/Sidebar";
@@ -84,6 +85,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[var(--bg)] text-[var(--ink)] antialiased" style={{ paddingTop: "var(--safe-area-inset-top)" }}>
+      <LoginBanner userId={session.user.id} tower={(myFlat || homeFlat || "")[0] || null} isCommittee={isCommittee} onRead={() => go("NOTICES")} />
       {/* Top strip */}
       <div className="w-full bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[38px] py-1.5 flex items-center justify-between gap-2 flex-wrap">
@@ -106,7 +108,7 @@ export default function Home() {
             {isCommittee && homeFlat && <button onClick={() => { setSelectedId(homeFlat); setTab("DETAIL"); window.scrollTo({ top: 0 }); }} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">MY FLAT {label({ id: homeFlat, flat_no: homeFlat } as any)}</button>}
             <InstallApp variant="bar" />
             <button onClick={() => setShowPassword(true)} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">PASSWORD</button>
-            <button onClick={() => supabase.auth.signOut()} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-[var(--gold)] text-black border-[var(--gold)]">
+            <button onClick={() => { clearBannerDismissal(session.user.id); supabase.auth.signOut(); }} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-[var(--gold)] text-black border-[var(--gold)]">
               LOGOUT
             </button>
           </div>
