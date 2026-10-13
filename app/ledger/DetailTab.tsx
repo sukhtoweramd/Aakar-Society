@@ -6,6 +6,7 @@ import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledge
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
 import ConsentCard from "./ConsentCard";
+import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -18,10 +19,19 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [familyVersion, setFamilyVersion] = useState(0); // bump to make the family list reload
+  const [docTypes, setDocTypes] = useState<Record<string, string>>({}); // R2 key -> document type
+  const [docTypesReady, setDocTypesReady] = useState(true);
+  const [newDocType, setNewDocType] = useState("");
+  const [editDocKey, setEditDocKey] = useState<string | null>(null);
+  const [editDocType, setEditDocType] = useState("");
 
   async function loadExtras(id: string) {
     setError("");
     listFiles(`flats/${id}`).then(setDocs).catch((e) => setError(e.message));
+    supabase.from("flat_docs").select("key, doc_type").eq("flat_id", id).then(({ data, error }) => {
+      setDocTypesReady(!error);
+      setDocTypes(Object.fromEntries(((data as any[]) || []).map((d) => [d.key, d.doc_type || ""])));
+    });
     listFiles("vault").then(setVault).catch(() => {});
   }
   useEffect(() => { if (f) { loadExtras(f.id); setEditing(false); } }, [f?.id]);
@@ -64,7 +74,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       // Owner-occupied -> rented out: the owner's family no longer lives here.
       if (t && !rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
-        if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
+        if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here; their vehicles and emergency contacts will be removed too. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
           const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
         }
         if ("directory_consent" in f!) personal.directory_consent = false; // the tenant decides on sharing
@@ -72,7 +82,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       // Rented -> owner lives here again: the tenant's family has left.
       if (!t && rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
-        if (fam?.length && confirm(`The tenant has left ${label(f!)}. Remove the tenant's ${fam.length} family member(s) from the list?\n\nOK = remove, Cancel = keep them`)) {
+        if (fam?.length && confirm(`The tenant has left ${label(f!)}. Remove the tenant's ${fam.length} family member(s), vehicles and emergency contacts?\n\nOK = remove, Cancel = keep them`)) {
           const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
         }
         if ("directory_consent" in f!) personal.directory_consent = false;
@@ -92,6 +102,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       bhk: form.bhk?.trim() || null,
       maintenance: form.maintenance === null || form.maintenance === undefined || (form.maintenance as any) === "" ? null : Number(form.maintenance),
     };
+    if ("member_since" in f!) { upd.member_since = form.member_since || null; upd.share_cert_no = form.share_cert_no?.trim() || null; }
     if (hasSqft) upd.sqft = form.sqft === null || form.sqft === undefined || (form.sqft as any) === "" ? null : Number(form.sqft);
     const { error } = await supabase.from("flats").update(upd).eq("id", f!.id);
     setBusy(null);
@@ -101,8 +112,13 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     reloadFlats();
   }
 
-  // Delete every family member of this flat; report if the database refused (0 rows removed).
+  // Delete every family member of this flat (and the vehicles and emergency contacts of the people who lived there);
+  // report if the database refused (0 rows removed).
   async function clearFamily(): Promise<string | null> {
+    for (const t of ["vehicles", "emergency_contacts"]) {
+      const { error } = await supabase.from(t).delete().eq("flat_id", f!.id);
+      if (error && !/does not exist|could not find the table|schema cache/i.test(error.message)) return error.message;
+    }
     const { data: before } = await supabase.from("members").select("id").eq("flat_id", f!.id);
     if (!before?.length) return null;
     const { data, error } = await supabase.from("members").delete().eq("flat_id", f!.id).select("id");
@@ -112,7 +128,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   }
 
   async function tenantMovedOut() {
-    if (!confirm(`Tenant ${f!.tenant_name || ""} has moved out of ${label(f!)}?\n\nThis will:\n• remove the tenant and the tenant's family members\n• turn off directory sharing\n• mark the flat as owner-occupied (enter a new tenant with EDIT FLAT if it is rented again)`)) return;
+    if (!confirm(`Tenant ${f!.tenant_name || ""} has moved out of ${label(f!)}?\n\nThis will:\n• remove the tenant, the tenant's family members, vehicles and emergency contacts\n• turn off directory sharing\n• mark the flat as owner-occupied (enter a new tenant with EDIT FLAT if it is rented again)`)) return;
     setBusy("out"); setError("");
     const famErr = await clearFamily();
     if (famErr) { setBusy(null); setError(famErr); return; }
@@ -127,13 +143,32 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   }
 
   async function uploadDoc(file: File) {
+    const type = newDocType.trim();
+    if (docTypesReady && !type) { setError("First type what the document is (e.g. Sale deed), then choose the file."); return; }
     setBusy("doc"); setError("");
-    try { await uploadFile(file, `flats/${f!.id}`); await loadExtras(f!.id); } catch (e: any) { setError(e.message); }
+    try {
+      const up = await uploadFile(file, `flats/${f!.id}`);
+      if (docTypesReady && up.key) {
+        const { error } = await supabase.from("flat_docs").upsert({ key: up.key, flat_id: f!.id, doc_type: type, uploaded_by: ctx.email });
+        if (error) setError(`File uploaded, but the document type was not saved: ${error.message}`);
+      }
+      setNewDocType("");
+      await loadExtras(f!.id);
+    } catch (e: any) { setError(e.message); }
     setBusy(null);
   }
+  async function saveDocType(key: string) {
+    const { error } = await supabase.from("flat_docs").upsert({ key, flat_id: f!.id, doc_type: editDocType.trim() || null, uploaded_by: ctx.email });
+    if (error) { setError(error.message); return; }
+    setEditDocKey(null); loadExtras(f!.id);
+  }
   async function removeDoc(d: StoredFile) {
-    if (!confirm(`Delete "${d.name}"?`)) return;
-    try { await deleteFile({ key: d.key }); await loadExtras(f!.id); } catch (e: any) { setError(e.message); }
+    if (!confirm(`Delete "${docTypes[d.key] || d.name}"?`)) return;
+    try {
+      await deleteFile({ key: d.key });
+      if (docTypesReady) await supabase.from("flat_docs").delete().eq("key", d.key);
+      await loadExtras(f!.id);
+    } catch (e: any) { setError(e.message); }
   }
 
   const Box = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -195,6 +230,10 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <label>BHK<input className="field mt-1" value={form.bhk || ""} onChange={(e) => setForm({ ...form, bhk: e.target.value })} /></label>
             <label>MAINTENANCE ₹<input className="field mt-1" type="number" value={form.maintenance ?? ""} onChange={(e) => setForm({ ...form, maintenance: e.target.value as any })} /></label>
             {hasSqft && <label>SQFT<input className="field mt-1" type="number" value={form.sqft ?? ""} onChange={(e) => setForm({ ...form, sqft: e.target.value as any })} /></label>}
+            {"member_since" in f && <>
+              <label>MEMBER SINCE<input className="field mt-1" type="date" value={form.member_since || ""} onChange={(e) => setForm({ ...form, member_since: e.target.value })} /></label>
+              <label>SHARE CERTIFICATE NO.<input className="field mt-1" value={form.share_cert_no || ""} onChange={(e) => setForm({ ...form, share_cert_no: e.target.value })} /></label>
+            </>}
             <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={!!form.is_committee} onChange={(e) => setForm({ ...form, is_committee: e.target.checked, committee_role: e.target.checked ? form.committee_role || "Committee Member" : null })} /> COMMITTEE MEMBER ★</label>
             {form.is_committee && "committee_role" in f && (() => {
               const preset = COMMITTEE_ROLES.includes(form.committee_role || "");
@@ -252,6 +291,13 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                 <div className="mono text-[10px] mt-1 opacity-70">{f.bhk || "—"} • {terrace ? "With Terrace - Owner" : "Standard"}</div>
               </Box>
             </div>
+            {"member_since" in f && (
+              <div className="border border-[var(--border)] p-4 bg-[var(--bg)] grid grid-cols-2 gap-3">
+                <div><div className="mono text-[10px] opacity-60">MEMBER SINCE</div><div className="serif text-[16px] font-bold mt-1">{f.member_since ? fmtDate(f.member_since) : <span className="opacity-40 text-[13px]">Not recorded</span>}</div></div>
+                <div><div className="mono text-[10px] opacity-60">SHARE CERTIFICATE NO.</div><div className="serif text-[16px] font-bold mt-1">{f.share_cert_no || <span className="opacity-40 text-[13px]">Not recorded</span>}</div></div>
+                {!isCommittee && <div className="col-span-2 mono text-[9px] opacity-50">Kept by the committee. Ask them if this needs correcting.</div>}
+              </div>
+            )}
 
             <div className="border border-[var(--border)] p-4 bg-[var(--bg-soft)] mono text-[11px] leading-relaxed">
               <div className="font-bold">FLAT HISTORY</div>
@@ -270,23 +316,76 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
 
+            <FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
+              note={rented ? "Vehicles of the tenant's family living here." : "Vehicles of the family living here."}
+              empty="No vehicles added yet."
+              fields={[
+                { key: "vtype", label: "Vehicle type", options: VEHICLE_TYPES, required: true },
+                { key: "model", label: "Model", placeholder: "e.g. Honda Activa, Maruti Swift" },
+                { key: "plate", label: "Number plate", placeholder: "GJ 01 AB 1234" },
+              ]}
+              render={(r) => (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="mono text-[10px] bg-[var(--navy)] text-white px-1.5 py-0.5">{r.vtype}</span>
+                  <span className="serif text-[14px] font-bold">{r.model || "Model not given"}</span>
+                  {r.plate && <span className="mono text-[12px] font-bold border border-[var(--navy)] bg-white px-2 py-0.5 tracking-[0.06em]">{r.plate}</span>}
+                </div>
+              )} />
+
+            <FlatListPanel key={`emg-${f.id}-${familyVersion}`} table="emergency_contacts" flatId={f.id} title="EMERGENCY CONTACTS" addLabel="+ ADD CONTACT"
+              note="People outside the society to call if something happens. Seen only by this flat and the committee."
+              empty="No emergency contact added yet. Please add at least one."
+              fields={[
+                { key: "name", label: "Name", required: true },
+                { key: "relation", label: "Relation", placeholder: "Brother, Son, Friend…" },
+                { key: "phone", label: "Phone", required: true },
+                { key: "location", label: "Location", placeholder: "City or area" },
+              ]}
+              render={(r) => (
+                <div>
+                  <div className="serif text-[14px] font-bold">{r.name}{r.relation && <span className="mono text-[10px] opacity-60 font-normal"> • {r.relation}</span>}</div>
+                  <div className="mono text-[11px] mt-0.5"><a href={`tel:${String(r.phone).replace(/\s/g, "")}`} className="underline">{r.phone}</a>{r.location && <span className="opacity-60"> • {r.location}</span>}</div>
+                </div>
+              )} />
+
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div>
                   <div className="mono text-[10px] font-bold tracking-[0.14em]">FLAT DOCUMENTS • R2</div>
                   <div className="mono text-[11px] mt-1 opacity-70">{rented ? "Rent agreement, police verification, sale deed, share certificate" : "Sale deed, share certificate, receipts"} for {label(f)}. Max 4 MB each.</div>
                 </div>
-                <label className="btn-navy mono text-[11px] px-4 py-2 cursor-pointer">
+                <div className="flex flex-wrap gap-2 items-center">
+                {docTypesReady && <input className="field !w-[240px] !py-2 mono text-[11px]" placeholder="Document type *  e.g. Sale deed" value={newDocType} onChange={(e) => setNewDocType(e.target.value)} />}
+                <label className={`btn-navy mono text-[11px] px-4 py-2 cursor-pointer ${docTypesReady && !newDocType.trim() ? "opacity-60" : ""}`}
+                  onClick={(e) => { if (docTypesReady && !newDocType.trim()) { e.preventDefault(); setError("First type what the document is (e.g. Sale deed), then choose the file."); } }}>
                   {busy === "doc" ? "UPLOADING…" : "UPLOAD DOCUMENT"}
                   <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" disabled={!!busy} onChange={(e) => { const x = e.target.files?.[0]; e.target.value = ""; if (x) uploadDoc(x); }} />
                 </label>
+                </div>
               </div>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 mono text-[10px]">
                 {f.r2_url && <a href={f.r2_url} target="_blank" rel="noopener noreferrer" className="border border-[var(--border)] bg-white p-2 flex justify-between items-center hover:border-[var(--gold)]"><span className="truncate">Earlier document</span><span>↗</span></a>}
                 {docs.map((d) => (
-                  <div key={d.key} className="border border-[var(--border)] bg-white p-2 flex justify-between items-center gap-2 hover:border-[var(--gold)]">
-                    <a href={d.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{d.name}</a>
-                    <span className="flex items-center gap-2 shrink-0"><span className="opacity-50">{fmtDate(d.uploaded)} • {fmtSize(d.size)}</span><button onClick={() => removeDoc(d)} className="text-red-600">✕</button></span>
+                  <div key={d.key} className="border border-[var(--border)] bg-white p-2 hover:border-[var(--gold)]">
+                    {editDocKey === d.key ? (
+                      <div className="flex gap-2 items-center">
+                        <input autoFocus className="field !py-1 !text-[11px]" value={editDocType} onChange={(e) => setEditDocType(e.target.value)} placeholder="Document type" />
+                        <button onClick={() => saveDocType(d.key)} className="btn-navy px-2 py-1">SAVE</button>
+                        <button onClick={() => setEditDocKey(null)} className="underline">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          {docTypesReady && <div className={`font-bold text-[11px] ${docTypes[d.key] ? "text-[var(--navy)]" : "text-amber-700"}`}>{docTypes[d.key] || "Type not set"}</div>}
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="block truncate hover:underline">{d.name}</a>
+                          <div className="opacity-50">{fmtDate(d.uploaded)} • {fmtSize(d.size)}</div>
+                        </div>
+                        <span className="flex items-center gap-2 shrink-0">
+                          {docTypesReady && <button onClick={() => { setEditDocKey(d.key); setEditDocType(docTypes[d.key] || ""); }} className="underline">Edit type</button>}
+                          <button onClick={() => removeDoc(d)} className="text-red-600">✕</button>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {!f.r2_url && docs.length === 0 && <div className="opacity-60">No documents uploaded for this flat yet.</div>}

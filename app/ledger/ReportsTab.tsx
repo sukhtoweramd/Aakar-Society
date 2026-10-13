@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
+import VehicleReport from "./VehicleReport";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -101,6 +102,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
             <div className="mono text-[10px] opacity-60 mt-1">Society letterhead + table • choose &quot;Save as PDF&quot; in the print window</div>
             <button onClick={exportPDF} className="btn-gold mono text-[12px] tracking-[0.1em] w-full py-2.5 mt-4">CREATE PDF</button>
           </div>
+          <VehicleReport list={list} members={members} scope={scope} />
         </div>
       </div>
     </div>

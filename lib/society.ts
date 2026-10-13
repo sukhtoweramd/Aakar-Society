@@ -21,6 +21,8 @@ export type Flat = {
   tenant_from?: string | null;
   agreement_until?: string | null;
   committee_role?: string | null; // COMMITTEE_ROLES.sql
+  member_since?: string | null; // PRE_PHASE2_A.sql
+  share_cert_no?: string | null;
 };
 
 export type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
