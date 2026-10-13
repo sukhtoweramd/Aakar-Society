@@ -5,33 +5,41 @@ import type { Notice } from "@/lib/society";
 import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 
+type N = Notice & { is_banner?: boolean; banner_until?: string | null };
+type Form = { title: string; content: string; tower: string; banner: boolean; until: string };
+const BLANK: Form = { title: "", content: "", tower: "Common", banner: false, until: "" };
+const isImage = (url?: string | null) => !!url && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
+const today = () => new Date().toISOString().slice(0, 10);
+const towerText = (t?: string | null) => (!t || /common|all/i.test(t) ? "ALL TOWERS" : `TOWER ${t.replace(/tower\s*/i, "")}`);
+
 export default function NoticesTab({ ctx }: { ctx: Ctx }) {
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<N[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [n, setN] = useState({ title: "", content: "", tower: "Common", banner: false, until: "" });
+  const [n, setN] = useState<Form>(BLANK);
   const [bannerReady, setBannerReady] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
+  // editing an existing notice
+  const [editId, setEditId] = useState<string | null>(null);
+  const [ef, setEf] = useState<Form>(BLANK);
+  const [eFile, setEFile] = useState<File | null>(null);
+  const [eRemoveFile, setERemoveFile] = useState(false);
 
   async function load() {
     const a = await supabase.from("notices").select("*").order("created_at", { ascending: false });
     if (a.error) setError(a.error.message);
-    setNotices((a.data as Notice[]) || []);
+    setNotices((a.data as N[]) || []);
   }
   useEffect(() => {
     load();
     supabase.from("notices").select("is_banner").limit(1).then(({ error }) => setBannerReady(!error)); // BANNERS.sql run?
   }, []);
-  async function setBanner(x: any, on: boolean) {
-    let until: string | null = x.banner_until || null;
-    if (on) {
-      const v = prompt("Show as login banner until which date? (YYYY-MM-DD)\nLeave empty to keep it until you switch it off.", until || "");
-      if (v === null) return;
-      if (v.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(v.trim())) { setError("Date must look like 2026-10-31"); return; }
-      until = v.trim() || null;
-    }
-    const { error } = await supabase.from("notices").update({ is_banner: on, banner_until: on ? until : null }).eq("id", x.id);
+
+  async function setBanner(x: N, on: boolean) {
+    const upd: any = { is_banner: on };
+    if (on && x.banner_until && x.banner_until < today()) upd.banner_until = null; // old end date has passed
+    const { error } = await supabase.from("notices").update(upd).eq("id", x.id);
     if (error) setError(error.message); else load();
   }
 
@@ -44,11 +52,33 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
       if (bannerReady && n.banner) { row.is_banner = true; row.banner_until = n.until || null; }
       const { error } = await supabase.from("notices").insert([row]);
       if (error) throw error;
-      setN({ title: "", content: "", tower: "Common", banner: false, until: "" }); setFile(null); setFileKey((k) => k + 1); load();
+      setN(BLANK); setFile(null); setFileKey((k) => k + 1); load();
     } catch (e: any) { setError(e.message); }
     setBusy(null);
   }
-  async function removeNotice(x: Notice) {
+
+  function startEdit(x: N) {
+    setEditId(x.id); setEFile(null); setERemoveFile(false); setError("");
+    setEf({ title: x.title || "", content: x.content || "", tower: !x.tower || /common|all/i.test(x.tower) ? "Common" : x.tower.replace(/tower\s*/i, ""), banner: !!x.is_banner, until: x.banner_until || "" });
+  }
+  async function saveEdit(x: N) {
+    if (!ef.title.trim()) { setError("Enter a notice title"); return; }
+    setBusy("edit"); setError("");
+    try {
+      let file_url = x.file_url || null;
+      if (eFile) file_url = (await uploadFile(eFile, "notices")).url;
+      else if (eRemoveFile) file_url = null;
+      const upd: any = { title: ef.title.trim(), content: ef.content.trim() || null, tower: ef.tower, file_url };
+      if (bannerReady) { upd.is_banner = ef.banner; upd.banner_until = ef.banner ? ef.until || null : null; }
+      const { error } = await supabase.from("notices").update(upd).eq("id", x.id);
+      if (error) throw error;
+      // the old picture/file is no longer used
+      if (x.file_url && x.file_url !== file_url) deleteFile({ url: x.file_url }).catch(() => {});
+      setEditId(null); load();
+    } catch (e: any) { setError(e.message); }
+    setBusy(null);
+  }
+  async function removeNotice(x: N) {
     if (!confirm(`Delete notice "${x.title}"?`)) return;
     const { error } = await supabase.from("notices").delete().eq("id", x.id);
     if (error) { setError(error.message); return; }
@@ -56,6 +86,14 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
     load();
   }
 
+  const bannerFields = (f: Form, set: (f: Form) => void) => bannerReady && (
+    <div className="flex flex-wrap items-center gap-3 border border-[var(--gold)] bg-[#fffdf5] p-2.5">
+      <label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={f.banner} onChange={(e) => set({ ...f, banner: e.target.checked })} /> SHOW AS LOGIN BANNER</label>
+      {f.banner && <label className="flex items-center gap-2">until <input type="date" className="field !w-auto !py-1" value={f.until} onChange={(e) => set({ ...f, until: e.target.value })} /> <span className="opacity-60">(optional)</span>
+        {f.until && <button type="button" onClick={() => set({ ...f, until: "" })} className="underline">clear</button>}</label>}
+      <span className="opacity-60 text-[10px] w-full">Appears as a large banner right after members log in. Attach a photo or poster (JPG/PNG) to show it on the banner.</span>
+    </div>
+  );
 
   return (
     <div className="space-y-4 fade-in">
@@ -65,6 +103,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
           <div className="serif text-[22px] font-bold">Society Notices</div>
           <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored in R2</div>
           {ctx.isCommittee && <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] p-4 space-y-2 mono text-[11px]">
+            <div className="text-[10px] tracking-[0.14em] font-bold opacity-70">NEW NOTICE</div>
             <div className="grid sm:grid-cols-[1fr_140px] gap-2">
               <input className="field" placeholder="Notice title *" value={n.title} onChange={(e) => setN({ ...n, title: e.target.value })} />
               <select className="field" value={n.tower} onChange={(e) => setN({ ...n, tower: e.target.value })}>
@@ -72,35 +111,64 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
               </select>
             </div>
             <textarea className="field" rows={3} placeholder="Type notice…" value={n.content} onChange={(e) => setN({ ...n, content: e.target.value })} />
-            {bannerReady && (
-              <div className="flex flex-wrap items-center gap-3 border border-[var(--gold)] bg-[#fffdf5] p-2.5">
-                <label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={n.banner} onChange={(e) => setN({ ...n, banner: e.target.checked })} /> SHOW AS LOGIN BANNER</label>
-                {n.banner && <label className="flex items-center gap-2">until <input type="date" className="field !w-auto !py-1" value={n.until} onChange={(e) => setN({ ...n, until: e.target.value })} /> <span className="opacity-60">(optional)</span></label>}
-                <span className="opacity-60 text-[10px] w-full">Appears as a large banner right after members log in. Attach a photo (JPG/PNG) to show it on the banner.</span>
-              </div>
-            )}
+            {bannerFields(n, setN)}
             <div className="flex flex-wrap gap-3 items-center justify-between">
               <input key={fileKey} type="file" accept=".pdf,.jpg,.jpeg,.png,.docx" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-[11px]" />
               <button onClick={publish} disabled={!!busy} className="btn-navy px-5 py-2 tracking-[0.1em]">{busy === "notice" ? "PUBLISHING…" : "PUBLISH"}</button>
             </div>
           </div>}
           <div className="mt-4 space-y-2">
-            {notices.map((x) => (
+            {notices.map((x) => editId === x.id ? (
+              <div key={x.id} className="border-2 border-[var(--gold)] bg-[#fffdf5] p-4 space-y-2 mono text-[11px]">
+                <div className="text-[10px] tracking-[0.14em] font-bold opacity-70">EDIT NOTICE</div>
+                <div className="grid sm:grid-cols-[1fr_140px] gap-2">
+                  <input className="field" placeholder="Notice title *" value={ef.title} onChange={(e) => setEf({ ...ef, title: e.target.value })} />
+                  <select className="field" value={ef.tower} onChange={(e) => setEf({ ...ef, tower: e.target.value })}>
+                    <option value="Common">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option>
+                  </select>
+                </div>
+                <textarea className="field" rows={4} placeholder="Type notice…" value={ef.content} onChange={(e) => setEf({ ...ef, content: e.target.value })} />
+                {bannerFields(ef, setEf)}
+                <div className="border border-[var(--border)] bg-white p-2.5 flex flex-wrap items-center gap-3">
+                  <span className="font-bold">PICTURE / FILE</span>
+                  {x.file_url && !eRemoveFile && !eFile && (isImage(x.file_url)
+                    ? <img src={x.file_url} alt="" className="h-14 w-14 object-cover border border-[var(--border)]" />
+                    : <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="underline">📎 current file</a>)}
+                  {x.file_url && eRemoveFile && <span className="text-red-700">will be removed</span>}
+                  {!x.file_url && !eFile && <span className="opacity-60">none</span>}
+                  <label className="btn-line px-3 py-1.5 cursor-pointer">{x.file_url ? "REPLACE" : "ADD"}
+                    <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx" onChange={(e) => { setEFile(e.target.files?.[0] || null); setERemoveFile(false); }} />
+                  </label>
+                  {eFile && <span className="text-[var(--navy)] font-bold">New: {eFile.name}</span>}
+                  {x.file_url && !eRemoveFile && <button type="button" onClick={() => { setERemoveFile(true); setEFile(null); }} className="text-red-600 underline">Remove</button>}
+                  {eRemoveFile && <button type="button" onClick={() => setERemoveFile(false)} className="underline">Undo</button>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(x)} disabled={!!busy} className="btn-navy px-5 py-2 tracking-[0.1em]">{busy === "edit" ? "SAVING…" : "SAVE CHANGES"}</button>
+                  <button onClick={() => setEditId(null)} className="btn-line px-4 py-2">CANCEL</button>
+                </div>
+              </div>
+            ) : (
               <div key={x.id} className="border border-[var(--border)] bg-[var(--surface)] p-4 flex justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="serif text-[15px] font-bold">{x.title}</div>
-                    {(x as any).is_banner && (!(x as any).banner_until || (x as any).banner_until >= new Date().toISOString().slice(0, 10)) && <span className="mono text-[9px] tracking-[0.12em] bg-[var(--gold)] text-black px-1.5 py-0.5 font-bold">★ LOGIN BANNER{(x as any).banner_until ? ` • UNTIL ${new Date((x as any).banner_until).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}</span>}
-                    <span className="mono text-[9px] tracking-[0.12em] border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5">{!x.tower || /common|all/i.test(x.tower) ? "ALL TOWERS" : `TOWER ${x.tower.replace(/tower\s*/i, "")}`}</span>
-                  </div>
-                  {x.content && <div className="text-[13px] opacity-80 mt-1 whitespace-pre-wrap">{x.content}</div>}
-                  <div className="mono text-[10px] opacity-50 mt-2">
-                    {new Date(x.created_at).toLocaleString("en-IN")}{x.created_by ? ` • ${x.created_by}` : ""}
-                    {x.file_url && <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="ml-2 underline text-[var(--navy)] opacity-100">📎 View file</a>}
+                <div className="min-w-0 flex gap-3">
+                  {isImage(x.file_url) && <a href={x.file_url!} target="_blank" rel="noopener noreferrer" className="shrink-0"><img src={x.file_url!} alt="" className="h-20 w-20 object-cover border border-[var(--border)]" /></a>}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="serif text-[15px] font-bold">{x.title}</div>
+                      {x.is_banner && (!x.banner_until || x.banner_until >= today()) && <span className="mono text-[9px] tracking-[0.12em] bg-[var(--gold)] text-black px-1.5 py-0.5 font-bold">★ LOGIN BANNER{x.banner_until ? ` • UNTIL ${new Date(x.banner_until).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}</span>}
+                      {x.is_banner && x.banner_until && x.banner_until < today() && ctx.isCommittee && <span className="mono text-[9px] tracking-[0.12em] border border-[var(--border)] px-1.5 py-0.5 opacity-60">BANNER ENDED</span>}
+                      <span className="mono text-[9px] tracking-[0.12em] border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5">{towerText(x.tower)}</span>
+                    </div>
+                    {x.content && <div className="text-[13px] opacity-80 mt-1 whitespace-pre-wrap">{x.content}</div>}
+                    <div className="mono text-[10px] opacity-50 mt-2">
+                      {new Date(x.created_at).toLocaleString("en-IN")}{x.created_by ? ` • ${x.created_by}` : ""}
+                      {x.file_url && <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="ml-2 underline text-[var(--navy)] opacity-100">📎 View file</a>}
+                    </div>
                   </div>
                 </div>
                 {ctx.isCommittee && <div className="flex flex-col items-end gap-2 shrink-0 mono text-[10px]">
-                  {bannerReady && ((x as any).is_banner
+                  <button onClick={() => startEdit(x)} className="btn-navy px-3 py-1">EDIT</button>
+                  {bannerReady && (x.is_banner
                     ? <button onClick={() => setBanner(x, false)} className="border border-[var(--gold)] bg-[#fffdf5] px-2 py-1 font-bold">BANNER: ON ✕</button>
                     : <button onClick={() => setBanner(x, true)} className="border border-[var(--border)] px-2 py-1">SHOW AS BANNER</button>)}
                   <button onClick={() => removeNotice(x)} className="text-red-600">DELETE</button>
@@ -110,7 +178,6 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
             {notices.length === 0 && <div className="mono text-[11px] opacity-60">No notices yet.</div>}
           </div>
         </div>
-
       </div>
     </div>
   );

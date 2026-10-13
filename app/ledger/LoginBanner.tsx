@@ -18,6 +18,7 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
   const [paused, setPaused] = useState(false);
   const started = useRef(Date.now());
   const [progress, setProgress] = useState(0);
+  const [reading, setReading] = useState<Banner | null>(null); // full notice view
 
   useEffect(() => {
     try { if (sessionStorage.getItem(KEY(userId))) return; } catch {}
@@ -37,18 +38,18 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
     if (!open || items.length < 2) return;
     started.current = Date.now(); setProgress(0);
     const t = setInterval(() => {
-      if (paused) { started.current = Date.now() - progress * SLIDE_MS; return; }
+      if (paused || reading) { started.current = Date.now() - progress * SLIDE_MS; return; }
       const p = (Date.now() - started.current) / SLIDE_MS;
       if (p >= 1) { setI((x) => (x + 1) % items.length); started.current = Date.now(); setProgress(0); } else setProgress(p);
     }, 80);
     return () => clearInterval(t);
-  }, [open, items.length, i, paused]);
+  }, [open, items.length, i, paused, reading]);
 
   useEffect(() => {
     if (!open) return;
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") close(); if (e.key === "ArrowRight") go(1); if (e.key === "ArrowLeft") go(-1); };
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { if (reading) setReading(null); else close(); return; } if (reading) return; if (e.key === "ArrowRight") go(1); if (e.key === "ArrowLeft") go(-1); };
     window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
-  }, [open, items.length]);
+  }, [open, items.length, reading]);
 
   function close() { try { sessionStorage.setItem(KEY(userId), "1"); } catch {} setOpen(false); }
   function go(d: number) { setI((x) => (x + d + items.length) % items.length); }
@@ -56,6 +57,35 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
   const b = items[Math.min(i, items.length - 1)];
   const img = isImage(b.file_url) ? b.file_url! : null;
   const towerLabel = !b.tower || /common|all/i.test(b.tower) ? "ALL TOWERS" : `TOWER ${b.tower.replace(/tower\s*/i, "").toUpperCase()}`;
+
+  if (reading) {
+    const rimg = isImage(reading.file_url) ? reading.file_url! : null;
+    return (
+      <div className="fixed inset-0 z-[100] bg-[rgba(8,14,32,0.85)] overflow-y-auto p-3 sm:p-6 fade-in" role="dialog" aria-modal="true" aria-label={reading.title || "Notice"} onClick={() => setReading(null)}>
+        <div onClick={(e) => e.stopPropagation()} className="mx-auto max-w-[760px] bg-[var(--surface)] text-[var(--ink)] border-[3px] border-[var(--gold)] shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+          <div className="sticky top-0 z-10 bg-[var(--navy)] text-white flex items-center justify-between gap-2 px-4 py-2.5">
+            <button onClick={() => setReading(null)} className="mono text-[12px] font-bold tracking-[0.08em] hover:text-[var(--gold)]">← {items.length > 1 ? "ALL BANNERS" : "BACK"}</button>
+            <button onClick={() => { setReading(null); close(); }} aria-label="Close" className="h-9 w-9 grid place-items-center text-[20px] hover:bg-white/10">✕</button>
+          </div>
+          <div className="p-5 sm:p-7">
+            <div className="flex flex-wrap items-center gap-2 mono text-[10px] tracking-[0.16em]">
+              <span className="bg-[var(--gold)] text-black px-2 py-0.5 font-bold">NOTICE</span>
+              <span className="border border-[var(--border)] px-2 py-0.5">{!reading.tower || /common|all/i.test(reading.tower) ? "ALL TOWERS" : `TOWER ${reading.tower.replace(/tower\s*/i, "").toUpperCase()}`}</span>
+              <span className="opacity-60">{new Date(reading.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</span>
+            </div>
+            <h2 className="serif text-[28px] sm:text-[34px] font-bold leading-tight mt-3">{reading.title}</h2>
+            {reading.content && <div className="text-[15px] leading-relaxed mt-3 whitespace-pre-wrap">{reading.content}</div>}
+            {rimg && <a href={rimg} target="_blank" rel="noopener noreferrer" title="Open full size"><img src={rimg} alt={reading.title || ""} className="mt-5 w-full h-auto border border-[var(--border)]" /></a>}
+            {reading.file_url && !rimg && <a href={reading.file_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-5 btn-navy mono text-[12px] px-4 py-2.5">📎 OPEN ATTACHMENT</a>}
+            <div className="mt-6 pt-4 border-t border-[var(--border)] flex flex-wrap justify-between gap-3 mono text-[11px]">
+              <button onClick={() => { setReading(null); close(); onRead(); }} className="underline">See all society notices</button>
+              {rimg && <a href={rimg} target="_blank" rel="noopener noreferrer" className="underline">Open picture full size ↗</a>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] bg-[rgba(8,14,32,0.72)] backdrop-blur-[2px] grid place-items-center p-4 fade-in" onClick={close} role="dialog" aria-modal="true" aria-label="Society notices">
@@ -74,9 +104,10 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
         <button onClick={close} aria-label="Close" className="absolute top-2 right-2 z-10 h-10 w-10 grid place-items-center text-[22px] leading-none bg-black/30 hover:bg-black/50">✕</button>
 
         {img ? (
-          <div className="relative flex-1 min-h-[220px] bg-black">
-            <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--navy)] via-transparent to-transparent" />
+          <div className="relative flex-1 min-h-[300px] sm:min-h-[220px] bg-black">
+            <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-50" />
+            <img src={img} alt="" className="absolute inset-0 w-full h-full object-contain cursor-zoom-in" onClick={() => setReading(b)} />
+            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[var(--navy)] to-transparent pointer-events-none" />
           </div>
         ) : (
           <div className="flex-1 min-h-[120px] relative overflow-hidden">
@@ -94,7 +125,7 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
           <div className="serif text-[26px] sm:text-[30px] font-bold leading-tight mt-3">{b.title}</div>
           {b.content && <div className="text-[14px] leading-relaxed opacity-85 mt-2 line-clamp-4 whitespace-pre-line">{b.content}</div>}
           <div className="mt-5 flex items-center justify-between gap-3">
-            <button onClick={() => { close(); onRead(); }} className="bg-[var(--gold)] text-black mono text-[12px] font-bold tracking-[0.1em] px-5 py-2.5">READ NOTICE →</button>
+            <button onClick={() => setReading(b)} className="bg-[var(--gold)] text-black mono text-[12px] font-bold tracking-[0.1em] px-5 py-2.5">READ NOTICE →</button>
             {items.length > 1 && (
               <div className="flex items-center gap-2 mono text-[12px]">
                 <button onClick={() => go(-1)} aria-label="Previous" className="h-9 w-9 border border-white/30 hover:border-[var(--gold)]">‹</button>
