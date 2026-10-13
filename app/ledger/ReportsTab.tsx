@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import VehicleReport from "./VehicleReport";
+import { printFlatCards } from "@/lib/flatCard";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -103,6 +104,13 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
             <button onClick={exportPDF} className="btn-gold mono text-[12px] tracking-[0.1em] w-full py-2.5 mt-4">CREATE PDF</button>
           </div>
           <VehicleReport list={list} members={members} scope={scope} />
+          <div className="border border-[var(--border)] bg-[var(--bg)] p-5 sm:col-span-2 flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <div className="mono text-[11px] font-bold tracking-[0.12em]">FLAT PROFILE CARDS</div>
+              <div className="mono text-[10px] opacity-60 mt-1">One A4 card per flat with family, vehicles, emergency contacts and documents • {scope}: {list.length} flats</div>
+            </div>
+            <button onClick={() => { if (list.length <= 10 || confirm(`Prepare ${list.length} cards (one page each)? This can take a few seconds.`)) printFlatCards(list, `Flat Profile Cards – ${scope}`); }} disabled={!list.length} className="btn-gold mono text-[12px] tracking-[0.1em] px-5 py-2.5">PRINT ALL CARDS</button>
+          </div>
         </div>
       </div>
     </div>

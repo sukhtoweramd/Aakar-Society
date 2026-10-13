@@ -7,6 +7,7 @@ import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
 import ConsentCard from "./ConsentCard";
 import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
+import { printFlatCards } from "@/lib/flatCard";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -188,6 +189,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
             {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
             <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
+            <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] px-3 py-2">{isCommittee && f.id !== ctx.homeFlat ? "PRINT CARD" : "PRINT MY CARD"}</button>
             <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
           </div>
         </div>
