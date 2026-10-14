@@ -8,6 +8,7 @@ import MembersPanel from "./MembersPanel";
 import ConsentCard from "./ConsentCard";
 import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
 import { printFlatCards } from "@/lib/flatCard";
+import MyBills from "./billing/MyBills";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -317,6 +318,9 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
             <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
+
+            {!isCommittee && <MyBills flat={f} flats={flats} email={ctx.email} />}
+            {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
 
             <FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
               note={rented ? "Vehicles of the tenant's family living here." : "Vehicles of the family living here."}
