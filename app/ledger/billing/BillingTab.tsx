@@ -4,9 +4,10 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, sortFlats, type MemberLite } from "@/lib/society";
 import {
   addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
-  OTHER_PRESETS, periodOf, periodOptions, reserveNumbers, today, waLink, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
+  OTHER_PRESETS, periodOf, periodOptions, reserveNumbers, today, waLink, duesText, statementPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
 } from "@/lib/billing";
 import type { Ctx } from "../ctx";
+import SharePdfButton from "./SharePdfButton";
 import LedgerCard from "./LedgerCard";
 import BillingSettings from "./BillingSettings";
 import { backBar } from "@/lib/printBack";
@@ -72,7 +73,7 @@ export default function BillingTab({ ctx }: { ctx: Ctx }) {
       )}
       {view === "NEW BILLS" && <BillRun ctx={ctx} flats={flats} bills={bills} settings={settings} signatories={signatories} pc={pc} pays={pays} onDone={load} />}
       {view === "OTHER BILL" && <OtherBill ctx={ctx} flats={flats} settings={settings} signatories={signatories} pc={pc} pays={pays} bills={bills} onDone={load} />}
-      {view === "DUES" && <Dues flats={flats} bills={bills} pays={pays} mobileOf={mobileOf} open={openLedger} />}
+      {view === "DUES" && <Dues flats={flats} bills={bills} pays={pays} mobileOf={mobileOf} open={openLedger} pc={pc} />}
       {view === "SETTINGS" && <BillingSettings settings={settings} signatories={signatories} email={ctx.email} onChanged={load} />}
     </div>
   );
@@ -239,7 +240,7 @@ function OtherBill({ ctx, flats, settings, signatories, pc, pays, bills, onDone 
 }
 
 // ---------- Dues list ----------
-function Dues({ flats, bills, pays, mobileOf, open }: { flats: any[]; bills: Bill[]; pays: Payment[]; mobileOf: (id: string) => string | null; open: (id: string) => void }) {
+function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills: Bill[]; pays: Payment[]; mobileOf: (id: string) => string | null; open: (id: string) => void; pc: PrintCtx }) {
   const [tower, setTower] = useState("ALL");
   const rows = flats.filter((f) => tower === "ALL" || f.tower === tower).map((f) => {
     const fb = bills.filter((b) => b.flat_id === f.id && b.status === "active");
@@ -273,7 +274,11 @@ function Dues({ flats, bills, pays, mobileOf, open }: { flats: any[]; bills: Bil
               <td className="px-2.5 py-2">{r.f.owner_name || "—"}</td><td className="px-2.5 py-2">{m || <span className="opacity-40">—</span>}</td>
               <td className="px-2.5 py-2">{r.count}</td><td className={`px-2.5 py-2 ${overdue(r.oldest) ? "text-red-700 font-bold" : ""}`}>{dmy(r.oldest)}{overdue(r.oldest) ? " • overdue" : ""}</td>
               <td className="px-2.5 py-2 text-right font-bold text-amber-700">{inr(r.due)}</td>
-              <td className="px-2.5 py-2">{m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, `Aakar Co-op Housing Society: Gentle reminder — maintenance of ₹${inr(r.due)} is due for Flat ${label(r.f)}. Please pay at the earliest. Bills and bank details are in the society app under MY FLAT. Thank you.`)}>📲 WhatsApp</a> : <span className="opacity-40">no mobile</span>}</td>
+              <td className="px-2.5 py-2"><div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap">
+                {m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}>📲 WhatsApp</a> : <span className="opacity-40">no mobile</span>}
+                <SharePdfButton className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
+                  text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />
+              </div></td>
             </tr>); })}
             {rows.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center opacity-60">No dues. Every bill is paid.</td></tr>}
           </tbody>

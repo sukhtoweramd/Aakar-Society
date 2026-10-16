@@ -277,6 +277,27 @@ export function statementHtml(f: Flat, bills: Bill[], pays: Payment[], c: PrintC
   <div class="foot"><div>Printed on ${dmy(today())} from the society app<br><b style="color:var(--navy);letter-spacing:.06em">FOR MEMBER'S INFORMATION</b></div><div>Flat ${esc(label(f))}</div></div>${frameEnd}`;
 }
 
+/** The flat's ledger statement as a PDF file (for sharing on WhatsApp etc.). */
+export async function statementPdf(f: Flat, bills: Bill[], pays: Payment[], c: PrintCtx): Promise<File> {
+  const { pagesToPdf } = await import("./pdfShare");
+  return pagesToPdf([statementHtml(f, bills, pays, c)], CSS, `Ledger_${label(f)}_${today()}.pdf`);
+}
+
+/** Itemised WhatsApp text of a flat's unpaid bills, with bank details when set. */
+export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | null): string {
+  const open = bills.filter((b) => b.flat_id === f.id && b.status === "active")
+    .map((b) => ({ b, ...billBalance(b, pays) })).filter((x) => x.balance > 0)
+    .sort((a, z) => a.b.bill_date.localeCompare(z.b.bill_date));
+  const total = open.reduce((n, x) => n + x.balance, 0);
+  const lines = open.map(({ b, paid, balance }) => {
+    const what = b.period_from ? `maintenance ${dmy(b.period_from)} – ${dmy(b.period_to)}` : (b.lines?.[0]?.description || "other bill");
+    return `• Bill ${b.bill_no} (${what}): ₹${inr(b.amount)}${paid > 0 ? `, paid ₹${inr(paid)}` : ""}, balance ₹${inr(balance)}${b.due_date ? `, due ${dmy(b.due_date)}` : ""}`;
+  });
+  const bank = s?.account_no && s?.ifsc
+    ? `\n\nPay to: ${s.account_name || "Aakar Co-op Housing Society Ltd."}\n${s.bank_name || "Bank"}${s.bank_branch ? `, ${s.bank_branch}` : ""}\nA/c ${s.account_no} • IFSC ${s.ifsc}${s.upi_id ? `\nUPI: ${s.upi_id}` : ""}` : "";
+  return `Aakar Co-op Housing Society: Gentle reminder for Flat ${label(f)} — dues as on ${dmy(today())}:\n${lines.join("\n")}\n\nTotal due: ₹${inr(total)}${bank}\n\nPlease pay at the earliest. Your full ledger is in the society app under MY FLAT. If already paid, kindly ignore. Thank you.`;
+}
+
 /** Open pages in a new window (opened first so pop-up blockers allow it). */
 export function openPrint(title: string, pages: string[], win?: Window | null) {
   const w = win || window.open("", "_blank");

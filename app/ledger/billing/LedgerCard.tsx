@@ -4,9 +4,10 @@ import { Fragment, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { label, type Flat } from "@/lib/society";
 import {
-  billBalance, billHtml, dmy, flatTotals, inr, MODES, num, openPrint, receiptHtml, reserveNumbers, statementHtml, today, waLink,
+  billBalance, billHtml, dmy, flatTotals, inr, MODES, num, openPrint, receiptHtml, reserveNumbers, statementHtml, statementPdf, today, waLink,
   type Bill, type Payment, type PrintCtx, type Signatory,
 } from "@/lib/billing";
+import SharePdfButton from "./SharePdfButton";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const shortPeriod = (a: string, b: string) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() ? `${MON[x.getMonth()]}–${MON[y.getMonth()]} ${x.getFullYear()}` : `${MON[x.getMonth()]} ${x.getFullYear()} – ${MON[y.getMonth()]} ${y.getFullYear()}`; };
@@ -125,6 +126,8 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={printStatement} className="btn-line px-3 py-1.5">{editable ? "PRINT LEDGER" : "PRINT MY LEDGER"}</button>
+          <SharePdfButton className="btn-line px-3 py-1.5" make={() => statementPdf(flat, myBills, myPays, pc)}
+            text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(flat)} as on ${dmy(today())}.`} />
           {editable && <button onClick={printSelected} disabled={!sel.size} className="btn-line px-3 py-1.5 disabled:opacity-40">PRINT SELECTED RECEIPTS ({sel.size})</button>}
         </div>
       </div>
