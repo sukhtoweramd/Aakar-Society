@@ -9,6 +9,7 @@ import {
 import type { Ctx } from "../ctx";
 import LedgerCard from "./LedgerCard";
 import BillingSettings from "./BillingSettings";
+import { backBar } from "@/lib/printBack";
 
 const VIEWS = ["LEDGER", "NEW BILLS", "OTHER BILL", "DUES", "SETTINGS"] as const;
 type View = (typeof VIEWS)[number];
@@ -249,7 +250,7 @@ function Dues({ flats, bills, pays, mobileOf, open }: { flats: any[]; bills: Bil
   const overdue = (d?: string) => !!d && d < today();
   function print() {
     const w = window.open("", "_blank"); if (!w) return;
-    w.document.write(`<html><head><title>Dues list</title><style>body{font-family:Inter,Arial;margin:24px;color:#1a1a18}h1{color:#0f1d3d;font-size:17px;margin:0}.s{font-size:11px;color:#6f6a5d;margin:4px 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0f1d3d;color:#fff;text-align:left;padding:6px}td{padding:5px 6px;border-bottom:1px solid #e8e2d1}.r{text-align:right}tfoot td{font-weight:800;background:#f7f2e4}@page{size:A4;margin:12mm}</style></head><body>
+    w.document.write(`<html><head><title>Dues list</title><style>body{font-family:Inter,Arial;margin:24px;color:#1a1a18}h1{color:#0f1d3d;font-size:17px;margin:0}.s{font-size:11px;color:#6f6a5d;margin:4px 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0f1d3d;color:#fff;text-align:left;padding:6px}td{padding:5px 6px;border-bottom:1px solid #e8e2d1}.r{text-align:right}tfoot td{font-weight:800;background:#f7f2e4}@page{size:A4;margin:12mm}</style></head><body>${backBar()}
       <h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — DUES LIST</h1><div class="s">${tower === "ALL" ? "All towers" : "Tower " + tower} • as on ${dmy(today())} • ${rows.length} flats</div>
       <table><thead><tr><th>Flat</th><th>Owner</th><th>Mobile</th><th>Unpaid bills</th><th>Oldest due date</th><th class="r">Amount due ₹</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td><b>${label(r.f)}</b></td><td>${r.f.owner_name || ""}</td><td>${mobileOf(r.f.id) || ""}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>

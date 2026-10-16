@@ -5,6 +5,7 @@ import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees
 import type { Ctx } from "./ctx";
 import VehicleReport from "./VehicleReport";
 import { printFlatCards } from "@/lib/flatCard";
+import { backBar } from "@/lib/printBack";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -58,7 +59,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
       .meta{font-size:11px;color:#444;margin-bottom:8px}
       .charges{font-size:11px;border:1px solid #e8e2d1;background:#fdfcf5;padding:8px 10px;line-height:1.6}
       @media screen{body{padding:24px}}
-    </style></head><body>
+    </style></head><body>${backBar()}
       <table>
         <thead>
           <tr class="title"><td colspan="6"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD.</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT • ${esc(scope.toUpperCase())}</div></div></td></tr>

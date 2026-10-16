@@ -2,6 +2,7 @@
 // Billing: shared types, numbering, amounts, ledger maths and the printable bill / receipt / statement.
 import { supabase } from "./supabaseClient";
 import { label, SOCIETY, type Flat } from "./society";
+import { backButton } from "./printBack";
 
 export type Settings = {
   id: number; bill_prefix: string; bill_last_no: number; other_prefix: string; other_last_no: number;
@@ -178,7 +179,7 @@ tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:
 .slip h3{font-size:8pt;letter-spacing:.2em;color:var(--navy);font-weight:800}.fill{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm 5mm;margin-top:3mm;font-size:8.4pt}.fill div{border-bottom:.3mm solid var(--line);padding-bottom:1.2mm;color:var(--mute)}.fill b{color:var(--navy)}
 .foot{margin-top:3mm;padding-top:2.5mm;border-top:.3mm solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;font-size:7.2pt;color:var(--mute);flex:none}
 .grow{flex:1}
-.bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;font-size:13px}.bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
+.bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}.bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
 @media screen{.page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.18)}}@media print{body{background:#fff}.bar{display:none}}`;
 
 const frameStart = `<section class="page"><div class="frame"><div class="inner"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
@@ -282,7 +283,7 @@ export function openPrint(title: string, pages: string[], win?: Window | null) {
   if (!w) { alert("Please allow pop-ups to print."); return; }
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${CSS}</style></head><body>
-    <div class="bar"><button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span></div>${pages.join("")}
+    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span></div>${pages.join("")}
     <script>setTimeout(function(){document.body.dataset.ready='1';window.print()},700)</script></body></html>`);
   w.document.close(); w.focus();
 }

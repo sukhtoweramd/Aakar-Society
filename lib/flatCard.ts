@@ -3,6 +3,7 @@
 import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
 import { byFamilyOrder, committeeBadge, label, SOCIETY, sortFlats, type Flat } from "./society";
+import { backButton } from "./printBack";
 
 type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; office_address?: string | null; office_phone?: string | null };
@@ -168,7 +169,7 @@ td .sub{display:block;font-size:7.4pt;color:var(--mute);margin-top:.3mm}
 .sign{text-align:center;min-width:45mm}
 .sign .l{border-top:0.3mm solid var(--ink);margin-top:6mm;padding-top:1mm;font-size:7.4pt;color:var(--ink)}
 .conf{font-weight:700;color:var(--navy);letter-spacing:.06em}
-.bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;font-size:13px}
+.bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}
 .bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
 @media screen{.page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.18)}}
 @media print{body{background:#fff}.bar{display:none}}`;
@@ -192,7 +193,7 @@ export function openCards(cards: CardData[], title: string, win?: Window | null)
     <style>${CSS}</style><script>window.AUTO_PRINT=true;
       (function(){var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap';
       window.FONT=new Promise(function(r){l.onload=l.onerror=r;setTimeout(r,3000)});document.head.appendChild(l);})();</script></head><body>
-    <div class="bar"><button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${cards.length} card${cards.length === 1 ? "" : "s"} • one A4 page each</span></div>
+    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${cards.length} card${cards.length === 1 ? "" : "s"} • one A4 page each</span></div>
     ${cards.map((c) => card(c, printed)).join("")}${FIT}</body></html>`);
   w.document.close();
   w.focus();

@@ -26,6 +26,18 @@ export default function IndexTab({ ctx }: { ctx: Ctx }) {
           {towerFilter !== "ALL" && <button onClick={() => setTowerFilter("ALL")} className="mono text-[10px] bg-[var(--navy)] text-white px-2 py-2">CLEAR FILTER ✕</button>}
         </div>
       </div>
+      {/* Phones/tablets: the tower filter lives in the sidebar at the bottom of the page, so repeat it here at the top */}
+      <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        {["ALL", ...(Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[]), "COMMITTEE"].map((t) => {
+          const on = towerFilter === t;
+          return (
+            <button key={t} onClick={() => { setTowerFilter(t); setSearch(""); }}
+              className={`shrink-0 mono text-[12px] font-bold px-4 py-2.5 rounded-[3px] border ${on ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)]"}`}>
+              {t === "ALL" ? "ALL" : t === "COMMITTEE" ? "★ COMMITTEE" : `TOWER ${t}`}
+            </button>
+          );
+        })}
+      </div>
       <div className="flex flex-wrap gap-4 mono text-[10px] opacity-70 px-1">
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Occupied / filled</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />Pending</span>

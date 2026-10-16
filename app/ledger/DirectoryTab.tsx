@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
+import { backButton } from "@/lib/printBack";
 
 type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
 type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; role: string | null; consent: boolean; tenant: string | null; members: Row[] };
@@ -95,12 +96,12 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       tr.flat td{background:#f7f2e4;border-top:1px solid #d9d1bb} tr.fam td{border-top:1px dotted #e8e2d1}
       .gold{color:#b8932a;font-weight:600} .muted{color:#7a7568;font-weight:400}
       .gap td{border:0;height:6px;padding:0}
-      .bar{position:sticky;top:0;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;font-size:13px;margin:-24px -24px 18px}
+      .bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px;margin:-24px -24px 18px}
       .bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
       @media screen{body{padding:24px;max-width:794px;margin:auto} table{margin-bottom:28px}}
       @media print{.bar{display:none}}
     </style></head><body>
-      <div class="bar"><button onclick="window.print()">PRINT / SAVE AS PDF</button>
+      <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button>
         <span>${shown.length} flats • ${sharing} sharing family details • Heading repeats and page numbers appear in the print preview (choose "Save as PDF").</span></div>
       ${sections}</body></html>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
