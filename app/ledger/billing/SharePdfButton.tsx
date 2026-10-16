@@ -1,7 +1,7 @@
 "use client";
 // One button: makes the PDF, then opens the phone's share sheet (pick WhatsApp → the member).
 // If the browser needs a fresh tap after the PDF is ready, the button turns into "TAP TO SHARE".
-// Laptops that can't share files get a download instead.
+// Browsers that can't share files (e.g. Firefox, Linux) get a download instead.
 import { useState } from "react";
 import { canShareFile, downloadFile, shareFile } from "@/lib/pdfShare";
 
@@ -25,7 +25,7 @@ export default function SharePdfButton({ make, text, label = "📤 SHARE PDF", c
   const text_ = state === "busy" ? "MAKING PDF…" : state === "ready" ? "📤 TAP TO SHARE" : state === "done" ? "✓ " + label.replace(/^📤\s*/, "") : label;
   return (
     <span className="inline-flex flex-col">
-      <button type="button" onClick={click} disabled={state === "busy"} title="Makes the ledger statement as a PDF and opens the share menu (WhatsApp). On a laptop it downloads the PDF."
+      <button type="button" onClick={click} disabled={state === "busy"} title="Makes the ledger statement as a PDF and opens the share menu (WhatsApp). If this browser cannot share files, the PDF downloads instead."
         className={`${state === "ready" ? "bg-[var(--gold)] text-black font-bold" : ""} ${className}`}>{text_}</button>
       {err && <span className="text-red-700 text-[10px]">{err}</span>}
     </span>
