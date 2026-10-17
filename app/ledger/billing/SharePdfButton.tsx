@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { canShareFile, downloadFile, shareFile } from "@/lib/pdfShare";
 
-export default function SharePdfButton({ make, text, label = "📤 SHARE PDF", className = "" }: { make: () => Promise<File>; text: string; label?: string; className?: string }) {
+export default function SharePdfButton({ make, text, label = "📄 STATEMENT PDF", className = "" }: { make: () => Promise<File>; text: string; label?: string; className?: string }) {
   const [state, setState] = useState<"idle" | "busy" | "ready" | "done">("idle");
   const [file, setFile] = useState<File | null>(null);
   const [err, setErr] = useState("");
@@ -22,10 +22,10 @@ export default function SharePdfButton({ make, text, label = "📤 SHARE PDF", c
     try { const f = await make(); setFile(f); await deliver(f); }
     catch (e: any) { setErr(e?.message || "Could not make the PDF"); setState("idle"); }
   }
-  const text_ = state === "busy" ? "MAKING PDF…" : state === "ready" ? "📤 TAP TO SHARE" : state === "done" ? "✓ " + label.replace(/^(📤|📲)\s*/, "") : label;
+  const text_ = state === "busy" ? "MAKING PDF…" : state === "ready" ? "📤 TAP TO SHARE" : state === "done" ? "✓ " + label.replace(/^[^A-Za-z]+/, "") : label;
   return (
     <span className="inline-flex flex-col">
-      <button type="button" onClick={click} disabled={state === "busy"} title="Makes the ledger statement as a PDF and opens the share menu (WhatsApp). If this browser cannot share files, the PDF downloads instead."
+      <button type="button" onClick={click} disabled={state === "busy"} title="Makes the PDF and opens the share menu: pick WhatsApp, then the person. If this browser cannot share files, the PDF downloads instead."
         className={`${state === "ready" ? "bg-[var(--gold)] text-black font-bold" : ""} ${className}`}>{text_}</button>
       {err && <span className="text-red-700 text-[10px]">{err}</span>}
     </span>

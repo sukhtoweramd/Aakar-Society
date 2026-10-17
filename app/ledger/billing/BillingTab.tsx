@@ -264,13 +264,13 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
         <div><div className="serif text-[18px] font-bold">Dues list</div><div className="opacity-60">{rows.length} flats owe ₹{inr(total)}</div></div>
         <div className="flex flex-wrap gap-2"><select className="field !w-[120px] !py-1.5" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select>
           <button onClick={print} disabled={!rows.length} className="btn-navy px-4 py-1.5">PRINT DUES LIST</button>
-          {rows.length > 0 && <SharePdfButton key={tower} label="📲 WHATSAPP PDF" className="btn-line px-3 py-1.5 !border-[#25d366] text-[#128c48] font-bold"
+          {rows.length > 0 && <SharePdfButton key={tower} label="📋 DUES LIST PDF (COMMITTEE)" className="btn-line px-3 py-1.5 !border-[#25d366] text-[#128c48] font-bold"
             make={() => duesListPdf(rows, tower === "ALL" ? "All towers" : `Tower ${tower}`)}
             text={`Aakar Co-op Housing Society: dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}</div>
       </div>
       <div className="border border-[var(--border)] overflow-x-auto">
         <table className="w-full text-[12px] min-w-[700px]">
-          <thead><tr className="bg-[var(--navy)] text-white text-left mono text-[10px]"><th className="px-2.5 py-2">FLAT</th><th className="px-2.5 py-2">OWNER</th><th className="px-2.5 py-2">MOBILE</th><th className="px-2.5 py-2">UNPAID BILLS</th><th className="px-2.5 py-2">OLDEST DUE</th><th className="px-2.5 py-2 text-right">DUE ₹</th><th className="px-2.5 py-2">REMIND</th></tr></thead>
+          <thead><tr className="bg-[var(--navy)] text-white text-left mono text-[10px]"><th className="px-2.5 py-2">FLAT</th><th className="px-2.5 py-2">OWNER</th><th className="px-2.5 py-2">MOBILE</th><th className="px-2.5 py-2">UNPAID BILLS</th><th className="px-2.5 py-2">OLDEST DUE</th><th className="px-2.5 py-2 text-right">DUE ₹</th><th className="px-2.5 py-2">SEND TO MEMBER</th></tr></thead>
           <tbody>{rows.map((r) => { const m = mobileOf(r.f.id); return (
             <tr key={r.f.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
               <td className="px-2.5 py-2"><button onClick={() => open(r.f.id)} className="font-bold underline text-[var(--navy)]">{label(r.f)}</button></td>
@@ -278,8 +278,8 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
               <td className="px-2.5 py-2">{r.count}</td><td className={`px-2.5 py-2 ${overdue(r.oldest) ? "text-red-700 font-bold" : ""}`}>{dmy(r.oldest)}{overdue(r.oldest) ? " • overdue" : ""}</td>
               <td className="px-2.5 py-2 text-right font-bold text-amber-700">{inr(r.due)}</td>
               <td className="px-2.5 py-2"><div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap">
-                {m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}>📲 WhatsApp</a> : <span className="opacity-40">no mobile</span>}
-                <SharePdfButton className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
+                {m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}title="Opens WhatsApp to this member with an itemised reminder and bank details">📲 Reminder text</a> : <span className="opacity-40">no mobile</span>}
+                <SharePdfButton label="📄 Statement PDF" className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
                   text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />
               </div></td>
             </tr>); })}
