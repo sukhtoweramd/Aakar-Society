@@ -135,8 +135,8 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] min-w-[860px]">
           <thead><tr className="bg-[var(--navy)] text-white mono text-[10px] tracking-[0.08em] text-left">
-            {["BILL DATE", "BILL NO.", "PERIOD / DESCRIPTION", "BILL ₹", "RECEIVED ₹", "RECD. DATE", "MODE / BANK / REF.", "BALANCE ₹", "STATUS", "RECEIPT"].map((h, i) =>
-              <th key={h} className={`px-2 py-2 font-bold whitespace-nowrap ${[3, 4, 7].includes(i) ? "text-right" : ""}`}>{h}</th>)}
+            {["BILL DATE", "BILL NO.", "PERIOD / DESCRIPTION", "BILL ₹", "RECEIVED ₹", "RECEIPT", "RECD. DATE", "MODE / BANK / REF.", "BALANCE ₹", "STATUS"].map((h, i) =>
+              <th key={h} className={`px-2 py-2 font-bold whitespace-nowrap ${[3, 4, 8].includes(i) ? "text-right" : ""}`}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map((b) => {
@@ -156,30 +156,30 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
                     <td className="px-2.5 py-2">{b.kind === "other" && <span className="tag bg-[var(--bg-soft)] mr-1.5">OTHER</span>}{desc}{b.status === "cancelled" && b.cancel_reason && <div className="mono text-[10px] text-red-700">Cancelled: {b.cancel_reason}</div>}</td>
                     <td className="px-2.5 py-2 text-right font-semibold tabular-nums">{inr(b.amount)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums">{first ? <span className={first.status === "cancelled" ? "line-through text-red-700" : ""}>{inr(first.amount)}</span> : <span className="opacity-40">—</span>}</td>
+                    <td className="px-2.5 py-2 whitespace-nowrap">
+                      {first ? rcptCell(first) : editable && b.status === "active" && balance > 0 ? <button onClick={() => startEntry(b)} className="btn-navy mono text-[10px] px-2.5 py-1">+ RECORD PAYMENT</button> : null}
+                      {editable && b.status === "active" && !first && <button onClick={() => cancelBill(b)} className="ml-2 text-red-600 mono text-[10px] underline">cancel bill</button>}
+                    </td>
                     <td className="px-2.5 py-2 whitespace-nowrap">{first ? dmy(first.paid_on) : <span className="opacity-40">—</span>}</td>
                     <td className="px-2.5 py-2 whitespace-nowrap">{first ? modeCell(first) : <span className="opacity-40">—</span>}</td>
                     <td className={`px-2.5 py-2 text-right font-bold tabular-nums ${b.status === "cancelled" ? "" : ps.length > 1 ? "" : balance > 0 ? (first ? "text-amber-700" : "text-red-700") : "text-emerald-700"}`}>
                       {b.status === "cancelled" ? "—" : ps.length > 1 ? <span className="opacity-50 font-normal">{runAfter[0] != null ? inr(runAfter[0]) : ""}</span> : inr(first ? (runAfter[0] ?? balance) : balance)}</td>
                     <td className="px-2.5 py-2">{ps.length > 1 ? null : tag(b, balance)}</td>
-                    <td className="px-2.5 py-2 whitespace-nowrap">
-                      {first ? rcptCell(first) : editable && b.status === "active" && balance > 0 ? <button onClick={() => startEntry(b)} className="btn-navy mono text-[10px] px-2.5 py-1">+ RECORD PAYMENT</button> : null}
-                      {editable && b.status === "active" && !first && <button onClick={() => cancelBill(b)} className="ml-2 text-red-600 mono text-[10px] underline">cancel bill</button>}
-                    </td>
                   </tr>
                   {ps.slice(1).map((p, k) => (
                     <tr key={p.id} className={`bg-[var(--bg)] ${settled ? "text-[#8b8676]" : ""}`}>
                       <td colSpan={3} className="px-2.5 py-2 pl-6 text-[11px] opacity-70">↳ {k === 0 ? "2nd" : k === 1 ? "3rd" : `${k + 2}th`} payment against {b.bill_no}{p.status === "cancelled" && p.cancel_reason ? ` • cancelled: ${p.cancel_reason}` : ""}</td>
                       <td></td>
                       <td className={`px-2.5 py-2 text-right tabular-nums ${p.status === "cancelled" ? "line-through text-red-700" : ""}`}>{inr(p.amount)}</td>
+                      <td className="px-2.5 py-2">{rcptCell(p)}</td>
                       <td className="px-2.5 py-2 whitespace-nowrap">{dmy(p.paid_on)}</td>
                       <td className="px-2.5 py-2 whitespace-nowrap">{modeCell(p)}</td>
                       <td className={`px-2.5 py-2 text-right font-bold tabular-nums ${k === ps.length - 2 ? (balance > 0 ? "text-amber-700" : "text-emerald-700") : "opacity-60 font-normal"}`}>{runAfter[k + 1] != null ? inr(runAfter[k + 1]) : ""}</td>
                       <td className="px-2.5 py-2">{k === ps.length - 2 ? tag(b, balance) : null}</td>
-                      <td className="px-2.5 py-2">{rcptCell(p)}</td>
                     </tr>
                   ))}
                   {first && editable && b.status === "active" && balance > 0 && entryFor !== b.id && (
-                    <tr className="bg-[var(--bg)]"><td colSpan={9}></td><td className="px-2.5 py-1.5"><button onClick={() => startEntry(b)} className="btn-navy mono text-[10px] px-2.5 py-1">+ RECORD PAYMENT</button></td></tr>
+                    <tr className="bg-[var(--bg)]"><td colSpan={5}></td><td className="px-2.5 py-1.5"><button onClick={() => startEntry(b)} className="btn-navy mono text-[10px] px-2.5 py-1">+ RECORD PAYMENT</button></td><td colSpan={4}></td></tr>
                   )}
                   {entryFor === b.id && (
                     <tr className="bg-[#fffbea] border-y-2 border-[var(--gold)]">
@@ -206,13 +206,13 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
             <tr className="bg-[var(--bg-soft)] font-bold">
               <td colSpan={3} className="px-2.5 py-2 text-[var(--navy)]">TOTAL • {myBills.filter((b) => b.status === "active").length} bills, {myPays.filter((p) => p.status === "active").length} payments</td>
               <td className="px-2.5 py-2 text-right tabular-nums">{inr(t.billed)}</td><td className="px-2.5 py-2 text-right tabular-nums">{inr(t.received)}</td>
-              <td colSpan={2}></td><td className={`px-2.5 py-2 text-right tabular-nums ${t.due > 0 ? "text-amber-700" : "text-emerald-700"}`}>{t.due > 0 ? inr(t.due) : "NIL"}</td><td colSpan={2}></td>
+              <td colSpan={3}></td><td className={`px-2.5 py-2 text-right tabular-nums ${t.due > 0 ? "text-amber-700" : "text-emerald-700"}`}>{t.due > 0 ? inr(t.due) : "NIL"}</td><td></td>
             </tr>
           </tbody>
         </table>
       </div>
       <div className="px-5 py-3 mono text-[10px] opacity-60 flex flex-wrap justify-between gap-2">
-        <span>Click a bill or receipt number to print it.{editable ? " 📲 sends a WhatsApp message to the member's mobile." : ""}</span>
+        <span>Click a bill number or a receipt number (RECEIPT column) to view and print it.{editable ? " 📲 sends a WhatsApp message to the member's mobile." : ""}</span>
         {editable && <span>A wrong entry is cancelled with a reason, never deleted.</span>}
       </div>
     </div>
