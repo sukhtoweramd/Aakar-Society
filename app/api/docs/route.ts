@@ -4,9 +4,12 @@
 //   • a bill with any receipt (even cancelled) cannot be deleted: delete its receipts first
 //   • if the deleted number was the last one issued, the series steps back so the number is used again
 //   • every delete is written to the access log
+// POST { action: "clear_test", last: {bill, other, rcpt, letter} } → before GO LIVE only: a backup is saved first,
+//   then ALL bills, receipts and letters are removed and the numbers set to the last paper numbers given
+// POST { action: "go_live" } → locks test clearing for ever (one row in society_live that cannot be changed)
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { allUsers, isCommitteeUser, logAccess, mainAdminId } from "@/lib/backup";
+import { allUsers, buildBackup, isCommitteeUser, logAccess, mainAdminId, storeBackup } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +32,17 @@ async function guard(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
-  return NextResponse.json({ isMainAdmin: g.isMain });
+  const { admin } = g;
+  const live = await admin.from("society_live").select("live_at, live_by").eq("id", 1).maybeSingle();
+  const count = async (t: string) => { const r = await admin.from(t).select("id", { count: "exact", head: true }); return r.error ? null : r.count || 0; };
+  const [bills, receipts, letters] = await Promise.all([count("bills"), count("payments"), count("letters")]);
+  return NextResponse.json({ isMainAdmin: g.isMain, live: live.error ? null : live.data, needsSql: !!live.error, counts: { bills, receipts, letters } });
+}
+
+async function isLive(admin: any) {
+  const r = await admin.from("society_live").select("id").eq("id", 1).maybeSingle();
+  if (r.error) throw new Error("Run BACKUP_RESTORE.sql in Supabase first.");
+  return !!r.data;
 }
 
 export async function POST(req: NextRequest) {
@@ -38,6 +51,29 @@ export async function POST(req: NextRequest) {
   const { admin, me, isMain } = g;
   if (!isMain) return NextResponse.json({ error: "Only the main admin login can delete bills, receipts and letters. Others can cancel them." }, { status: 403 });
   const body = await req.json().catch(() => ({}));
+  if (body.action === "go_live") {
+    try {
+      if (await isLive(admin)) return NextResponse.json({ error: "The society is already live." }, { status: 400 });
+      const { error } = await admin.from("society_live").insert([{ id: 1, live_by: me.email }]);
+      if (error) throw error;
+      await logAccess(admin, me.email, "go_live", "test clearing locked for ever");
+      return NextResponse.json({ ok: true });
+    } catch (e: any) { return NextResponse.json({ error: e.message || "Failed" }, { status: 500 }); }
+  }
+  if (body.action === "clear_test") {
+    try {
+      if (await isLive(admin)) return NextResponse.json({ error: "The society is live. Test clearing is locked." }, { status: 400 });
+      const L = body.last || {}, n = (v: any) => Math.max(0, parseInt(String(v), 10) || 0);
+      const before = await buildBackup(admin, me.email, "manual");
+      const key = await storeBackup(before);
+      if (!key) return NextResponse.json({ error: "Clearing needs file storage (R2) to keep a backup first. R2 is not configured." }, { status: 500 });
+      const { data, error } = await admin.rpc("clear_test_documents", { p_bill: n(L.bill), p_other: n(L.other), p_rcpt: n(L.rcpt), p_letter: n(L.letter) });
+      if (error) throw new Error(/clear_test_documents/.test(error.message) ? "Run BACKUP_RESTORE.sql in Supabase first." : error.message);
+      await logAccess(admin, me.email, "test_documents_cleared", `${data.bills} bills, ${data.receipts} receipts, ${data.letters} letters`,
+        `numbers set to bill ${n(L.bill)}, other ${n(L.other)}, receipt ${n(L.rcpt)}, letter ${n(L.letter)}; backup saved first`);
+      return NextResponse.json({ ok: true, cleared: data });
+    } catch (e: any) { return NextResponse.json({ error: e.message || "Failed" }, { status: 500 }); }
+  }
   const k = KINDS[body.kind as keyof typeof KINDS];
   if (body.action !== "delete" || !k || typeof body.id !== "string") return NextResponse.json({ error: "Bad request" }, { status: 400 });
   try {

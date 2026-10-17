@@ -7,6 +7,7 @@ import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
 import BackupPanel from "./BackupPanel";
+import TestDataPanel from "./TestDataPanel";
 
 type Row = { maint: string; sqft: string; bhk: string };
 
@@ -143,6 +144,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
       <LoginsPanel ctx={ctx} />
 
       <BackupPanel />
+
+      <TestDataPanel />
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 flex flex-wrap justify-between gap-4 items-center">
         <div>

@@ -9,9 +9,10 @@ type LogRow = { id: number; at: string; actor: string; action: string; target: s
 
 const NAMES: Record<string, string> = { flats: "Flats", billing_settings: "Billing settings", signatories: "Signatories", events: "Events", notices: "Notices",
   maintenance: "Maintenance (old)", businesses: "Businesses", members: "Family members", emergency_contacts: "Emergency contacts", vehicles: "Vehicles",
-  flat_docs: "Document types", bills: "Bills", payments: "Receipts" };
+  flat_docs: "Document types", bills: "Bills", payments: "Receipts", letters: "Letters" };
 const ACTIONS: Record<string, string> = { backup: "Backup taken", backup_downloaded: "Backup downloaded", restore: "RESTORE done", restore_failed: "Restore failed",
-  login_removed: "Committee login removed", login_added: "Committee login added", password_reset: "Password reset" };
+  login_removed: "Committee login removed", login_added: "Committee login added", password_reset: "Password reset",
+  deleted_bill: "Bill deleted", deleted_receipt: "Receipt deleted", deleted_letter: "Letter deleted", test_documents_cleared: "TEST DOCUMENTS CLEARED", go_live: "GO LIVE" };
 const when = (s: string) => new Date(s).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const daysAgo = (s: string) => Math.floor((Date.now() - new Date(s).getTime()) / 864e5);
 

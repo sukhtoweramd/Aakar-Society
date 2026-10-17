@@ -26,7 +26,7 @@ create or replace function public.restore_society_backup(p jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   ins text[] := array['flats','billing_settings','signatories','events','notices','maintenance','businesses',
-                      'members','emergency_contacts','vehicles','flat_docs','bills','payments'];
+                      'members','emergency_contacts','vehicles','flat_docs','bills','payments','letters'];
   t text; i int; cols text; n int; seq text; col record; result jsonb := '{}'::jsonb;
 begin
   if p is null or p->>'app' is distinct from 'aakar-society' or jsonb_typeof(p->'tables') <> 'object' then
@@ -81,7 +81,52 @@ language sql stable security definer set search_path = public as $$
               then auth.jwt() -> 'app_metadata' ->> 'flat_id' end
 $$;
 
--- 4. Check: should show access_log with 1 rule, and the restore function
+-- 4. Test documents and GO LIVE.
+--    Before going live the main admin can clear all bills, receipts and letters made while testing.
+--    GO LIVE writes one row here; after that the clear is refused for ever (this row cannot be changed or removed,
+--    and it is not part of backups, so a restore cannot undo it either).
+create table if not exists public.society_live (
+  id int primary key default 1 check (id = 1),
+  live_at timestamptz not null default now(),
+  live_by text
+);
+alter table public.society_live enable row level security;
+do $$ declare p record; begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'society_live' loop
+    execute format('drop policy %I on public.society_live', p.policyname);
+  end loop;
+end $$;
+create policy committee_read on public.society_live for select to authenticated using (public.is_committee());
+revoke all on public.society_live from anon;
+create or replace function public.society_live_locked() returns trigger language plpgsql as $$
+begin raise exception 'The society is live. This cannot be changed.'; end $$;
+drop trigger if exists society_live_lock on public.society_live;
+create trigger society_live_lock before update or delete on public.society_live
+  for each row execute function public.society_live_locked();
+
+create or replace function public.clear_test_documents(p_bill int, p_other int, p_rcpt int, p_letter int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare nb int; np int; nl int := 0;
+begin
+  if exists (select 1 from public.society_live) then raise exception 'The society is live. Test clearing is locked.'; end if;
+  delete from public.payments where true; get diagnostics np = row_count;
+  delete from public.bills where true;    get diagnostics nb = row_count;
+  if to_regclass('public.letters') is not null then
+    execute 'delete from public.letters where true'; get diagnostics nl = row_count;
+  end if;
+  update public.billing_settings set bill_last_no = greatest(0, p_bill), other_last_no = greatest(0, p_other),
+         rcpt_last_no = greatest(0, p_rcpt), updated_at = now() where id = 1;
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'billing_settings' and column_name = 'letter_last_no') then
+    execute 'update public.billing_settings set letter_last_no = greatest(0, $1) where id = 1' using p_letter;
+  end if;
+  return jsonb_build_object('bills', nb, 'receipts', np, 'letters', nl);
+end $$;
+revoke all on function public.clear_test_documents(int, int, int, int) from public, anon, authenticated;
+grant execute on function public.clear_test_documents(int, int, int, int) to service_role;
+
+-- 5. Check: should show access_log with 1 rule, and the restore function
 select 'access_log' as item, count(*)::text as rules from pg_policies where schemaname = 'public' and tablename = 'access_log'
 union all
-select 'restore_society_backup', count(*)::text from pg_proc where proname = 'restore_society_backup';
+select 'restore_society_backup', count(*)::text from pg_proc where proname = 'restore_society_backup'
+union all
+select 'society_live (0 = still testing)', count(*)::text from public.society_live;

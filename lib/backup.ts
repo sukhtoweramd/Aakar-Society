@@ -6,7 +6,7 @@ import { getR2 } from "./r2Client";
 
 /** Every table with society records, in the order they are restored (parents first). */
 export const BACKUP_TABLES = ["flats", "billing_settings", "signatories", "events", "notices", "maintenance", "businesses",
-  "members", "emergency_contacts", "vehicles", "flat_docs", "bills", "payments"];
+  "members", "emergency_contacts", "vehicles", "flat_docs", "bills", "payments", "letters"];
 export const BACKUP_FOLDER = "backups";
 
 export type Backup = {
