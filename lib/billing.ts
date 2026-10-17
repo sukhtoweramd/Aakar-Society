@@ -153,8 +153,8 @@ body{background:#e9e6dc;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}.c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
 .head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:.6mm solid var(--navy)}
 .seal{width:17mm;height:17mm;border-radius:50%;border:.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}
-.soc{flex:1;min-width:0}.soc h1{font-weight:800;font-size:14pt;white-space:nowrap;letter-spacing:.02em;color:var(--navy)}.soc .a{font-size:8.2pt;color:var(--mute);margin-top:1mm}
-.title{text-align:right}.title .t{font-size:8pt;letter-spacing:.2em;color:var(--gold);font-weight:700}.title .f{font-weight:800;font-size:20pt;color:var(--navy);line-height:1.1;white-space:nowrap}.title .s{font-size:8pt;color:var(--mute);white-space:nowrap}.title .s b{color:var(--navy)}
+.soc{flex:1;min-width:0}.soc h1{font-weight:800;font-size:12.5pt;line-height:1.2;letter-spacing:.01em;color:var(--navy)}.soc .a{font-size:8.2pt;color:var(--mute);margin-top:1mm}
+.title{text-align:right;flex-shrink:0;max-width:72mm;margin-left:2mm}.title .t{font-size:8pt;letter-spacing:.2em;color:var(--gold);font-weight:700}.title .f{font-weight:800;font-size:18pt;color:var(--navy);line-height:1.25;white-space:nowrap}.title .f.long{font-size:14.5pt}.title .s{font-size:8pt;color:var(--mute);white-space:nowrap;margin-top:.8mm}.title .s b{color:var(--navy)}
 .meta{display:grid;grid-template-columns:1.3fr 1fr;gap:3.5mm;margin-top:4mm}
 .box{border:.3mm solid var(--line);padding:2.4mm 3.5mm;background:#fff}.box .lbl{font-size:6.6pt;letter-spacing:.16em;color:var(--gold);font-weight:700}
 .box .nm{font-size:13pt;font-weight:700;color:var(--navy);margin-top:.6mm}.box .ln{font-size:8.6pt;color:#3a372f;margin-top:.8mm;line-height:1.45}
@@ -187,7 +187,7 @@ const frameStart = `<section class="page"><div class="frame"><div class="inner">
 const frameEnd = `</div></div></section>`;
 const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">ॐ</div>
   <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
-  <div class="title"><div class="t">${esc(kind)}</div><div class="f">${esc(big)}</div><div class="s">${small}</div></div></div>`;
+  <div class="title"><div class="t">${esc(kind)}</div><div class="f${big.length > 12 ? " long" : ""}">${esc(big)}</div><div class="s">${small}</div></div></div>`;
 const flatLine = (f?: Flat) => (f ? `Flat <b>${esc(label(f))}</b> • Tower ${esc(f.tower)} • Floor ${esc(f.floor ?? "")}${f.bhk ? ` • ${esc(f.bhk)}` : ""}` : "");
 function signBlock(s: Settings | null, name?: string | null, desig?: string | null, image?: string | null) {
   const stamp = s?.stamp_image || DEFAULT_STAMP;
