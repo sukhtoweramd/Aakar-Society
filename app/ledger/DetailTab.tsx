@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { COMMITTEE_ROLES, committeeBadge, floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
-import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
+import { api, deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
 import ConsentCard from "./ConsentCard";
@@ -107,8 +107,19 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     if ("member_since" in f!) { upd.member_since = form.member_since || null; upd.share_cert_no = form.share_cert_no?.trim() || null; }
     if (hasSqft) upd.sqft = form.sqft === null || form.sqft === undefined || (form.sqft as any) === "" ? null : Number(form.sqft);
     const { error } = await supabase.from("flats").update(upd).eq("id", f!.id);
+    if (error) { setBusy(null); setError(error.message); return; }
+    // Left the committee: remove their committee (admin) login too, so access is never forgotten.
+    if (f!.is_committee && !upd.is_committee) {
+      try {
+        const { members } = await api("/api/committee");
+        const linked = (members || []).filter((m: any) => m.flat_id === f!.id && !m.main);
+        if (linked.length && confirm(`${label(f!)} is no longer on the committee.\n\nRemove the committee (admin) login of ${linked.map((m: any) => m.email).join(", ")} now? Their normal flat login is not affected.\n\nOK = remove now (recommended), Cancel = keep for now (ADMIN will show a warning)`)) {
+          const r = await api("/api/committee", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "revoke_flat", flat_id: f!.id }) });
+          if (r.kept?.length) alert(`Not removed: ${r.kept.join(", ")}. Remove it from ADMIN using another committee login.`);
+        }
+      } catch (e: any) { setError(`Saved, but the committee login could not be checked: ${e.message}. Please check ADMIN.`); }
+    }
     setBusy(null);
-    if (error) { setError(error.message); return; }
     setEditing(false);
     setFamilyVersion((v) => v + 1);
     reloadFlats();

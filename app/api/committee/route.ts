@@ -5,6 +5,7 @@ import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { normaliseFlat } from "@/lib/residents";
+import { logAccess, mainAdminId } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +38,10 @@ export async function GET(req: NextRequest) {
   if ("error" in g) return g.error;
   try {
     const users = await committeeUsers(g.admin);
+    const main = mainAdminId(users);
     return NextResponse.json({
       members: users
-        .map((u) => ({ id: u.id, email: u.email, name: (u.user_metadata as any)?.name || "", flat_id: (u.app_metadata as any)?.flat_id || null, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null, self: u.id === g.me.userId }))
+        .map((u) => ({ id: u.id, email: u.email, name: (u.user_metadata as any)?.name || "", flat_id: (u.app_metadata as any)?.flat_id || null, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null, self: u.id === g.me.userId, main: u.id === main }))
         .sort((a, b) => (a.email || "").localeCompare(b.email || "")),
     });
   } catch (e: any) {
@@ -66,7 +68,23 @@ export async function POST(req: NextRequest) {
       const password = newPassword();
       const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email } });
       if (error) return NextResponse.json({ error: /already/i.test(error.message) ? "A login with this email already exists." : error.message }, { status: 400 });
+      await logAccess(admin, me.email, "login_added", email, flatId ? `own flat ${flatId}` : "");
       return NextResponse.json({ ok: true, email, password });
+    }
+    // A flat is no longer on the committee: remove every committee login linked to it.
+    if (body.action === "revoke_flat") {
+      if (!flatId) return NextResponse.json({ error: "Flat missing." }, { status: 400 });
+      const main = mainAdminId(members);
+      const linked = members.filter((m) => (m.app_metadata as any)?.flat_id === flatId);
+      const removed: string[] = [], kept: string[] = [];
+      for (const m of linked) {
+        if (m.id === main || m.id === me.userId) { kept.push(`${m.email} (${m.id === main ? "main admin" : "your own login"})`); continue; }
+        const { error } = await admin.auth.admin.deleteUser(m.id);
+        if (error) throw error;
+        removed.push(m.email || m.id);
+        await logAccess(admin, me.email, "login_removed", m.email || m.id, `left the committee (flat ${flatId})`);
+      }
+      return NextResponse.json({ ok: true, removed, kept });
     }
     const target = members.find((m) => m.id === body.id);
     if (!target) return NextResponse.json({ error: "Committee login not found." }, { status: 404 });
@@ -74,6 +92,7 @@ export async function POST(req: NextRequest) {
       const password = newPassword();
       const { error } = await admin.auth.admin.updateUserById(target.id, { password });
       if (error) throw error;
+      await logAccess(admin, me.email, "password_reset", target.email || target.id);
       return NextResponse.json({ ok: true, email: target.email, password });
     }
     if (body.action === "link") {
@@ -84,8 +103,10 @@ export async function POST(req: NextRequest) {
     if (body.action === "remove") {
       if (target.id === me.userId) return NextResponse.json({ error: "You cannot remove your own login." }, { status: 400 });
       if (members.length <= 1) return NextResponse.json({ error: "At least one committee login must remain." }, { status: 400 });
+      if (target.id === mainAdminId(members)) return NextResponse.json({ error: "The main admin login cannot be removed." }, { status: 400 });
       const { error } = await admin.auth.admin.deleteUser(target.id);
       if (error) throw error;
+      await logAccess(admin, me.email, "login_removed", target.email || target.id, String(body.reason || "removed from ADMIN"));
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

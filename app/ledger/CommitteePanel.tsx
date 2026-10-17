@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/ledgerClient";
 import { label, type Flat } from "@/lib/society";
 
-type Member = { id: string; email: string; name: string; flat_id: string | null; created_at: string; last_sign_in_at: string | null; self: boolean };
+type Member = { id: string; email: string; name: string; flat_id: string | null; created_at: string; last_sign_in_at: string | null; self: boolean; main?: boolean };
 
 export default function CommitteePanel({ flats }: { flats: Flat[] }) {
   const [flatId, setFlatId] = useState("");
@@ -50,21 +50,27 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
       {flats.map((f) => <option key={f.id} value={f.id}>{label(f)}{f.owner_name ? ` • ${f.owner_name}` : ""}</option>)}
     </>
   );
-  async function remove(m: Member) {
-    if (!confirm(`Remove the committee login for ${m.email}? They will no longer be able to log in.`)) return;
+  async function remove(m: Member, reason = "removed from ADMIN") {
+    if (!confirm(`Remove the committee login for ${m.email}? They will no longer be able to log in as committee.${m.flat_id ? " Their own flat login is not affected." : ""}`)) return;
     setBusy(m.id); setError("");
-    try { await post({ action: "remove", id: m.id }); await load(); }
+    try { await post({ action: "remove", id: m.id, reason }); await load(); }
     catch (e: any) { setError(e.message); }
     setBusy(null);
   }
+
+  const flatOf = (id: string | null) => flats.find((f) => f.id === id);
+  const stale = (m: Member) => !m.main && !!m.flat_id && !!flatOf(m.flat_id) && !flatOf(m.flat_id)!.is_committee;
+  const unlinked = (m: Member) => !m.main && !m.flat_id;
+  const staleCount = (members || []).filter(stale).length;
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
       <div className="serif text-[22px] font-bold">COMMITTEE LOGINS</div>
       <div className="mono text-[11px] opacity-60 mt-1 max-w-[680px]">
-        Each committee member logs in with their own email and has full admin rights. Ticking ★ Committee on a flat only shows the star; it does not give admin rights. Link each login to the member&apos;s own flat to give them a MY FLAT button.
+        Each committee member logs in with their own email and has full admin rights. Ticking ★ Committee on a flat only shows the star; it does not give admin rights. Link each login to the member&apos;s own flat: it gives them a MY FLAT button, and when that flat&apos;s ★ Committee tick is removed, their committee login is removed too. The main admin (the society&apos;s own login) cannot be removed.
       </div>
       {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
+      {staleCount > 0 && <div className="mt-4 border-2 border-red-300 bg-red-50 text-red-800 p-3 mono text-[11px] font-bold">⚠ {staleCount} committee login{staleCount > 1 ? "s belong" : " belongs"} to someone no longer marked as committee. Remove {staleCount > 1 ? "them" : "it"} below.</div>}
       {cred && (
         <div className="mt-4 border-2 border-[var(--gold)] bg-[#fffdf5] p-4 mono text-[12px] flex flex-wrap gap-3 items-center justify-between">
           <div>NEW PASSWORD • SHOWN ONLY NOW<br /><b>{cred.email}</b> &nbsp; <span className="font-mono text-[14px]">{cred.password}</span>
@@ -78,7 +84,9 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
           <tbody>
             {(members || []).map((m) => (
               <tr key={m.id} className="border-t border-[var(--border)]">
-                <td className="p-2 font-semibold break-all">{m.email}{m.self && <span className="ml-2 text-[9px] bg-[var(--navy)] text-white px-1.5 py-0.5">YOU</span>}</td>
+                <td className="p-2 font-semibold break-all">{m.email}{m.self && <span className="ml-2 text-[9px] bg-[var(--navy)] text-white px-1.5 py-0.5">YOU</span>}{m.main && <span className="ml-2 text-[9px] bg-[var(--gold)] text-black px-1.5 py-0.5">MAIN ADMIN</span>}
+                  {stale(m) && <div className="text-red-700 font-bold mt-1">⚠ {label(flatOf(m.flat_id)!)} is no longer marked committee</div>}
+                  {unlinked(m) && <div className="text-amber-700 font-normal mt-1">Link to own flat, so access ends automatically when they leave the committee</div>}</td>
                 <td className="p-2">{m.name || <span className="opacity-40">—</span>}</td>
                 <td className="p-2">
                   <select className="field !py-1 !text-[11px] max-w-[190px]" value={m.flat_id || ""} disabled={busy === m.id} onChange={(e) => link(m, e.target.value)}>{flatOptions}</select>
@@ -87,7 +95,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
                 <td className="p-2 text-right whitespace-nowrap">
                   {busy === m.id ? "…" : <>
                     <button onClick={() => reset(m)} className="underline mr-3">Reset password</button>
-                    {!m.self && <button onClick={() => remove(m)} className="text-red-600">Remove</button>}
+                    {!m.self && !m.main && <button onClick={() => remove(m, stale(m) ? "no longer on the committee" : "removed from ADMIN")} className={stale(m) ? "bg-red-600 text-white px-2 py-1 font-bold" : "text-red-600"}>{stale(m) ? "REMOVE NOW" : "Remove"}</button>}
                   </>}
                 </td>
               </tr>
