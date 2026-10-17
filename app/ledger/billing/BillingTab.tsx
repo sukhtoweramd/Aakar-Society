@@ -265,7 +265,7 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
           <div>
             <div className="text-[10px] font-bold tracking-[0.16em] text-[#8a6d14]">FULL DUES LIST • FOR THE COMMITTEE</div>
             <div className="serif text-[22px] font-bold mt-1">Full dues list — {tower === "ALL" ? "All towers" : `Tower ${tower}`}</div>
-            <div className="opacity-70 mt-0.5">{rows.length} flat{rows.length === 1 ? "" : "s"} owe <b className="text-amber-700">₹{inr(total)}</b> • as on {dmy(today())}</div>
+            <div className="opacity-70 mt-0.5">{rows.length} flat{rows.length === 1 ? " owes" : "s owe"} <b className="text-amber-700">₹{inr(total)}</b> • as on {dmy(today())}</div>
           </div>
           <label className="text-[10px] font-bold tracking-[0.1em]">SHOW<select className="field !w-[150px] !py-1.5 mt-1 block" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select></label>
         </div>
