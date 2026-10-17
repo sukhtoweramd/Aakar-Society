@@ -14,6 +14,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
   const [loaded, setLoaded] = useState(false);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("ALL");
+  const [sortBy, setSortBy] = useState<"CAT" | "FLAT">("CAT");
 
   useEffect(() => {
     supabase.from("business_directory").select("*").then(({ data, error }) => {
@@ -26,18 +27,22 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
   const flatLabel = (id: string | null) => (id ? label({ id, flat_no: id } as any) : "—");
   const categories = Array.from(new Set(list.map((e) => e.business_category || "Other"))).sort();
   const s = q.trim().toLowerCase();
+  const flatKey = (id: string | null) => { const m = /^([A-Z])(\d+)$/.exec(id || ""); return m ? `${m[1]}${m[2].padStart(5, "0")}` : "ZZZZZZ"; };
+  const byFlat = (a: Entry, b: Entry) => flatKey(a.flat_id).localeCompare(flatKey(b.flat_id)) || (a.name || "").localeCompare(b.name || "");
+  const byCat = (a: Entry, b: Entry) => (a.business_category || "Other").localeCompare(b.business_category || "Other") || byFlat(a, b);
   const shown = list.filter((e) =>
     (cat === "ALL" || (e.business_category || "Other") === cat) &&
-    (!s || [e.name, e.occupation, e.business_name, e.business_category, e.office_address, flatLabel(e.flat_id)].some((v) => (v || "").toLowerCase().includes(s))));
+    (!s || [e.name, e.occupation, e.business_name, e.business_category, e.office_address, flatLabel(e.flat_id)].some((v) => (v || "").toLowerCase().includes(s)))).sort(sortBy === "FLAT" ? byFlat : byCat);
   const esc = (v: any) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
   function printDirectory() {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups to print."); return; }
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-    const scope = [cat === "ALL" ? "All categories" : cat, s ? `search "${q.trim()}"` : ""].filter(Boolean).join(" • ");
+    const scope = [cat === "ALL" ? "All categories" : cat, s ? `search "${q.trim()}"` : "", sortBy === "FLAT" ? "by flat number" : "by category"].filter(Boolean).join(" • ");
+    const byF = sortBy === "FLAT";
+    const row = (e: Entry) => `<tr><td class="f">${esc(flatLabel(e.flat_id))}</td><td><b>${esc(e.name)}</b>${byF ? `<br><span class="m">${esc(e.business_category || "Other")}</span>` : ""}</td><td>${esc(e.business_name || "")}${e.business_name && e.occupation ? "<br>" : ""}<span class="m">${esc(e.occupation || "")}</span></td><td>${esc(e.office_address || "")}</td><td class="nw">${esc(e.office_phone || "")}</td></tr>`;
     const groups = Array.from(new Set(shown.map((e) => e.business_category || "Other")));
-    const body = groups.map((g) => `<tr class="grp"><td colspan="5">${esc(g)}</td></tr>` + shown.filter((e) => (e.business_category || "Other") === g).map((e) =>
-      `<tr><td class="f">${esc(flatLabel(e.flat_id))}</td><td><b>${esc(e.name)}</b></td><td>${esc(e.business_name || "")}${e.business_name && e.occupation ? "<br>" : ""}<span class="m">${esc(e.occupation || "")}</span></td><td>${esc(e.office_address || "")}</td><td class="nw">${esc(e.office_phone || "")}</td></tr>`).join("")).join("");
+    const body = byF ? shown.map(row).join("") : groups.map((g) => `<tr class="grp"><td colspan="5">${esc(g)}</td></tr>` + shown.filter((e) => (e.business_category || "Other") === g).map(row).join("")).join("");
     w.document.write(`<html><head><meta charset="utf-8"><title>Business Directory ${esc(today)}</title><style>
       @page{size:A4 portrait;margin:12mm 10mm 14mm;
         @bottom-left{content:"${esc(SOCIETY.full)} • Members' Business & Profession Directory • ${esc(today)} • For members only";font:8.5px Inter,Arial,sans-serif;color:#7a7568}
@@ -58,7 +63,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
       <div class="head"><div><h1>ॐ ${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • Reg. ${esc(SOCIETY.reg)}</div>
         <div style="font-size:15px;font-weight:800;color:#0f1d3d">Members' Business &amp; Profession Directory</div></div>
         <div class="r">${esc(scope)}<br>${shown.length} listing${shown.length === 1 ? "" : "s"} • as on ${esc(today)}</div></div>
-      <table><thead><tr><th style="width:9%">FLAT</th><th style="width:20%">NAME</th><th style="width:26%">BUSINESS / PROFESSION</th><th style="width:31%">OFFICE ADDRESS</th><th style="width:14%">PHONE</th></tr></thead>
+      <table><thead><tr><th style="width:9%">FLAT</th><th style="width:20%">NAME${sortBy === "FLAT" ? " / CATEGORY" : ""}</th><th style="width:26%">BUSINESS / PROFESSION</th><th style="width:31%">OFFICE ADDRESS</th><th style="width:14%">PHONE</th></tr></thead>
       <tbody>${body || `<tr><td colspan="5" style="text-align:center;color:#6f6a5d;padding:16px">No listings.</td></tr>`}</tbody></table>
       <div style="margin-top:12px;font-size:10px;color:#6f6a5d">For members of ${esc(SOCIETY.full)} only. Please do not share outside the society.</div>
     </body></html>`);
@@ -80,6 +85,10 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
               {categories.map((c) => <option key={c}>{c}</option>)}
             </select>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search doctor, CA, name…" className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 w-[220px] rounded-[2px] outline-none focus:border-[var(--gold)]" />
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} title="Order of the list and the printout" className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-2 py-2 rounded-[2px]">
+              <option value="CAT">Sort: by category</option>
+              <option value="FLAT">Sort: by flat number</option>
+            </select>
             <button onClick={printDirectory} disabled={!shown.length} className="btn-navy mono text-[11px] px-4 py-2 tracking-[0.06em] disabled:opacity-40" title="Prints what is shown: the chosen category and search">🖨 PRINT DIRECTORY</button>
           </div>
         </div>
