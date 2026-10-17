@@ -8,6 +8,7 @@ import {
   type Bill, type Payment, type PrintCtx, type Signatory,
 } from "@/lib/billing";
 import SharePdfButton from "./SharePdfButton";
+import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const shortPeriod = (a: string, b: string) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() ? `${MON[x.getMonth()]}–${MON[y.getMonth()]} ${x.getFullYear()}` : `${MON[x.getMonth()]} ${x.getFullYear()} – ${MON[y.getMonth()]} ${y.getFullYear()}`; };
@@ -25,6 +26,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canDelete = useMainAdmin(editable);
 
   const signers = pc.signatories.filter((s) => s.active);
   const defaultSigner = pc.settings?.rcpt_signer || signers[0]?.id || "";
@@ -74,6 +76,11 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
     if (error) setError(error.message); else onChanged?.();
   }
 
+  async function del(kind: "bill" | "receipt", id: string, no: string, extra: string) {
+    setError("");
+    try { if (await deleteDoc(kind, id, no, extra)) onChanged?.(); } catch (e: any) { setError(e.message); }
+  }
+
   const prevDueFor = (b: Bill) => myBills.filter((x) => x.status === "active" && x.id !== b.id && x.bill_date < b.bill_date).reduce((n, x) => n + Math.max(0, billBalance(x, myPays).balance), 0);
   const printBill = (b: Bill) => openPrint(`Bill ${b.bill_no}`, [billHtml(b, pc, prevDueFor(b))]);
   const printReceipt = (p: Payment) => { const b = myBills.find((x) => x.id === p.bill_id)!; openPrint(`Receipt ${p.receipt_no}`, [receiptHtml(p, b, pc, myPays)]); };
@@ -96,6 +103,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
       <button onClick={() => printReceipt(p)} className={`mono text-[10px] font-bold underline whitespace-nowrap ${p.status === "cancelled" ? "line-through text-red-700" : "text-[var(--navy)]"}`} title="Print receipt">{p.receipt_no}</button>
       {p.status === "active" && mobile && <a href={waReceipt(p)} target="_blank" rel="noopener noreferrer" title="Send on WhatsApp" className="text-[13px]">📲</a>}
       {editable && p.status === "active" && <button onClick={() => cancelPayment(p)} title="Cancel this receipt" className="text-red-600 text-[11px]">✕</button>}
+      {canDelete && <button onClick={() => del("receipt", p.id, p.receipt_no, `₹${inr(p.amount)} received ${dmy(p.paid_on)}. The bill balance goes back up.`)} title="Delete this receipt permanently (main admin)" className="text-[12px] opacity-70 hover:opacity-100">🗑</button>}
     </div>
   );
 
@@ -159,6 +167,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
                     <td className="px-2.5 py-2 whitespace-nowrap">
                       {first ? rcptCell(first) : editable && b.status === "active" && balance > 0 ? <button onClick={() => startEntry(b)} className="btn-navy mono text-[10px] px-2.5 py-1">+ RECORD PAYMENT</button> : null}
                       {editable && b.status === "active" && !first && <button onClick={() => cancelBill(b)} className="ml-2 text-red-600 mono text-[10px] underline">cancel bill</button>}
+                      {canDelete && !first && <button onClick={() => del("bill", b.id, b.bill_no, `₹${inr(b.amount)}, Flat ${label(flat)}.`)} title="Delete this bill permanently (main admin)" className="ml-2 text-red-700 mono text-[10px] underline">🗑 delete</button>}
                     </td>
                     <td className="px-2.5 py-2 whitespace-nowrap">{first ? dmy(first.paid_on) : <span className="opacity-40">—</span>}</td>
                     <td className="px-2.5 py-2 whitespace-nowrap">{first ? modeCell(first) : <span className="opacity-40">—</span>}</td>
@@ -213,7 +222,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
       </div>
       <div className="px-5 py-3 mono text-[10px] opacity-60 flex flex-wrap justify-between gap-2">
         <span>Click a bill number or a receipt number (RECEIPT column) to view and print it.{editable ? " 📲 sends a WhatsApp message to the member's mobile." : ""}</span>
-        {editable && <span>A wrong entry is cancelled with a reason, never deleted.</span>}
+        {editable && <span>{canDelete ? "Real documents: cancel with a reason. 🗑 deletes test entries permanently (delete a bill's receipts first)." : "A wrong entry is cancelled with a reason. Only the main admin can delete."}</span>}
       </div>
     </div>
   );

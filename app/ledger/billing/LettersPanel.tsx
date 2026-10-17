@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { label, type Flat } from "@/lib/society";
 import { dmy, letterHtml, letterPdf, loadSettings, loadSignatories, openPrint, reserveNumbers, today, type Letter, type PrintCtx } from "@/lib/billing";
 import SharePdfButton from "./SharePdfButton";
+import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
 const TO_ALL = "TO WHOMSOEVER IT MAY CONCERN";
 
@@ -18,6 +19,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
   const [showCancelled, setShowCancelled] = useState(false);
   const blank = () => ({ letter_date: today(), owner_name: flat.owner_name || "", kind: "all" as "all" | "third", to: "", subject: "", body: "", signer: "" });
   const [form, setForm] = useState(blank());
+  const canDelete = useMainAdmin(isCommittee);
 
   async function load() {
     const [l, s, sg] = await Promise.all([
@@ -132,6 +134,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
                 <td className="px-3 py-2 whitespace-nowrap text-right">
                   {l.status === "active" && <SharePdfButton label="📄 PDF" className="underline mr-3" make={() => letterPdf(l, pc)} text={`Aakar Co-op Housing Society: letter ${l.ref_no} for Flat ${label(flat)} — ${l.subject}.`} />}
                   {isCommittee && l.status === "active" && <button onClick={() => cancel(l)} className="text-red-600 underline">cancel</button>}
+                  {canDelete && <button onClick={async () => { setError(""); try { if (await deleteDoc("letter", l.id, l.ref_no, l.subject)) load(); } catch (e: any) { setError(e.message); } }} title="Delete permanently (main admin)" className="ml-3 text-red-700 underline">🗑 delete</button>}
                 </td>
               </tr>))}
             </tbody>

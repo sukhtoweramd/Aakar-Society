@@ -23,6 +23,18 @@ export default function BillingSettings({ settings, signatories, email, onChange
       bill_signer: s.bill_signer || null, rcpt_signer: s.rcpt_signer || null, updated_by: email, updated_at: new Date().toISOString(),
     };
     if ("letter_prefix" in settings) { upd.letter_prefix = s.letter_prefix || "AKR/L/"; upd.letter_last_no = n(s.letter_last_no); }
+    // The last number must not be below a number already issued, or the next document would clash.
+    const checks: [string, string, string, string, number][] = [
+      ["bills", "bill_no", "Bill", upd.bill_prefix, upd.bill_last_no], ["bills", "bill_no", "Bill", upd.other_prefix, upd.other_last_no],
+      ["payments", "receipt_no", "Receipt", upd.rcpt_prefix, upd.rcpt_last_no],
+      ...("letter_prefix" in upd ? [["letters", "ref_no", "Letter", upd.letter_prefix, upd.letter_last_no] as [string, string, string, string, number]] : []),
+    ];
+    for (const [table, col, word, prefix, last] of checks) {
+      const { data } = await supabase.from(table).select(col).like(col, `${prefix.replace(/[%_\\]/g, "\\$&")}%`);
+      let max = 0, maxNo = "";
+      for (const r of (data as any[]) || []) { const rest = String(r[col]).slice(prefix.length); if (/^\d+$/.test(rest) && +rest > max) { max = +rest; maxNo = r[col]; } }
+      if (max > last) { setBusy(false); setError(`${word} ${maxNo} already exists, so LAST NO. USED for ${prefix} must be ${max} or more. To reuse lower numbers, delete the newer test ${word.toLowerCase()}s first (main admin).`); return; }
+    }
     const { error } = await supabase.from("billing_settings").update(upd).eq("id", 1);
     setBusy(false);
     if (error) setError(error.message); else { setDirty({}); setMsg("Saved."); onChanged(); }
