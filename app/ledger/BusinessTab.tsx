@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { label } from "@/lib/society";
+import { label, SOCIETY } from "@/lib/society";
+import { backBar } from "@/lib/printBack";
 import type { Ctx } from "./ctx";
 
 type Entry = { id: string; flat_id: string | null; name: string | null; occupation: string | null; business_name: string | null; business_category: string | null; office_address: string | null; office_phone: string | null; tower: string | null };
@@ -28,6 +29,41 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
   const shown = list.filter((e) =>
     (cat === "ALL" || (e.business_category || "Other") === cat) &&
     (!s || [e.name, e.occupation, e.business_name, e.business_category, e.office_address, flatLabel(e.flat_id)].some((v) => (v || "").toLowerCase().includes(s))));
+  const esc = (v: any) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  function printDirectory() {
+    const w = window.open("", "_blank");
+    if (!w) { alert("Please allow pop-ups to print."); return; }
+    const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const scope = [cat === "ALL" ? "All categories" : cat, s ? `search "${q.trim()}"` : ""].filter(Boolean).join(" • ");
+    const groups = Array.from(new Set(shown.map((e) => e.business_category || "Other")));
+    const body = groups.map((g) => `<tr class="grp"><td colspan="5">${esc(g)}</td></tr>` + shown.filter((e) => (e.business_category || "Other") === g).map((e) =>
+      `<tr><td class="f">${esc(flatLabel(e.flat_id))}</td><td><b>${esc(e.name)}</b></td><td>${esc(e.business_name || "")}${e.business_name && e.occupation ? "<br>" : ""}<span class="m">${esc(e.occupation || "")}</span></td><td>${esc(e.office_address || "")}</td><td class="nw">${esc(e.office_phone || "")}</td></tr>`).join("")).join("");
+    w.document.write(`<html><head><meta charset="utf-8"><title>Business Directory ${esc(today)}</title><style>
+      @page{size:A4 portrait;margin:12mm 10mm 14mm;
+        @bottom-left{content:"${esc(SOCIETY.full)} • Members' Business & Profession Directory • ${esc(today)} • For members only";font:8.5px Inter,Arial,sans-serif;color:#7a7568}
+        @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8.5px Inter,Arial,sans-serif;color:#7a7568}}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
+      h1{font-size:17px;color:#0f1d3d;margin:0}.sub{font-size:11px;color:#6f6a5d;margin:3px 0 10px}
+      .head{border-bottom:2px solid #0f1d3d;padding-bottom:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+      .head .r{font-size:11px;color:#6f6a5d;text-align:right}
+      table{width:100%;border-collapse:collapse;font-size:11px}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}
+      th{background:#0f1d3d;color:#fff;text-align:left;padding:5px 6px;font-size:10px;letter-spacing:.06em}
+      td{padding:5px 6px;border-bottom:1px solid #e8e2d1;vertical-align:top}
+      tr.grp td{background:#f7f2e4;color:#8a6d14;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:10px;border-top:1px solid #d9d1bb}
+      .f{font-weight:700;white-space:nowrap}.nw{white-space:nowrap}.m{color:#6f6a5d}
+      .bar{position:sticky;top:0}
+      @media screen{body{padding:24px;max-width:794px;margin:auto}}
+    </style></head><body>${backBar(`<span>${shown.length} listing${shown.length === 1 ? "" : "s"} • ${esc(scope)}</span>`)}
+      <div class="head"><div><h1>ॐ ${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • Reg. ${esc(SOCIETY.reg)}</div>
+        <div style="font-size:15px;font-weight:800;color:#0f1d3d">Members' Business &amp; Profession Directory</div></div>
+        <div class="r">${esc(scope)}<br>${shown.length} listing${shown.length === 1 ? "" : "s"} • as on ${esc(today)}</div></div>
+      <table><thead><tr><th style="width:9%">FLAT</th><th style="width:20%">NAME</th><th style="width:26%">BUSINESS / PROFESSION</th><th style="width:31%">OFFICE ADDRESS</th><th style="width:14%">PHONE</th></tr></thead>
+      <tbody>${body || `<tr><td colspan="5" style="text-align:center;color:#6f6a5d;padding:16px">No listings.</td></tr>`}</tbody></table>
+      <div style="margin-top:12px;font-size:10px;color:#6f6a5d">For members of ${esc(SOCIETY.full)} only. Please do not share outside the society.</div>
+    </body></html>`);
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
+  }
   const openFlat = (id: string | null) => { if (!id) return; if (isCommittee) { selectFlat(id); go("DETAIL"); } else if (id === myFlat) go("DETAIL"); };
 
   return (
@@ -44,6 +80,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
               {categories.map((c) => <option key={c}>{c}</option>)}
             </select>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search doctor, CA, name…" className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 w-[220px] rounded-[2px] outline-none focus:border-[var(--gold)]" />
+            <button onClick={printDirectory} disabled={!shown.length} className="btn-navy mono text-[11px] px-4 py-2 tracking-[0.06em] disabled:opacity-40" title="Prints what is shown: the chosen category and search">🖨 PRINT DIRECTORY</button>
           </div>
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
