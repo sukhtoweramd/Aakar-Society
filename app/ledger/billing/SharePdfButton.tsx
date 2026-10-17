@@ -22,7 +22,7 @@ export default function SharePdfButton({ make, text, label = "📤 SHARE PDF", c
     try { const f = await make(); setFile(f); await deliver(f); }
     catch (e: any) { setErr(e?.message || "Could not make the PDF"); setState("idle"); }
   }
-  const text_ = state === "busy" ? "MAKING PDF…" : state === "ready" ? "📤 TAP TO SHARE" : state === "done" ? "✓ " + label.replace(/^📤\s*/, "") : label;
+  const text_ = state === "busy" ? "MAKING PDF…" : state === "ready" ? "📤 TAP TO SHARE" : state === "done" ? "✓ " + label.replace(/^(📤|📲)\s*/u, "") : label;
   return (
     <span className="inline-flex flex-col">
       <button type="button" onClick={click} disabled={state === "busy"} title="Makes the ledger statement as a PDF and opens the share menu (WhatsApp). If this browser cannot share files, the PDF downloads instead."

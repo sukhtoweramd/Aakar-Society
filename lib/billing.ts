@@ -283,6 +283,34 @@ export async function statementPdf(f: Flat, bills: Bill[], pays: Payment[], c: P
   return pagesToPdf([statementHtml(f, bills, pays, c)], CSS, `Ledger_${label(f)}_${today()}.pdf`);
 }
 
+/** Dues list for the committee as an A4 PDF (no mobile numbers, since it is meant to be shared). */
+export async function duesListPdf(rows: { f: Flat; due: number; count: number; oldest?: string }[], scope: string): Promise<File> {
+  const { pagesToPdf } = await import("./pdfShare");
+  const per = 24, total = rows.reduce((n, r) => n + r.due, 0);
+  const chunks: typeof rows[] = []; for (let i = 0; i < Math.max(rows.length, 1); i += per) chunks.push(rows.slice(i, i + per));
+  const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#1a1a18}
+  .page{width:210mm;height:297mm;padding:14mm 13mm 12mm;display:flex;flex-direction:column;background:#fff}
+  .hd{display:flex;align-items:center;gap:4mm;border-bottom:.6mm solid #0f1d3d;padding-bottom:3mm}
+  .seal{width:13mm;height:13mm;border-radius:50%;background:#0f1d3d;color:#e2c25c;display:grid;place-items:center;font-size:18pt}
+  h1{font-size:13pt;color:#0f1d3d;letter-spacing:.02em}.a{font-size:8pt;color:#6f6a5d;margin-top:.8mm}
+  .t{margin-left:auto;text-align:right}.t b{display:block;font-size:8pt;letter-spacing:.2em;color:#b8932a}.t span{font-size:16pt;font-weight:800;color:#0f1d3d}
+  .s{display:flex;justify-content:space-between;font-size:9pt;color:#6f6a5d;margin:3mm 0}
+  table{width:100%;border-collapse:collapse;font-size:9.5pt}th{background:#0f1d3d;color:#fff;text-align:left;padding:2mm;font-size:8pt;letter-spacing:.06em}
+  td{padding:2mm;border-bottom:.25mm solid #e8e2d1}.r{text-align:right}.od{color:#b42318;font-weight:700}
+  tr.tot td{font-weight:800;background:#f7f2e4;border-top:.4mm solid #0f1d3d}
+  .ft{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#6f6a5d;border-top:.25mm solid #e8e2d1;padding-top:2mm}`;
+  const pages = chunks.map((ch, i) => `<section class="page"><div class="hd"><div class="seal">ॐ</div><div><h1>${esc(SOCIETY.full)}</h1>
+    <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
+    <div class="t"><b>DUES LIST</b><span>${esc(scope)}</span></div></div>
+    <div class="s"><span>As on <b>${dmy(today())}</b> • ${rows.length} flat${rows.length === 1 ? "" : "s"} with dues</span><span>Total due <b style="color:#b26a00">₹${inr(total)}</b></span></div>
+    <table><tr><th>FLAT</th><th>OWNER</th><th>UNPAID BILLS</th><th>OLDEST DUE DATE</th><th class="r">AMOUNT DUE ₹</th></tr>
+    ${ch.map((r) => `<tr><td><b>${esc(label(r.f))}</b></td><td>${esc(r.f.owner_name || "—")}</td><td>${r.count}</td><td class="${r.oldest && r.oldest < today() ? "od" : ""}">${dmy(r.oldest)}${r.oldest && r.oldest < today() ? " • overdue" : ""}</td><td class="r">${inr(r.due)}</td></tr>`).join("")
+      || `<tr><td colspan="5" style="text-align:center;color:#6f6a5d;padding:6mm">No dues. Every bill is paid.</td></tr>`}
+    ${i === chunks.length - 1 ? `<tr class="tot"><td colspan="4">TOTAL</td><td class="r">${inr(total)}</td></tr>` : ""}</table>
+    <div class="ft"><span>Generated from the society app on ${dmy(today())} • For committee use</span><span>Page ${i + 1} of ${chunks.length}</span></div></section>`);
+  return pagesToPdf(pages, css, `Dues_List_${scope.replace(/\s+/g, "_")}_${today()}.pdf`);
+}
+
 /** Itemised WhatsApp text of a flat's unpaid bills, with bank details when set. */
 export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | null): string {
   const open = bills.filter((b) => b.flat_id === f.id && b.status === "active")

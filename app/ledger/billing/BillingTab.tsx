@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, sortFlats, type MemberLite } from "@/lib/society";
 import {
   addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
-  OTHER_PRESETS, periodOf, periodOptions, reserveNumbers, today, waLink, duesText, statementPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
+  OTHER_PRESETS, periodOf, periodOptions, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
 } from "@/lib/billing";
 import type { Ctx } from "../ctx";
 import SharePdfButton from "./SharePdfButton";
@@ -262,8 +262,11 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 mono text-[11px] space-y-3">
       <div className="flex flex-wrap justify-between gap-3 items-center">
         <div><div className="serif text-[18px] font-bold">Dues list</div><div className="opacity-60">{rows.length} flats owe ₹{inr(total)}</div></div>
-        <div className="flex gap-2"><select className="field !w-[120px] !py-1.5" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select>
-          <button onClick={print} disabled={!rows.length} className="btn-navy px-4 py-1.5">PRINT DUES LIST</button></div>
+        <div className="flex flex-wrap gap-2"><select className="field !w-[120px] !py-1.5" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select>
+          <button onClick={print} disabled={!rows.length} className="btn-navy px-4 py-1.5">PRINT DUES LIST</button>
+          {rows.length > 0 && <SharePdfButton key={tower} label="📲 WHATSAPP PDF" className="btn-line px-3 py-1.5 !border-[#25d366] text-[#128c48] font-bold"
+            make={() => duesListPdf(rows, tower === "ALL" ? "All towers" : `Tower ${tower}`)}
+            text={`Aakar Co-op Housing Society: dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}</div>
       </div>
       <div className="border border-[var(--border)] overflow-x-auto">
         <table className="w-full text-[12px] min-w-[700px]">
