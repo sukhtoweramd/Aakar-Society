@@ -9,6 +9,7 @@ import ConsentCard from "./ConsentCard";
 import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
 import { printFlatCards } from "@/lib/flatCard";
 import MyBills from "./billing/MyBills";
+import LettersPanel from "./billing/LettersPanel";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -435,6 +436,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
         {!isCommittee && <div className="mt-6"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
+        <div className="mt-6"><LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
       </div>
     </div>
   );

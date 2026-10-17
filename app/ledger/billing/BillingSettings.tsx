@@ -22,6 +22,7 @@ export default function BillingSettings({ settings, signatories, email, onChange
       ifsc: (s.ifsc || "").toUpperCase() || null, upi_id: s.upi_id || null, cheque_payee: s.cheque_payee || null, pay_note: s.pay_note || null,
       bill_signer: s.bill_signer || null, rcpt_signer: s.rcpt_signer || null, updated_by: email, updated_at: new Date().toISOString(),
     };
+    if ("letter_prefix" in settings) { upd.letter_prefix = s.letter_prefix || "AKR/L/"; upd.letter_last_no = n(s.letter_last_no); }
     const { error } = await supabase.from("billing_settings").update(upd).eq("id", 1);
     setBusy(false);
     if (error) setError(error.message); else { setDirty({}); setMsg("Saved."); onChanged(); }
@@ -65,10 +66,11 @@ export default function BillingSettings({ settings, signatories, email, onChange
       <div className="bg-[var(--surface)] border border-[var(--border)] p-5">
         <div className="serif text-[18px] font-bold">Numbering</div>
         <div className="opacity-60 mt-0.5">Enter the last number already used on paper. The app continues from the next one. Change the prefix at the start of each financial year (e.g. AKR/27-28/).</div>
-        <div className="grid md:grid-cols-3 gap-3 mt-3">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
           {series("MAINTENANCE BILLS", "bill_prefix", "bill_last_no")}
           {series("OTHER (ONE-OFF) BILLS", "other_prefix", "other_last_no")}
           {series("RECEIPTS", "rcpt_prefix", "rcpt_last_no")}
+          {"letter_prefix" in settings && series("LETTERS", "letter_prefix", "letter_last_no")}
         </div>
         <div className="flex flex-wrap gap-3 mt-3">
           <label className="text-[10px] opacity-80">DIGITS IN NUMBER<input className="field mt-1 !w-[90px]" inputMode="numeric" value={s.num_digits} onChange={(e) => set("num_digits", e.target.value.replace(/\D/g, ""))} /></label>

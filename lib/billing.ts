@@ -10,6 +10,7 @@ export type Settings = {
   account_name: string | null; bank_name: string | null; bank_branch: string | null; account_no: string | null;
   ifsc: string | null; upi_id: string | null; cheque_payee: string | null; pay_note: string | null;
   bill_signer: string | null; rcpt_signer: string | null; stamp_image: string | null;
+  letter_prefix?: string; letter_last_no?: number; // after LETTERS.sql
 };
 export type Signatory = { id: string; name: string; designation: string; signature_image: string | null; active: boolean };
 export type Line = { description: string; rate?: number | null; qty?: number | null; amount: number };
@@ -78,7 +79,7 @@ export async function loadSignatories(): Promise<Signatory[]> {
   const { data } = await supabase.from("signatories").select("*").order("created_at");
   return (data as Signatory[]) || [];
 }
-export async function reserveNumbers(series: "bill" | "other" | "receipt", count: number) {
+export async function reserveNumbers(series: "bill" | "other" | "receipt" | "letter", count: number) {
   const { data, error } = await supabase.rpc("next_doc_numbers", { p_series: series, p_count: count });
   if (error) throw error;
   const r = (data as any[])[0];
@@ -275,6 +276,44 @@ export function statementHtml(f: Flat, bills: Bill[], pays: Payment[], c: PrintC
   <div class="note">This statement lists bills issued from the society app and payments recorded against them. The society's books of account are maintained separately.</div>
   <div class="grow"></div>
   <div class="foot"><div>Printed on ${dmy(today())} from the society app<br><b style="color:var(--navy);letter-spacing:.06em">FOR MEMBER'S INFORMATION</b></div><div>Flat ${esc(label(f))}</div></div>${frameEnd}`;
+}
+
+// ---------- letters ----------
+export type Letter = {
+  id: string; ref_no: string; flat_id: string; letter_date: string; owner_name: string | null; addressee: string;
+  subject: string; body: string; signer_id: string | null; signer_name: string | null; signer_designation: string | null;
+  status: "active" | "cancelled"; cancel_reason: string | null; created_by: string | null; created_at: string;
+};
+export function letterHtml(l: Letter, c: PrintCtx): string {
+  const f = c.flats.find((x) => x.id === l.flat_id);
+  const paras = l.body.trim().split(/\n\s*\n/).map((para) => `<p style="margin:0 0 4mm">${esc(para).replace(/\n/g, "<br>")}</p>`).join("");
+  return `${frameStart}${header("LETTER", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
+  <div style="margin-top:6mm;font-size:10.5pt;line-height:1.6;color:#2a2822">
+    <div>Ref. No.: <b style="color:var(--navy)">${esc(l.ref_no)}</b></div>
+    <div>Date: <b style="color:var(--navy)">${dmy(l.letter_date, true)}</b></div>
+    <div style="margin-top:4mm">Flat No.: <b style="color:var(--navy)">${esc(f ? label(f) : l.flat_id)}</b>${f ? `, Tower ${esc(f.tower)}, Floor ${esc(f.floor ?? "")}, ${esc(SOCIETY.building)}` : ""}</div>
+    <div>Owner: <b style="color:var(--navy)">${esc(l.owner_name || "—")}</b></div>
+  </div>
+  <div style="margin-top:8mm;text-align:center;font-size:12.5pt;font-weight:800;letter-spacing:.08em;color:var(--navy);text-decoration:underline;text-underline-offset:1.2mm">${esc(l.addressee)}</div>
+  <div style="margin-top:7mm;font-size:11pt;color:var(--navy)"><b>Subject: ${esc(l.subject)}</b></div>
+  <div style="margin-top:5mm;font-size:11pt;line-height:1.75;color:#1f1d18;text-align:justify">${paras}</div>
+  ${l.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
+  <div style="margin-top:8mm;font-size:11pt;color:#1f1d18">Yours faithfully,</div>
+  <div style="display:flex;align-items:flex-end;gap:8mm;margin-top:2mm">
+    <div style="min-width:70mm">
+      <div style="font-size:9pt;color:var(--navy);font-weight:700">For ${esc(SOCIETY.full)}</div>
+      ${sigImg(c, l.signer_id) ? `<img src="${sigImg(c, l.signer_id)}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
+      <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt"><b style="color:var(--navy)">${esc(l.signer_name || "")}</b><br><span style="font-size:9.5pt">${esc(l.signer_designation ? `Hon. ${l.signer_designation}` : "Authorised signatory")}</span></div>
+    </div>
+    <img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
+  </div>
+  <div style="margin-top:5mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>Ahmedabad</b></span><span>Date: <b>${dmy(l.letter_date, true)}</b></span></div>
+  <div class="grow"></div>
+  <div class="foot"><div>Generated from the society app • ${dmy(today())}</div><div>Ref. ${esc(l.ref_no)} • Flat ${esc(f ? label(f) : l.flat_id)}</div></div>${frameEnd}`;
+}
+export async function letterPdf(l: Letter, c: PrintCtx): Promise<File> {
+  const { pagesToPdf } = await import("./pdfShare");
+  return pagesToPdf([letterHtml(l, c)], CSS, `Letter_${l.ref_no.replace(/[^\w-]+/g, "-")}.pdf`);
 }
 
 /** The flat's ledger statement as a PDF file (for sharing on WhatsApp etc.). */
