@@ -272,7 +272,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           </div>
         )}
 
-        <div className="mt-6 grid md:grid-cols-[1.2fr_0.8fr] gap-6">
+        <div className="mt-6 grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-6">
           <div className="space-y-3">
             {rented && (
               <div className={`border p-4 ${agreementOver ? "border-red-300 bg-red-50" : "border-[var(--gold)] bg-[#fffdf5]"}`}>
@@ -330,7 +330,6 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
 
-            {!isCommittee && <MyBills flat={f} flats={flats} email={ctx.email} />}
             {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
 
             <FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
@@ -435,6 +434,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
         </div>
+        {!isCommittee && <div className="mt-6"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
       </div>
     </div>
   );
