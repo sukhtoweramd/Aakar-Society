@@ -16,7 +16,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-  const blank = () => ({ letter_date: today(), owner_name: flat.owner_name || "", addressee: TO_ALL, subject: "", body: "", signer: "" });
+  const blank = () => ({ letter_date: today(), owner_name: flat.owner_name || "", kind: "all" as "all" | "third", to: "", subject: "", body: "", signer: "" });
   const [form, setForm] = useState(blank());
 
   async function load() {
@@ -35,11 +35,11 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
   const signers = pc.signatories.filter((g) => g.active);
   const draft = (ref: string): Letter => {
     const g = signers.find((x) => x.id === form.signer);
-    return { id: "draft", ref_no: ref, flat_id: flat.id, letter_date: form.letter_date, owner_name: form.owner_name.trim() || null, addressee: form.addressee.trim() || TO_ALL,
+    return { id: "draft", ref_no: ref, flat_id: flat.id, letter_date: form.letter_date, owner_name: form.owner_name.trim() || null, addressee: form.kind === "third" ? form.to.trim() : TO_ALL,
       subject: form.subject.trim(), body: form.body, signer_id: g?.id || null, signer_name: g?.name || null, signer_designation: g?.designation || null,
       status: "active", cancel_reason: null, created_by: email, created_at: new Date().toISOString() };
   };
-  const check = () => (!form.subject.trim() ? "Enter the subject." : !form.body.trim() ? "Type the letter text." : !form.letter_date ? "Choose the date." : "");
+  const check = () => (form.kind === "third" && !form.to.trim() ? "Enter who the letter is addressed to (name and address)." : !form.subject.trim() ? "Enter the subject." : !form.body.trim() ? "Type the letter text." : !form.letter_date ? "Choose the date." : "");
 
   function preview() {
     const e = check(); if (e) { setError(e); return; } setError("");
@@ -94,7 +94,13 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
             <label className="text-[10px] opacity-80">DATE<input type="date" className="field mt-1" value={form.letter_date} onChange={(e) => setForm({ ...form, letter_date: e.target.value })} /></label>
             <label className="text-[10px] opacity-80">OWNER NAME (AS ON LETTER)<input className="field mt-1" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
           </div>
-          <label className="text-[10px] opacity-80 block">ADDRESSED TO<input className="field mt-1" value={form.addressee} onChange={(e) => setForm({ ...form, addressee: e.target.value.toUpperCase() })} /></label>
+          <div className="text-[10px] opacity-80">ADDRESSED TO
+            <div className="flex flex-wrap gap-4 mt-1.5 text-[12px]">
+              <label className="flex items-center gap-1.5"><input type="radio" checked={form.kind === "all"} onChange={() => setForm({ ...form, kind: "all" })} /> To whomsoever it may concern</label>
+              <label className="flex items-center gap-1.5"><input type="radio" checked={form.kind === "third"} onChange={() => setForm({ ...form, kind: "third" })} /> To a third party (bank, authority, builder…)</label>
+            </div></div>
+          {form.kind === "third" && <label className="text-[10px] opacity-80 block">TO (NAME AND ADDRESS) * <span className="opacity-60">— one line each</span>
+            <textarea className="field mt-1 !h-auto font-sans text-[13px]" rows={4} value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder={"The Branch Manager\nHDFC Bank Ltd.\nNaranpura Branch\nAhmedabad – 380013"} /></label>}
           <label className="text-[10px] opacity-80 block">SUBJECT *<input className="field mt-1" placeholder="e.g. No Objection Certificate for home loan" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>
           <label className="text-[10px] opacity-80 block">LETTER TEXT * <span className="opacity-60">(leave an empty line between paragraphs)</span>
             <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={9} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
@@ -106,7 +112,9 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
             <button onClick={issue} disabled={busy} className="btn-navy px-4 py-2 font-bold">{busy ? "ISSUING…" : "ISSUE & PRINT"}</button>
             <button onClick={() => { setOpen(false); setError(""); }} className="underline px-2 py-2">Cancel</button>
           </div>
-          <div className="opacity-60">The letter shows the society header, reference number, date, flat number, owner name, &quot;{TO_ALL}&quot;, the subject and your text, then the signature and the society stamp.</div>
+          <div className="opacity-60">{form.kind === "all"
+            ? <>Prints: reference no. and date, flat number and owner, &quot;{TO_ALL}&quot;, subject, your text, then Yours faithfully, signature, stamp, place and date.</>
+            : <>Prints: reference no. and date, &quot;To,&quot; and the address above, subject, &quot;Ref.: Flat No. {label(flat)} — Owner: {form.owner_name || "…"}&quot;, Dear Sir / Madam, your text, then Yours faithfully, signature, stamp, place and date.</>}</div>
         </div>
       )}
 
@@ -119,7 +127,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
               <tr key={l.id} className={`border-b border-[var(--border)] ${l.status === "cancelled" ? "opacity-50" : ""}`}>
                 <td className="px-3 py-2 whitespace-nowrap">{dmy(l.letter_date)}</td>
                 <td className="px-3 py-2 whitespace-nowrap"><button onClick={() => openPrint(`Letter ${l.ref_no}`, [letterHtml(l, pc)])} className={`font-bold underline text-[var(--navy)] ${l.status === "cancelled" ? "line-through" : ""}`} title="View and print">{l.ref_no}</button></td>
-                <td className="px-3 py-2">{l.subject}{l.status === "cancelled" && l.cancel_reason && <div className="text-[10px] text-red-700">Cancelled: {l.cancel_reason}</div>}</td>
+                <td className="px-3 py-2">{l.subject}{l.addressee.trim().toUpperCase() !== TO_ALL && <div className="text-[10px] opacity-60">To: {l.addressee.split("\n")[0]}</div>}{l.status === "cancelled" && l.cancel_reason && <div className="text-[10px] text-red-700">Cancelled: {l.cancel_reason}</div>}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{l.signer_designation || "—"}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-right">
                   {l.status === "active" && <SharePdfButton label="📄 PDF" className="underline mr-3" make={() => letterPdf(l, pc)} text={`Aakar Co-op Housing Society: letter ${l.ref_no} for Flat ${label(flat)} — ${l.subject}.`} />}

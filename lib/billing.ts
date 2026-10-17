@@ -287,16 +287,24 @@ export type Letter = {
 export function letterHtml(l: Letter, c: PrintCtx): string {
   const f = c.flats.find((x) => x.id === l.flat_id);
   const paras = l.body.trim().split(/\n\s*\n/).map((para) => `<p style="margin:0 0 4mm">${esc(para).replace(/\n/g, "<br>")}</p>`).join("");
+  const general = l.addressee.trim().toUpperCase() === "TO WHOMSOEVER IT MAY CONCERN";
+  const flatText = f ? `${label(f)}, Tower ${f.tower}, Floor ${f.floor ?? ""}, ${SOCIETY.building}` : l.flat_id;
+  const N = (t: string) => `<b style="color:var(--navy)">${t}</b>`;
+  const refDate = `<div>Ref. No.: ${N(esc(l.ref_no))}</div><div>Date: ${N(dmy(l.letter_date, true))}</div>`;
+  const top = general
+    ? `<div style="margin-top:6mm;font-size:10.5pt;line-height:1.6;color:#2a2822">${refDate}
+        <div style="margin-top:4mm">Flat No.: ${N(esc(f ? label(f) : l.flat_id))}${f ? `, Tower ${esc(f.tower)}, Floor ${esc(f.floor ?? "")}, ${esc(SOCIETY.building)}` : ""}</div>
+        <div>Owner: ${N(esc(l.owner_name || "—"))}</div></div>
+      <div style="margin-top:8mm;text-align:center;font-size:12.5pt;font-weight:800;letter-spacing:.08em;color:var(--navy);text-decoration:underline;text-underline-offset:1.2mm">${esc(l.addressee)}</div>
+      <div style="margin-top:7mm;font-size:11pt;color:var(--navy)"><b>Subject: ${esc(l.subject)}</b></div>`
+    : `<div style="margin-top:6mm;font-size:10.5pt;line-height:1.6;color:#2a2822">${refDate}</div>
+      <div style="margin-top:6mm;font-size:11pt;line-height:1.55;color:#1f1d18">To,<br>${esc(l.addressee.trim()).replace(/\n/g, "<br>")}</div>
+      <div style="margin-top:6mm;font-size:11pt;color:var(--navy)"><b>Subject: ${esc(l.subject)}</b></div>
+      <div style="margin-top:2mm;font-size:11pt;color:var(--navy)"><b>Ref.: Flat No. ${esc(flatText)} — Owner: ${esc(l.owner_name || "—")}</b></div>
+      <div style="margin-top:6mm;font-size:11pt;color:#1f1d18">Dear Sir / Madam,</div>`;
   return `${frameStart}${header("LETTER", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
-  <div style="margin-top:6mm;font-size:10.5pt;line-height:1.6;color:#2a2822">
-    <div>Ref. No.: <b style="color:var(--navy)">${esc(l.ref_no)}</b></div>
-    <div>Date: <b style="color:var(--navy)">${dmy(l.letter_date, true)}</b></div>
-    <div style="margin-top:4mm">Flat No.: <b style="color:var(--navy)">${esc(f ? label(f) : l.flat_id)}</b>${f ? `, Tower ${esc(f.tower)}, Floor ${esc(f.floor ?? "")}, ${esc(SOCIETY.building)}` : ""}</div>
-    <div>Owner: <b style="color:var(--navy)">${esc(l.owner_name || "—")}</b></div>
-  </div>
-  <div style="margin-top:8mm;text-align:center;font-size:12.5pt;font-weight:800;letter-spacing:.08em;color:var(--navy);text-decoration:underline;text-underline-offset:1.2mm">${esc(l.addressee)}</div>
-  <div style="margin-top:7mm;font-size:11pt;color:var(--navy)"><b>Subject: ${esc(l.subject)}</b></div>
-  <div style="margin-top:5mm;font-size:11pt;line-height:1.75;color:#1f1d18;text-align:justify">${paras}</div>
+  ${top}
+  <div style="margin-top:${general ? 5 : 4}mm;font-size:11pt;line-height:1.75;color:#1f1d18;text-align:justify">${paras}</div>
   ${l.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
   <div style="margin-top:8mm;font-size:11pt;color:#1f1d18">Yours faithfully,</div>
   <div style="display:flex;align-items:flex-end;gap:8mm;margin-top:2mm">
