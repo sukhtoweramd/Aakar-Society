@@ -260,14 +260,24 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
   }
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 mono text-[11px] space-y-3">
-      <div className="flex flex-wrap justify-between gap-3 items-center">
-        <div><div className="serif text-[18px] font-bold">Dues list</div><div className="opacity-60">{rows.length} flats owe ₹{inr(total)}</div></div>
-        <div className="flex flex-wrap gap-2"><select className="field !w-[120px] !py-1.5" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select>
-          <button onClick={print} disabled={!rows.length} className="btn-navy px-4 py-1.5">PRINT DUES LIST</button>
-          {rows.length > 0 && <SharePdfButton key={tower} label="📋 DUES LIST PDF (COMMITTEE)" className="btn-line px-3 py-1.5 !border-[#25d366] text-[#128c48] font-bold"
+      <div className="border-2 border-[var(--gold)] bg-[#fffbeb] rounded-[6px] p-4 space-y-3">
+        <div className="flex flex-wrap justify-between gap-3 items-start">
+          <div>
+            <div className="text-[10px] font-bold tracking-[0.16em] text-[#8a6d14]">FULL DUES LIST • FOR THE COMMITTEE</div>
+            <div className="serif text-[22px] font-bold mt-1">Full dues list — {tower === "ALL" ? "All towers" : `Tower ${tower}`}</div>
+            <div className="opacity-70 mt-0.5">{rows.length} flat{rows.length === 1 ? "" : "s"} owe <b className="text-amber-700">₹{inr(total)}</b> • as on {dmy(today())}</div>
+          </div>
+          <label className="text-[10px] font-bold tracking-[0.1em]">SHOW<select className="field !w-[150px] !py-1.5 mt-1 block" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select></label>
+        </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <button onClick={print} disabled={!rows.length} className="btn-navy px-5 py-2.5 text-[12px] tracking-[0.06em]">🖨 PRINT FULL DUES LIST</button>
+          {rows.length > 0 && <SharePdfButton key={tower} label="📋 FULL DUES LIST PDF" className="px-5 py-2.5 text-[12px] tracking-[0.06em] font-bold text-white bg-[#128c48] border border-[#128c48]"
             make={() => duesListPdf(rows, tower === "ALL" ? "All towers" : `Tower ${tower}`)}
-            text={`Aakar Co-op Housing Society: dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}</div>
+            text={`Aakar Co-op Housing Society: full dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}
+          <span className="opacity-70">Share only with the committee — it shows every flat's dues.</span>
+        </div>
       </div>
+      <div className="text-[10px] font-bold tracking-[0.16em] pt-1">ONE FLAT AT A TIME • SEND TO THAT MEMBER</div>
       <div className="border border-[var(--border)] overflow-x-auto">
         <table className="w-full text-[12px] min-w-[700px]">
           <thead><tr className="bg-[var(--navy)] text-white text-left mono text-[10px]"><th className="px-2.5 py-2">FLAT</th><th className="px-2.5 py-2">OWNER</th><th className="px-2.5 py-2">MOBILE</th><th className="px-2.5 py-2">UNPAID BILLS</th><th className="px-2.5 py-2">OLDEST DUE</th><th className="px-2.5 py-2 text-right">DUE ₹</th><th className="px-2.5 py-2">SEND TO MEMBER</th></tr></thead>
