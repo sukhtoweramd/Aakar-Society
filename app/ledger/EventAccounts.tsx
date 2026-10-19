@@ -35,7 +35,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
   async function load() { try { setList(await loadMoney(ev.id)); } catch (e: any) { setError(e.message); setList([]); } }
   useEffect(() => { load(); }, [ev.id]);
   const t = useMemo(() => totals(list || []), [list]);
-  const occupied = useMemo(() => flats.filter(isOccupied).sort(sortFlats), [flats]);
+  const occupied = useMemo(() => [...flats].sort(sortFlats), [flats]); // all flats; not-occupied ones are marked
   const paid = useMemo(() => { const r: Record<string, number> = {}; (list || []).filter((m) => m.category === "Member fund" && m.flat_id).forEach((m) => { r[m.flat_id!] = (r[m.flat_id!] || 0) + Number(m.amount); }); return r; }, [list]);
 
   const blank = (direction: "in" | "out", over: Partial<Form> = {}): Form => ({ direction, entry_date: today(), category: direction === "in" ? "Member fund" : "Food", flat_id: "", party: "", purpose: "", qty: "", rate: "", amount: direction === "in" && ev.fund_per_flat ? String(ev.fund_per_flat) : "", mode: "Cash", reference: "", note: "", file_url: "", pass_type: "Member", jain: "", ...over });
@@ -196,7 +196,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {fundRows.map((f) => (
               <div key={f.id} className={`border p-2 flex items-center gap-2 ${paid[f.id] ? "border-emerald-200 bg-emerald-50/50" : "border-[var(--border)] bg-[var(--bg)]"}`}>
-                <b className="w-[54px]">{label(f)}</b><span className="flex-1 truncate">{residentName(f) || ownerText(f)}</span>
+                <b className="w-[54px]">{label(f)}</b><span className="flex-1 truncate">{residentName(f) || ownerText(f)}{!isOccupied(f) && <span className="opacity-50"> • not occupied</span>}</span>
                 {paid[f.id] ? <b className="text-emerald-700">₹{inr(paid[f.id])}</b> : canWrite ? <button onClick={() => open(blank("in", { flat_id: f.id }))} className="underline">+ paid</button> : <span className="opacity-40">—</span>}
               </div>))}
           </div>

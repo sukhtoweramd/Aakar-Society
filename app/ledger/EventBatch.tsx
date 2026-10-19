@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { inr, today } from "@/lib/billing";
-import { label, ownerText, residentName, type Flat } from "@/lib/society";
+import { isOccupied, label, ownerText, residentName, type Flat } from "@/lib/society";
 import { EV_MODES, type Money } from "@/lib/events";
 
 type Row = { on: boolean; qty: string; jain: string; amount: string };
@@ -22,7 +22,8 @@ export default function EventBatch({ kind, eventId, occupied, done, people, pric
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const list = occupied.filter((f) => (tower === "ALL" || f.tower === tower) && !done.has(f.id));
   const qtyOf = (id: string) => String(Math.max(1, people[id] || 1));
-  const row = (id: string): Row => rows[id] || { on: true, qty: qtyOf(id), jain: "", amount: "" };
+  const occ = useMemo(() => new Set(occupied.filter(isOccupied).map((f) => f.id)), [occupied]);
+  const row = (id: string): Row => rows[id] || { on: occ.has(id), qty: qtyOf(id), jain: "", amount: "" };
   const amountOf = (id: string) => { const r = row(id); if (r.amount) return Number(r.amount); return kind === "passes" ? Number(r.qty || 0) * Number(rate || 0) : Number(rate || 0); };
   const setRow = (id: string, p: Partial<Row>) => setRows((x) => ({ ...x, [id]: { ...row(id), ...p } }));
   const picked = list.filter((f) => row(f.id).on);
@@ -50,7 +51,7 @@ export default function EventBatch({ kind, eventId, occupied, done, people, pric
   return (
     <div className="border-2 border-emerald-600 bg-emerald-50/40 p-3 space-y-2.5 mono text-[11px]">
       <div className="font-bold tracking-[0.1em]">POST {kind === "fund" ? "MEMBER FUND" : "MEMBER PASSES"} BY TOWER</div>
-      <div className="opacity-70">All flats not yet entered are ticked. Untick flats that have not paid, check the {kind === "fund" ? "amounts" : "number of passes"}, then post.{kind === "passes" ? " Passes default to the number of people living in the flat; enter how many of them want Jain food (the rest are normal)." : ""}</div>
+      <div className="opacity-70">All flats not yet entered are listed; occupied flats are ticked. Untick flats that have not paid, tick any others that paid, check the {kind === "fund" ? "amounts" : "number of passes"}, then post.{kind === "passes" ? " Passes default to the number of people living in the flat; enter how many of them want Jain food (the rest are normal)." : ""}</div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-2">{error}</div>}
       <div className="flex flex-wrap gap-2 items-end">
         <label className="text-[10px] opacity-80">TOWER<select className="field mt-1 !w-auto" value={tower} onChange={(e) => setTower(e.target.value)}>
@@ -68,7 +69,7 @@ export default function EventBatch({ kind, eventId, occupied, done, people, pric
         {list.map((f) => { const r = row(f.id); return (
           <div key={f.id} className={`border p-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 ${r.on ? "border-emerald-300 bg-white" : "border-[var(--border)] bg-[var(--bg)] opacity-60"}`}>
             <input type="checkbox" checked={r.on} onChange={(e) => setRow(f.id, { on: e.target.checked })} aria-label={`Include ${label(f)}`} />
-            <b className="w-[50px] shrink-0">{label(f)}</b><span className="flex-1 min-w-[110px] truncate">{residentName(f) || ownerText(f)}</span>
+            <b className="w-[50px] shrink-0">{label(f)}</b><span className="flex-1 min-w-[110px] truncate">{residentName(f) || ownerText(f)}{!occ.has(f.id) && <span className="opacity-50"> • not occupied</span>}</span>
             <div className="flex items-center gap-2 ml-auto">
             {kind === "passes" && <>
               <span className="text-[9.5px] opacity-60">PASSES</span><input className="field !w-[42px] !py-0.5 text-center" inputMode="numeric" value={r.qty} title="Passes" aria-label="Passes" onChange={(e) => setRow(f.id, { qty: e.target.value.replace(/\D/g, ""), amount: "" })} />
