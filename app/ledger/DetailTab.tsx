@@ -330,7 +330,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             )}
 
             <div className="border border-[var(--border)] p-4 bg-[var(--bg-soft)] mono text-[11px] leading-relaxed">
-              <div className="font-bold">FLAT HISTORY</div>
+              <div className="font-bold">FLAT DETAILS</div>
               <div className="mt-2 opacity-80">
                 {label(f)} is in Tower {f.tower}, Floor {floorOf(f)}. Registered under G-16551. {f.bhk ? `${f.bhk} layout. ` : ""}
                 Maintenance {rupees(f.maintenance)} per month. {terrace ? "Terrace ownership applicable - owner holds exclusive terrace rights per agreement in VAULT." : "Terrace ownership not applicable for this floor."}
