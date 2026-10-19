@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { SOCIETY, label, ownerText, byCommitteeRole } from "@/lib/society";
-import { amcAlerts, loadAmc, loadAreas, personOf, type Area } from "@/lib/committee";
+import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
+import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
@@ -35,6 +36,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
       )}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
         <div className="p-6 md:p-12">
+          {contacts.length > 0 && <button onClick={() => document.getElementById("who-to-contact")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="btn-line mono text-[11px] font-bold px-3 py-2 mb-5">WHO TO CONTACT ↓</button>}
           <div className="flex flex-wrap gap-6 items-start justify-between">
             <div>
               <div className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[36px] serif bg-[var(--bg)]">ॐ</div>
@@ -92,21 +94,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
             ))}
           </div>
         </div>
-        {contacts.length > 0 && (
-          <div className="border-t border-[var(--border)] px-6 md:px-12 py-6">
-            <div className="mono text-[11px] font-bold tracking-[0.16em]">WHO TO CONTACT</div>
-            <div className="mono text-[10px] opacity-60 mt-0.5">The committee member responsible for each area{ctx.isCommittee ? " • change in COMMITTEE → RESPONSIBILITIES" : ""}</div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-              {contacts.map((a) => { const p = personOf(flats, a.holder_flat)!; return (
-                <div key={a.id} className="border border-[var(--border)] bg-[var(--bg)] p-3 mono text-[11px]">
-                  <div className="font-bold text-[12px]">{a.name}</div>
-                  {a.description && <div className="opacity-60 text-[10px]">{a.description}</div>}
-                  <div className="mt-1.5"><b className="text-[var(--navy)]">{p?.name}</b>{p?.role ? ` • ${p.role}` : ""} • {p?.flat}</div>
-                  {a.contact_phone && <a href={`tel:${a.contact_phone.replace(/\s+/g, "")}`} className="underline mt-0.5 inline-block">📞 {a.contact_phone}</a>}
-                </div>); })}
-            </div>
-          </div>
-        )}
+        {contacts.length > 0 && <WhoToContact id="who-to-contact" flats={flats} isCommittee={ctx.isCommittee} areas={contacts} className="border-t border-[var(--border)] px-6 md:px-12 py-6" />}
         <div className="bg-[var(--bg-soft)] border-t border-[var(--border)] mono text-[10px] px-4 md:px-8 py-3 flex flex-wrap gap-4">
           <span>COVER PAGE • AAKAR CO-OP SOCIETY RECORD</span>
           <span className="opacity-50">•</span>

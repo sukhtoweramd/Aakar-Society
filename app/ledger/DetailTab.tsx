@@ -10,6 +10,7 @@ import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
 import { printFlatCards } from "@/lib/flatCard";
 import MyBills from "./billing/MyBills";
 import LettersPanel from "./billing/LettersPanel";
+import WhoToContact, { useContacts } from "./WhoToContact";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -19,6 +20,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const [vault, setVault] = useState<StoredFile[]>([]);
   const [editing, setEditing] = useState(false);
   const [jumpNote, setJumpNote] = useState("");
+  const contacts = useContacts();
   function jump(id: string, emptyMsg: string) {
     const el = document.getElementById(id);
     if (!el || (emptyMsg && el.offsetHeight < 8)) { setJumpNote(emptyMsg); setTimeout(() => setJumpNote(""), 5000); return; }
@@ -214,6 +216,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               <button onClick={() => jump("sec-ledger", "No bills have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LEDGER ↓</button>
               <button onClick={() => jump("sec-vehicles", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY VEHICLES ↓</button>
               <button onClick={() => jump("sec-letters", "No letters have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS ↓</button>
+              <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
             </>}
           </div>
         </div>
@@ -449,6 +452,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         </div>
         {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
         <div id="sec-letters" className="mt-6 scroll-mt-28"><LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
+        {!isCommittee && <div id="sec-contacts" className="scroll-mt-28">{contacts.length > 0 && <WhoToContact flats={flats} isCommittee={false} areas={contacts} className="mt-6 bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5" />}</div>}
       </div>
     </div>
   );

@@ -62,6 +62,8 @@ export default function Home() {
     setSelectedId((cur) => (isCommittee ? cur ?? list[0]?.id ?? null : myFlat));
   }
   useEffect(() => { if (session) reloadFlats(); }, [session?.user.id]);
+  // Members (flat logins) start on MY FLAT; committee logins start on the cover page.
+  useEffect(() => { if (session && (session.user.app_metadata as any)?.role === "resident") setTab("DETAIL"); }, [session?.user.id]);
 
   const categories = useMemo(() => buildCategories(flats), [flats]);
 
