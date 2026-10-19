@@ -11,6 +11,7 @@ import { printFlatCards } from "@/lib/flatCard";
 import MyBills from "./billing/MyBills";
 import LettersPanel from "./billing/LettersPanel";
 import WhoToContact, { useContacts } from "./WhoToContact";
+import MyActionPoints from "./MyActionPoints";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -222,6 +223,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
         {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
+        {(!isCommittee || f.id === ctx.homeFlat) && <MyActionPoints key={f.id} />}
 
         {editing && (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">

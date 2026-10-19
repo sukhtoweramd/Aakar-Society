@@ -40,6 +40,28 @@ do $$ declare t text; p record; begin
 end $$;
 create policy members_read_general on public.meetings for select to authenticated using (kind in ('AGM', 'SGM') and status = 'final');
 
+-- A committee member sees and closes their own action points from their flat (flat login or linked committee login).
+create or replace function public.my_action_points()
+returns table(id uuid, task text, due_date date, status text, done_note text, meeting_kind text, meeting_date date)
+language sql stable security definer set search_path = public as $$
+  select a.id, a.task, a.due_date, a.status, a.done_note, m.kind, m.meeting_date
+  from public.meeting_actions a join public.meetings m on m.id = a.meeting_id
+  where public.my_flat() is not null and a.owner_flat = public.my_flat()
+  order by (a.status = 'done'), a.due_date nulls last
+$$;
+revoke all on function public.my_action_points() from public, anon;
+grant execute on function public.my_action_points() to authenticated;
+
+create or replace function public.mark_my_action_done(p_id uuid, p_note text default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.meeting_actions set status = 'done', done_note = nullif(trim(p_note), ''), done_at = now(), done_by = auth.jwt() ->> 'email'
+  where id = p_id and status = 'open' and (owner_flat = public.my_flat() or public.is_committee());
+  if not found then raise exception 'This action point is not yours or is already done.'; end if;
+end $$;
+revoke all on function public.mark_my_action_done(uuid, text) from public, anon;
+grant execute on function public.mark_my_action_done(uuid, text) to authenticated;
+
 -- Backups and restore include meetings
 create or replace function public.restore_society_backup(p jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -87,5 +109,7 @@ end $$;
 revoke all on function public.restore_society_backup(jsonb) from public, anon, authenticated;
 grant execute on function public.restore_society_backup(jsonb) to service_role;
 
--- Check: should show 3 rules
-select 'rules' as item, count(*)::text as value from pg_policies where schemaname = 'public' and tablename in ('meetings','meeting_actions');
+-- Check: should show 3 rules and 2 functions
+select 'rules' as item, count(*)::text as value from pg_policies where schemaname = 'public' and tablename in ('meetings','meeting_actions')
+union all
+select 'functions', count(*)::text from pg_proc where proname in ('my_action_points','mark_my_action_done');
