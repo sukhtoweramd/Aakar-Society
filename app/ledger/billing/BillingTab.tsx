@@ -114,7 +114,12 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
       const { data, error } = await supabase.from("bills").insert(rowsIns).select("*");
       if (error) throw error;
       setMade((data as Bill[]) || []); await onDone();
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) {
+      setError(/bills_one_maintenance_per_period|duplicate key/i.test(e.message || "")
+        ? "Nothing was created: one of these flats already has a maintenance bill for this period (perhaps just made by another committee member). Refresh the page; already-billed flats are then skipped."
+        : e.message);
+      await onDone();
+    }
     setBusy(false);
   }
   const printMade = () => openPrint(`Bills ${per.label}`, made.map((b) => billHtml(b, pc, prevDue(b, [...bills, ...made], pays))));
@@ -129,7 +134,7 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
         <label className="text-[10px] opacity-80">TOWERS<select className="field mt-1 !w-[120px]" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All</option><option>A</option><option>B</option><option>C</option></select></label>
         <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[190px]" value={signer} onChange={(e) => setSigner(e.target.value)}><option value="">— blank line —</option>{signatories.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.designation} – {s.name}</option>)}</select></label>
       </div>
-      <div className="opacity-70">Each flat is billed its monthly maintenance × {months} months. Flats already billed for this period are skipped. Bill to: owner. Next bill no.: <b>{settings.bill_prefix}{String(settings.bill_last_no + 1).padStart(settings.num_digits, "0")}</b></div>
+      <div className="opacity-70">Each flat is billed its monthly maintenance × {months} months. Flats already billed for this period are skipped, so no flat is billed twice. To bill a single flat, tick only that flat here (not in OTHER BILL). Bill to: owner. Next bill no.: <b>{settings.bill_prefix}{String(settings.bill_last_no + 1).padStart(settings.num_digits, "0")}</b></div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-2.5">{error}</div>}
       {made.length > 0 && (
         <div className="border border-emerald-300 bg-emerald-50 p-3 flex flex-wrap gap-3 items-center justify-between">
@@ -175,6 +180,11 @@ function OtherBill({ ctx, flats, settings, signatories, pc, pays, bills, onDone 
     if (!picked.size) { setError("Choose at least one flat."); return; }
     if (lines.some((l) => !l.description.trim() || !(num(l.amount) > 0))) { setError("Each line needs a description and an amount."); return; }
     const fl = flats.filter((f) => picked.has(f.id));
+    const looksMaint = lines.some((l) => /maint/i.test(l.description) && !/opening|arrear/i.test(l.description));
+    if (looksMaint) {
+      const billed = fl.filter((f) => bills.some((b) => b.flat_id === f.id && b.kind === "maintenance" && b.status === "active" && b.period_from && b.period_to && b.period_from <= billDate && billDate <= b.period_to)).map(label);
+      if (!confirm(`This looks like a MAINTENANCE charge.\n\nMaintenance bills should be made in NEW BILLS (tick only the flats needed), so that a later batch run skips them and nobody is billed twice. A one-off bill here is NOT recognised as maintenance.${billed.length ? `\n\nAlready billed for maintenance this period: ${billed.join(", ")}.` : ""}\n\nCreate it here as a one-off bill anyway?`)) return;
+    }
     if (!confirm(`Create ${fl.length} bill(s) of ₹${inr(amount)} each?`)) return;
     setBusy(true); setError("");
     try {
