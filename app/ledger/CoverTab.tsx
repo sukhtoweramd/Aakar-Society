@@ -1,5 +1,7 @@
 "use client";
+import { useEffect, useState } from "react";
 import { SOCIETY, label, ownerText, byCommitteeRole } from "@/lib/society";
+import { amcAlerts, loadAmc, loadAreas, personOf, type Area } from "@/lib/committee";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
@@ -11,6 +13,7 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "VAULT", title: "VAULT 🔒", desc: "Society legal documents" },
   { id: "NOTICES", title: "NOTICES", desc: "Society notices" },
   { id: "EVENTS", title: "EVENTS", desc: "Events & photo gallery" },
+  { id: "COMMITTEE", title: "COMMITTEE", desc: "Responsibilities & AMC" },
   { id: "ADMIN", title: "ADMIN", desc: "Charges control panel" },
   { id: "REPORTS", title: "REPORTS", desc: "CSV / PDF directory" },
 ];
@@ -19,9 +22,17 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
   const { flats, go, selectFlat } = ctx;
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   const committee = flats.filter((f) => f.is_committee).sort(byCommitteeRole);
+  const [areas, setAreas] = useState<Area[] | null>(null);
+  const [amcDue, setAmcDue] = useState(0);
+  useEffect(() => { loadAreas().then(setAreas); if (ctx.isCommittee) loadAmc().then((d) => setAmcDue(d ? amcAlerts(d.amc).length : 0)); }, [ctx.isCommittee]);
+  const contacts = (areas || []).filter((a) => a.holder_flat);
 
   return (
     <div className="space-y-6 fade-in">
+      {ctx.isCommittee && amcDue > 0 && (
+        <button onClick={() => go("COMMITTEE")} className="w-full text-left border-2 border-red-300 bg-red-50 p-3 mono text-[11px] text-red-800">
+          <b>{amcDue} AMC contract{amcDue > 1 ? "s" : ""}</b> ending within 30 days or already ended. Open COMMITTEE → AMC CONTRACTS to renew →</button>
+      )}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
         <div className="p-6 md:p-12">
           <div className="flex flex-wrap gap-6 items-start justify-between">
@@ -81,6 +92,21 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
             ))}
           </div>
         </div>
+        {contacts.length > 0 && (
+          <div className="border-t border-[var(--border)] px-6 md:px-12 py-6">
+            <div className="mono text-[11px] font-bold tracking-[0.16em]">WHO TO CONTACT</div>
+            <div className="mono text-[10px] opacity-60 mt-0.5">The committee member responsible for each area{ctx.isCommittee ? " • change in COMMITTEE → RESPONSIBILITIES" : ""}</div>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              {contacts.map((a) => { const p = personOf(flats, a.holder_flat)!; return (
+                <div key={a.id} className="border border-[var(--border)] bg-[var(--bg)] p-3 mono text-[11px]">
+                  <div className="font-bold text-[12px]">{a.name}</div>
+                  {a.description && <div className="opacity-60 text-[10px]">{a.description}</div>}
+                  <div className="mt-1.5"><b className="text-[var(--navy)]">{p?.name}</b>{p?.role ? ` • ${p.role}` : ""} • {p?.flat}</div>
+                  {a.contact_phone && <a href={`tel:${a.contact_phone.replace(/\s+/g, "")}`} className="underline mt-0.5 inline-block">📞 {a.contact_phone}</a>}
+                </div>); })}
+            </div>
+          </div>
+        )}
         <div className="bg-[var(--bg-soft)] border-t border-[var(--border)] mono text-[10px] px-4 md:px-8 py-3 flex flex-wrap gap-4">
           <span>COVER PAGE • AAKAR CO-OP SOCIETY RECORD</span>
           <span className="opacity-50">•</span>

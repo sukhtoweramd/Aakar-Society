@@ -7,6 +7,7 @@ import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
 import ChangePassword from "./ledger/ChangePassword";
 import { InstallApp } from "./ledger/PwaRegister";
 import BillingTab from "./ledger/billing/BillingTab";
+import CommitteeTab from "./ledger/CommitteeTab";
 import LoginBanner, { clearBannerDismissal } from "./ledger/LoginBanner";
 import { label } from "@/lib/society";
 import Login from "./ledger/Login";
@@ -137,8 +138,8 @@ export default function Home() {
         </div>
       </header>
 
-      <div className={`mx-auto max-w-[1600px] w-full px-4 md:px-6 py-6 md:py-8 grid grid-cols-1 ${tab === "BILLING" ? "" : "lg:grid-cols-[320px_minmax(0,1fr)]"} gap-6 items-start overflow-x-hidden`}>
-        {tab !== "BILLING" && <Sidebar ctx={ctx} />}
+      <div className={`mx-auto max-w-[1600px] w-full px-4 md:px-6 py-6 md:py-8 grid grid-cols-1 ${tab === "BILLING" || tab === "COMMITTEE" ? "" : "lg:grid-cols-[320px_minmax(0,1fr)]"} gap-6 items-start overflow-x-hidden`}>
+        {tab !== "BILLING" && tab !== "COMMITTEE" && <Sidebar ctx={ctx} />}
         <main className="order-1 lg:order-2 min-w-0 max-w-full overflow-x-hidden">
           <div className="mono text-[11px] opacity-40 mb-3 tracking-[0.04em]">
             SOCIETY LEDGER • TAB {tab} • {flats.length} FLATS • A {towerCount("A")} • B {towerCount("B")} • C {towerCount("C")}
@@ -156,6 +157,7 @@ export default function Home() {
           {tab === "ADMIN" && isCommittee && <AdminTab ctx={ctx} />}
           {tab === "REPORTS" && isCommittee && <ReportsTab ctx={ctx} />}
           {tab === "BILLING" && isCommittee && <BillingTab ctx={ctx} />}
+          {tab === "COMMITTEE" && isCommittee && <CommitteeTab ctx={ctx} />}
         </main>
       </div>
 
