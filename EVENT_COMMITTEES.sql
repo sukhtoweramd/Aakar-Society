@@ -44,10 +44,14 @@ create table if not exists public.event_money (
   amount numeric(12,2) not null default 0 check (amount >= 0),
   mode text not null default 'Cash' check (mode in ('Cash', 'UPI', 'Bank', 'Cheque', 'In kind')),   -- In kind = not counted in cash
   pass_type text check (pass_type in ('Member', 'Guest')),   -- passes only
+  jain_qty integer,                             -- passes only: how many of the passes want Jain food (rest = normal)
   reference text, note text, file_url text,     -- UPI ref / cheque no., bill or receipt photo
   created_by text, created_at timestamptz not null default now(), updated_at timestamptz
 );
 alter table public.event_money add column if not exists pass_type text check (pass_type in ('Member', 'Guest'));
+alter table public.event_money add column if not exists jain_qty integer;
+alter table public.event_money drop constraint if exists event_money_jain_check;
+alter table public.event_money add constraint event_money_jain_check check (jain_qty is null or (jain_qty >= 0 and jain_qty <= coalesce(qty, 1)));
 create index if not exists event_money_event_idx on public.event_money(event_id, entry_date);
 
 -- 4. Event meetings use the existing minutes tables

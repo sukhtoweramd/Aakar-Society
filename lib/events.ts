@@ -9,7 +9,7 @@ export type EventRole = "Convenor" | "Treasurer" | "Member";
 export type TeamRow = { id: string; event_id: string; flat_id: string; person: string | null; role: EventRole; created_at: string };
 export type Money = {
   id: string; event_id: string; entry_date: string; direction: "in" | "out"; category: string; flat_id: string | null; party: string | null; purpose: string | null;
-  qty: number | null; rate: number | null; amount: number; pass_type?: "Member" | "Guest" | null; mode: "Cash" | "UPI" | "Bank" | "Cheque" | "In kind"; reference: string | null; note: string | null; file_url: string | null;
+  qty: number | null; rate: number | null; amount: number; pass_type?: "Member" | "Guest" | null; jain_qty?: number | null; mode: "Cash" | "UPI" | "Bank" | "Cheque" | "In kind"; reference: string | null; note: string | null; file_url: string | null;
   created_by: string | null; created_at: string;
 };
 export type EventMoneySettings = { fund_per_flat: number | null; pass_price: number | null; guest_pass_price: number | null; accounts_public: boolean };
@@ -51,7 +51,7 @@ export const partyOf = (flats: Flat[], m: Pick<Money, "flat_id" | "party">) => {
   return f ? `${label(f)} • ${ownerText(f)}${m.party ? ` (${m.party})` : ""}` : m.party || "—";
 };
 export const particulars = (flats: Flat[], m: Money) =>
-  [m.category === "Passes" && m.pass_type && !m.purpose ? `${m.pass_type} passes` : m.category, m.purpose, partyOf(flats, m) !== "—" ? partyOf(flats, m) : "", m.qty ? `${m.qty} × ₹${inr(m.rate)}` : "", m.mode === "In kind" ? "in kind" : ""].filter(Boolean).join(" • ");
+  [m.category === "Passes" && m.pass_type && !m.purpose ? `${m.pass_type} passes` : m.category, m.purpose, partyOf(flats, m) !== "—" ? partyOf(flats, m) : "", m.qty ? `${m.qty} × ₹${inr(m.rate)}${m.jain_qty ? ` (${m.jain_qty} Jain)` : ""}` : "", m.mode === "In kind" ? "in kind" : ""].filter(Boolean).join(" • ");
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const th = (t: string, right = false) => `<th style="text-align:${right ? "right" : "left"};padding:1.4mm 2mm">${t}</th>`;
@@ -104,14 +104,21 @@ export function fundListHtml(ev: { title: string | null }, list: Money[], flats:
   return docPage("EVENT FUND", "MEMBERS", `As on <b>${esc(dmy(today()))}</b>`, inner, `${ev.title || "Event"} • member fund`, `Printed ${dmy(today())}`);
 }
 
+/** Food count from passes: Jain as entered, the rest normal. */
+export const food = (passes: Pick<Money, "qty" | "jain_qty">[]) => {
+  const total = passes.reduce((s, m) => s + Number(m.qty || 1), 0), jain = passes.reduce((s, m) => s + Number(m.jain_qty || 0), 0);
+  return { normal: total - jain, jain };
+};
 /** Pass holders, for the gate. */
 export function passListHtml(ev: { title: string | null }, list: Money[], flats: Flat[]): string {
   const p = list.filter((m) => m.category === "Passes");
-  const rows = p.map((m, i) => tr(td(String(i + 1)) + td(esc(partyOf(flats, m))) + td(esc(m.pass_type || m.purpose || "")) + td(String(m.qty || 1), true) + td("")) ).join("");
+  const rows = p.map((m, i) => tr(td(String(i + 1)) + td(esc(partyOf(flats, m))) + td(esc(m.pass_type || m.purpose || "")) + td(String(m.qty || 1), true) + td(String(Number(m.qty || 1) - Number(m.jain_qty || 0)), true) + td(m.jain_qty ? String(m.jain_qty) : "—", true) + td("")) ).join("");
   const n = p.reduce((s, m) => s + Number(m.qty || 1), 0);
   const nOf = (t: string) => p.filter((m) => m.pass_type === t).reduce((s, m) => s + Number(m.qty || 1), 0);
+  const f = food(p);
   const inner = `<div style="margin-top:5mm;font-size:13pt;font-weight:800;color:var(--navy)">${esc(ev.title)} – Pass holders</div>
   <div style="font-size:10pt;margin-top:1mm"><b>${n}</b> passes (${nOf("Member")} member, ${nOf("Guest")} guest) issued to ${p.length} buyer${p.length === 1 ? "" : "s"}</div>
-  ${table(th("#") + th("Name / flat") + th("Pass") + th("Qty", true) + th("Entry ✓"), rows || tr(td("No passes yet") + td("") + td("") + td("") + td("")))}`;
+  <div style="margin-top:2mm;border:.4mm solid var(--navy);padding:2mm 3mm;font-size:11pt;font-weight:800;display:flex;gap:10mm">FOOD <span>Normal: ${f.normal}</span><span>Jain: ${f.jain}</span><span>Total: ${f.normal + f.jain}</span></div>
+  ${table(th("#") + th("Name / flat") + th("Pass") + th("Qty", true) + th("Normal", true) + th("Jain", true) + th("Entry ✓"), rows || tr(td("No passes yet") + td("") + td("") + td("") + td("") + td("") + td("")))}`;
   return docPage("EVENT PASSES", "GATE LIST", `As on <b>${esc(dmy(today()))}</b>`, inner, `${ev.title || "Event"} • pass holders`, `Printed ${dmy(today())}`);
 }

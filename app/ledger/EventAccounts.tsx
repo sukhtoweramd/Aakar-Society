@@ -7,10 +7,10 @@ import { dmy, inr, openPrint, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { isOccupied, label, ownerText, residentName, sortFlats, type EventRow, type Flat } from "@/lib/society";
 import EventBatch from "./EventBatch";
-import { EV_MODES, IN_CATS, OUT_CATS, eventStatementHtml, fundListHtml, loadMoney, particulars, partyOf, passListHtml, totals, type EventMoneySettings, type EventRole, type Money, type TeamRow } from "@/lib/events";
+import { food, EV_MODES, IN_CATS, OUT_CATS, eventStatementHtml, fundListHtml, loadMoney, particulars, partyOf, passListHtml, totals, type EventMoneySettings, type EventRole, type Money, type TeamRow } from "@/lib/events";
 
 type Ev = EventRow & Partial<EventMoneySettings>;
-type Form = { id?: string; direction: "in" | "out"; entry_date: string; category: string; flat_id: string; party: string; purpose: string; qty: string; rate: string; amount: string; mode: Money["mode"]; reference: string; note: string; file_url: string; pass_type: "Member" | "Guest" };
+type Form = { id?: string; direction: "in" | "out"; entry_date: string; category: string; flat_id: string; party: string; purpose: string; qty: string; rate: string; amount: string; mode: Money["mode"]; reference: string; note: string; file_url: string; pass_type: "Member" | "Guest"; jain: string };
 const VIEWS = ["ENTRIES", "MEMBER FUND", "SPONSORS", "PASSES"] as const;
 const PURPOSE_HINT: Record<string, string> = { Sponsorship: "e.g. Day 3 dinner / Garba prizes", Passes: "e.g. Day 5 only", Food: "e.g. Day 1 dinner – caterer", Prizes: "e.g. Best dressed (from fund)" };
 
@@ -38,7 +38,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
   const occupied = useMemo(() => flats.filter(isOccupied).sort(sortFlats), [flats]);
   const paid = useMemo(() => { const r: Record<string, number> = {}; (list || []).filter((m) => m.category === "Member fund" && m.flat_id).forEach((m) => { r[m.flat_id!] = (r[m.flat_id!] || 0) + Number(m.amount); }); return r; }, [list]);
 
-  const blank = (direction: "in" | "out", over: Partial<Form> = {}): Form => ({ direction, entry_date: today(), category: direction === "in" ? "Member fund" : "Food", flat_id: "", party: "", purpose: "", qty: "", rate: "", amount: direction === "in" && ev.fund_per_flat ? String(ev.fund_per_flat) : "", mode: "Cash", reference: "", note: "", file_url: "", pass_type: "Member", ...over });
+  const blank = (direction: "in" | "out", over: Partial<Form> = {}): Form => ({ direction, entry_date: today(), category: direction === "in" ? "Member fund" : "Food", flat_id: "", party: "", purpose: "", qty: "", rate: "", amount: direction === "in" && ev.fund_per_flat ? String(ev.fund_per_flat) : "", mode: "Cash", reference: "", note: "", file_url: "", pass_type: "Member", jain: "", ...over });
   const open = (f: Form) => { setForm(f); setFile(null); setError(""); setTimeout(() => document.getElementById(`evform-${ev.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 50); };
   function setCat(category: string) {
     if (!form) return;
@@ -61,11 +61,12 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
     if (!form.category) { setError("Choose the head."); return; }
     if (form.mode !== "In kind" && !(amt > 0)) { setError("Enter the amount."); return; }
     if (form.category === "Member fund" && !form.flat_id) { setError("Member fund needs the flat."); return; }
+    if (form.category === "Passes" && Number(form.jain || 0) > Number(form.qty || 1)) { setError("Jain food cannot be more than the number of passes."); return; }
     setBusy(true); setError("");
     try {
       const file_url = file ? (await uploadFile(file, `eventdocs/${ev.id}`)).url : form.file_url || null;
       const row = { event_id: ev.id, direction: form.direction, entry_date: form.entry_date || today(), category: form.category, flat_id: form.flat_id || null, party: form.party.trim() || null,
-        purpose: form.purpose.trim() || null, pass_type: form.category === "Passes" ? form.pass_type : null, qty: form.qty ? Number(form.qty) : null, rate: form.rate ? Number(form.rate) : null, amount: amt || 0, mode: form.mode,
+        purpose: form.purpose.trim() || null, pass_type: form.category === "Passes" ? form.pass_type : null, jain_qty: form.category === "Passes" ? Number(form.jain || 0) || null : null, qty: form.qty ? Number(form.qty) : null, rate: form.rate ? Number(form.rate) : null, amount: amt || 0, mode: form.mode,
         reference: form.reference.trim() || null, note: form.note.trim() || null, file_url };
       const { error } = form.id ? await supabase.from("event_money").update({ ...row, updated_at: new Date().toISOString() }).eq("id", form.id)
         : await supabase.from("event_money").insert([{ ...row, created_by: email }]);
@@ -85,7 +86,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
     setBusy(false);
     if (error) setError(error.message); else onSettings();
   }
-  const edit = (m: Money) => open({ id: m.id, direction: m.direction, entry_date: m.entry_date, category: m.category, flat_id: m.flat_id || "", party: m.party || "", purpose: m.purpose || "", qty: m.qty ? String(m.qty) : "", rate: m.rate != null ? String(m.rate) : "", amount: String(m.amount), mode: m.mode, reference: m.reference || "", note: m.note || "", file_url: m.file_url || "", pass_type: m.pass_type === "Guest" ? "Guest" : "Member" });
+  const edit = (m: Money) => open({ id: m.id, direction: m.direction, entry_date: m.entry_date, category: m.category, flat_id: m.flat_id || "", party: m.party || "", purpose: m.purpose || "", qty: m.qty ? String(m.qty) : "", rate: m.rate != null ? String(m.rate) : "", amount: String(m.amount), mode: m.mode, reference: m.reference || "", note: m.note || "", file_url: m.file_url || "", pass_type: m.pass_type === "Guest" ? "Guest" : "Member", jain: m.jain_qty ? String(m.jain_qty) : "" });
   const evT = { title: ev.title, event_date: ev.event_date, end_date: ev.end_date };
 
   if (list === null) return <div className="mono text-[11px] opacity-60">Loading…</div>;
@@ -153,6 +154,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
             {form.category === "Passes" && <>
               <label className="text-[10px] opacity-80">PASS TYPE<select className="field mt-1" value={form.pass_type} onChange={(e) => setPass({ pass_type: e.target.value as any })}><option value="Member">Member{ev.pass_price != null ? ` – ₹${inr(ev.pass_price)}` : ""}</option><option value="Guest">Guest{ev.guest_pass_price != null ? ` – ₹${inr(ev.guest_pass_price)}` : ""}</option></select></label>
               <label className="text-[10px] opacity-80">NO. OF PASSES<input className="field mt-1" inputMode="numeric" value={form.qty} onChange={(e) => setQR("qty", e.target.value.replace(/\D/g, ""))} /></label>
+              <label className="text-[10px] opacity-80 text-amber-800">OF WHICH JAIN FOOD<input className="field mt-1" inputMode="numeric" placeholder="0" value={form.jain} onChange={(e) => setForm({ ...form, jain: e.target.value.replace(/\D/g, "") })} /><span className="opacity-70">Normal: {Math.max(0, Number(form.qty || 0) - Number(form.jain || 0))}</span></label>
               <label className="text-[10px] opacity-80">PRICE PER PASS ₹<input className="field mt-1" inputMode="numeric" value={form.rate} onChange={(e) => setQR("rate", e.target.value.replace(/[^\d.]/g, ""))} /></label></>}
             <label className="text-[10px] opacity-80">AMOUNT ₹{form.mode === "In kind" ? " (value, optional)" : " *"}<input className="field mt-1 font-bold" inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^\d.]/g, "") })} /></label>
             <label className="text-[10px] opacity-80">MODE<select className="field mt-1" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as Money["mode"] })}>{EV_MODES.filter((m) => form.direction === "in" || m !== "In kind").map((m) => <option key={m}>{m}</option>)}</select></label>
@@ -212,12 +214,13 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
       {view === "PASSES" && (
         <div className="border border-[var(--border)] bg-[var(--surface)] p-2.5 space-y-2">
           <div className="flex flex-wrap gap-2 items-center"><b>{passes.reduce((s, m) => s + Number(m.qty || 1), 0)} passes • ₹{inr(passes.reduce((s, m) => s + Number(m.amount), 0))}{ev.pass_price != null ? ` • member ₹${inr(ev.pass_price)}` : ""}{ev.guest_pass_price != null ? ` • guest ₹${inr(ev.guest_pass_price)}` : ""}</b>
+            {passes.length > 0 && (() => { const fd = food(passes); return <span className="border-2 border-[var(--navy)] px-2 py-1 font-bold">FOOD: {fd.normal} normal • <span className="text-amber-800">{fd.jain} Jain</span></span>; })()}
             {canWrite && !batch && <button onClick={() => { setMsg(""); setBatch("passes"); }} className="btn-navy px-3 py-1.5">MEMBER PASSES BY TOWER</button>}
             {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Guest", qty: "1", rate: String(ev.guest_pass_price ?? ""), amount: String(ev.guest_pass_price ?? ""), purpose: "" }))} className="btn-line px-3 py-1.5">+ GUEST PASSES</button>}
             {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Member", qty: "1", rate: String(ev.pass_price ?? ""), amount: String(ev.pass_price ?? "") }))} className="btn-line px-3 py-1.5">+ MEMBER PASSES</button>}
             <button onClick={() => openPrint(`${ev.title} passes`, [passListHtml(evT, list, flats)])} className="btn-line px-3 py-1.5 ml-auto">🖨 GATE LIST</button></div>
           {passes.length === 0 ? <div className="opacity-60">No passes sold yet. Set the member and guest pass prices in SETTINGS first.</div> :
-            passes.map((m) => <div key={m.id} className="flex justify-between gap-2 border-b border-dashed border-[var(--border)] py-1"><span>{m.pass_type && <span className={`tag mr-1.5 ${m.pass_type === "Guest" ? "bg-amber-50 text-amber-800" : "bg-[var(--bg)]"}`}>{m.pass_type.toUpperCase()}</span>}{partyOf(flats, m)}{m.purpose && m.purpose !== "Member passes" ? ` • ${m.purpose}` : ""}</span><b>{m.qty || 1} × ₹{inr(m.rate ?? m.amount)}</b></div>)}
+            passes.map((m) => <div key={m.id} className="flex justify-between gap-2 border-b border-dashed border-[var(--border)] py-1"><span>{m.pass_type && <span className={`tag mr-1.5 ${m.pass_type === "Guest" ? "bg-amber-50 text-amber-800" : "bg-[var(--bg)]"}`}>{m.pass_type.toUpperCase()}</span>}{partyOf(flats, m)}{m.purpose && m.purpose !== "Member passes" ? ` • ${m.purpose}` : ""}</span><b className="whitespace-nowrap">{m.qty || 1} × ₹{inr(m.rate ?? m.amount)}{m.jain_qty ? <span className="text-amber-800"> • {m.jain_qty} Jain</span> : null}</b></div>)}
         </div>)}
     </div>
   );
