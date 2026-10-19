@@ -18,6 +18,12 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const [docs, setDocs] = useState<StoredFile[]>([]);
   const [vault, setVault] = useState<StoredFile[]>([]);
   const [editing, setEditing] = useState(false);
+  const [jumpNote, setJumpNote] = useState("");
+  function jump(id: string, emptyMsg: string) {
+    const el = document.getElementById(id);
+    if (!el || (emptyMsg && el.offsetHeight < 8)) { setJumpNote(emptyMsg); setTimeout(() => setJumpNote(""), 5000); return; }
+    setJumpNote(""); el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const [form, setForm] = useState<Partial<Flat>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -204,9 +210,15 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
             <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] px-3 py-2">{isCommittee && f.id !== ctx.homeFlat ? "PRINT CARD" : "PRINT MY CARD"}</button>
             <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
+            {!isCommittee && <>
+              <button onClick={() => jump("sec-ledger", "No bills have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LEDGER ↓</button>
+              <button onClick={() => jump("sec-vehicles", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY VEHICLES ↓</button>
+              <button onClick={() => jump("sec-letters", "No letters have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS ↓</button>
+            </>}
           </div>
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
+        {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
 
         {editing && (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
@@ -333,7 +345,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
             {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
 
-            <FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
+            <div id="sec-vehicles" className="scroll-mt-28"><FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
               note={rented ? "Vehicles of the tenant's family living here." : "Vehicles of the family living here."}
               empty="No vehicles added yet."
               fields={[
@@ -347,7 +359,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                   <span className="serif text-[14px] font-bold">{r.model || "Model not given"}</span>
                   {r.plate && <span className="mono text-[12px] font-bold border border-[var(--navy)] bg-white px-2 py-0.5 tracking-[0.06em]">{r.plate}</span>}
                 </div>
-              )} />
+              )} /></div>
 
             <FlatListPanel key={`emg-${f.id}-${familyVersion}`} table="emergency_contacts" flatId={f.id} title="EMERGENCY CONTACTS" addLabel="+ ADD CONTACT"
               note="People outside the society to call if something happens. Seen only by this flat and the committee."
@@ -435,8 +447,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
         </div>
-        {!isCommittee && <div className="mt-6"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
-        <div className="mt-6"><LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
+        {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
+        <div id="sec-letters" className="mt-6 scroll-mt-28"><LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
       </div>
     </div>
   );
