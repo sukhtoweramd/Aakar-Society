@@ -41,16 +41,52 @@ end $$;
 create policy members_read_general on public.meetings for select to authenticated using (kind in ('AGM', 'SGM') and status = 'final');
 
 -- A committee member sees and closes their own action points from their flat (flat login or linked committee login).
+drop function if exists public.my_action_points();
 create or replace function public.my_action_points()
-returns table(id uuid, task text, due_date date, status text, done_note text, meeting_kind text, meeting_date date)
+returns table(id uuid, meeting_id uuid, task text, due_date date, status text, done_note text, meeting_kind text, meeting_date date)
 language sql stable security definer set search_path = public as $$
-  select a.id, a.task, a.due_date, a.status, a.done_note, m.kind, m.meeting_date
+  select a.id, a.meeting_id, a.task, a.due_date, a.status, a.done_note, m.kind, m.meeting_date
   from public.meeting_actions a join public.meetings m on m.id = a.meeting_id
   where public.my_flat() is not null and a.owner_flat = public.my_flat()
   order by (a.status = 'done'), a.due_date nulls last
 $$;
 revoke all on function public.my_action_points() from public, anon;
 grant execute on function public.my_action_points() to authenticated;
+
+-- Is the logged-in flat a committee member's flat? (flats.is_committee)
+create or replace function public.my_flat_is_committee()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select f.is_committee from public.flats f where f.id = public.my_flat()), false)
+$$;
+revoke all on function public.my_flat_is_committee() from public, anon;
+grant execute on function public.my_flat_is_committee() to authenticated;
+
+-- Full minutes of one meeting (with its action points), readable from a flat login when:
+--   * it is a final AGM / SGM (every member), or
+--   * this flat belongs to a committee member, or
+--   * this flat was given an action point in that meeting.
+create or replace function public.my_meeting(p_meeting uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when public.is_committee()
+                or public.my_flat_is_committee()
+                or exists (select 1 from public.meetings m where m.id = p_meeting and m.kind in ('AGM','SGM') and m.status = 'final')
+                or exists (select 1 from public.meeting_actions a where a.meeting_id = p_meeting and a.owner_flat = public.my_flat())
+    then jsonb_build_object('meeting', (select to_jsonb(m) from public.meetings m where m.id = p_meeting),
+                            'actions', coalesce((select jsonb_agg(to_jsonb(a) order by a.created_at) from public.meeting_actions a where a.meeting_id = p_meeting), '[]'::jsonb))
+  end
+$$;
+revoke all on function public.my_meeting(uuid) from public, anon;
+grant execute on function public.my_meeting(uuid) to authenticated;
+
+-- List of committee meetings, only for a committee member's flat login (empty for everyone else).
+create or replace function public.my_committee_meetings()
+returns setof public.meetings language sql stable security definer set search_path = public as $$
+  select m.* from public.meetings m
+  where m.kind = 'Committee' and (public.is_committee() or public.my_flat_is_committee())
+  order by m.meeting_date desc
+$$;
+revoke all on function public.my_committee_meetings() from public, anon;
+grant execute on function public.my_committee_meetings() to authenticated;
 
 create or replace function public.mark_my_action_done(p_id uuid, p_note text default null)
 returns void language plpgsql security definer set search_path = public as $$
@@ -109,7 +145,7 @@ end $$;
 revoke all on function public.restore_society_backup(jsonb) from public, anon, authenticated;
 grant execute on function public.restore_society_backup(jsonb) to service_role;
 
--- Check: should show 3 rules and 2 functions
+-- Check: should show 3 rules and 3 functions
 select 'rules' as item, count(*)::text as value from pg_policies where schemaname = 'public' and tablename in ('meetings','meeting_actions')
 union all
-select 'functions', count(*)::text from pg_proc where proname in ('my_action_points','mark_my_action_done');
+select 'functions', count(*)::text from pg_proc where proname in ('my_action_points','mark_my_action_done','my_meeting','my_flat_is_committee','my_committee_meetings');
