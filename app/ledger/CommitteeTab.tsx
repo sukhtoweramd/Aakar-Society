@@ -7,8 +7,10 @@ import { dmy, inr, num, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { amcAlerts, amcState, daysLeft, loadAmc, loadAreas, personOf, type Amc, type Area, type Visit } from "@/lib/committee";
 import type { Ctx } from "./ctx";
+import MinutesPanel from "./MinutesPanel";
+import { isOverdue, loadMeetings, type Action, type Meeting } from "@/lib/minutes";
 
-const VIEWS = ["RESPONSIBILITIES", "AMC CONTRACTS"] as const;
+const VIEWS = ["RESPONSIBILITIES", "AMC CONTRACTS", "MINUTES"] as const;
 type View = (typeof VIEWS)[number];
 const addYear = (d: string) => { const x = new Date(d); x.setFullYear(x.getFullYear() + 1); x.setDate(x.getDate() - 1); return x.toISOString().slice(0, 10); };
 const nextDay = (d: string) => { const x = new Date(d); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10); };
@@ -17,7 +19,8 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
   const [view, setView] = useState<View>("RESPONSIBILITIES");
   const [areas, setAreas] = useState<Area[] | null | undefined>(undefined);
   const [amc, setAmc] = useState<{ amc: Amc[]; visits: Visit[] } | null | undefined>(undefined);
-  async function load() { const [a, m] = await Promise.all([loadAreas(true), loadAmc()]); setAreas(a); setAmc(m); }
+  const [mins, setMins] = useState<{ meetings: Meeting[]; actions: Action[] } | null | undefined>(undefined);
+  async function load() { const [a, m, mt] = await Promise.all([loadAreas(true), loadAmc(), loadMeetings()]); setAreas(a); setAmc(m); setMins(mt); }
   useEffect(() => { load(); }, []);
   const committee = useMemo(() => ctx.flats.filter((f) => f.is_committee).sort(byCommitteeRole), [ctx.flats]);
 
@@ -34,13 +37,15 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
           <div className="mono text-[11px] opacity-60">{areas.filter((a) => a.active).length} areas{unassigned ? <> • <b className="text-amber-700">{unassigned} without a responsible member</b></> : ""} • {amc.amc.filter((a) => a.status === "active").length} AMC contracts{alerts.length ? <> • <b className="text-red-700">{alerts.length} need renewal</b></> : ""}</div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {VIEWS.map((v) => { const n = v === "AMC CONTRACTS" ? alerts.length : unassigned; return (
+          {VIEWS.map((v) => { const n = v === "AMC CONTRACTS" ? alerts.length : v === "MINUTES" ? (mins?.actions || []).filter(isOverdue).length : unassigned; return (
             <button key={v} onClick={() => setView(v)} className={`mono text-[11px] font-bold tracking-[0.06em] px-3 py-2 border rounded-[3px] ${view === v ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)]"}`}>
-              {v}{n > 0 && <span className={`ml-1.5 inline-block min-w-[18px] px-1 rounded-full text-white text-[10px] ${v === "AMC CONTRACTS" ? "bg-red-600" : "bg-amber-600"}`}>{n}</span>}</button>); })}
+              {v}{n > 0 && <span className={`ml-1.5 inline-block min-w-[18px] px-1 rounded-full text-white text-[10px] ${v === "RESPONSIBILITIES" ? "bg-amber-600" : "bg-red-600"}`}>{n}</span>}</button>); })}
         </div>
       </div>
       {view === "RESPONSIBILITIES" && <Responsibilities areas={areas} committee={committee} flats={ctx.flats} email={ctx.email} amc={amc.amc} onChanged={load} />}
       {view === "AMC CONTRACTS" && <AmcRegister data={amc} areas={areas} flats={ctx.flats} email={ctx.email} onChanged={load} />}
+      {view === "MINUTES" && (mins ? <MinutesPanel data={mins} flats={ctx.flats} committee={committee} email={ctx.email} onChanged={load} />
+        : <div className="border border-dashed border-[var(--border)] p-8 text-center mono text-[12px] opacity-80">Run <b>MINUTES.sql</b> in Supabase to turn on minutes of meetings.</div>)}
     </div>
   );
 }

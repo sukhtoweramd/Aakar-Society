@@ -185,6 +185,10 @@ tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:
 
 const frameStart = `<section class="page"><div class="frame"><div class="inner"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
 const frameEnd = `</div></div></section>`;
+/** A generic framed A4 page with the society header (used for minutes and other documents). */
+export function docPage(kind: string, big: string, small: string, inner: string, footLeft: string, footRight = "") {
+  return `${frameStart}${header(kind, big, small)}${inner}<div class="grow"></div><div class="foot"><div>${esc(footLeft)}</div><div>${esc(footRight)}</div></div>${frameEnd}`;
+}
 const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">ॐ</div>
   <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
   <div class="title"><div class="t">${esc(kind)}</div><div class="f${big.length > 12 ? " long" : ""}">${esc(big)}</div><div class="s">${small}</div></div></div>`;

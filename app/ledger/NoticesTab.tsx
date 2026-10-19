@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Notice } from "@/lib/society";
 import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
+import MeetingMinutesList from "./MeetingMinutesList";
 
 type N = Notice & { is_banner?: boolean; banner_until?: string | null };
 type Form = { title: string; content: string; tower: string; banner: boolean; until: string };
@@ -179,6 +180,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       </div>
+      <div className="max-w-[900px]"><MeetingMinutesList flats={ctx.flats} /></div>
     </div>
   );
 }

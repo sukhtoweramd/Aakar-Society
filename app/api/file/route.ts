@@ -7,10 +7,10 @@ import { getR2, MAX_FILE_BYTES, ALLOWED_EXT } from "@/lib/r2Client";
 
 export const dynamic = "force-dynamic";
 
-// Allowed folders: notices/, vault/, amc/ (committee only), flats/A1001/, floor-plans/A/, events/<event id>/
+// Allowed folders: notices/, vault/, amc/ and minutes/ (committee only listing), flats/A1001/, floor-plans/A/, events/<event id>/
 function safeFolder(raw: string): string | null {
   const f = raw.replace(/^\/+|\/+$/g, "");
-  if (f === "notices" || f === "vault" || f === "amc") return f;
+  if (f === "notices" || f === "vault" || f === "amc" || f === "minutes") return f;
   if (/^flats\/[A-Z]\d{1,5}$/.test(f)) return f;
   if (/^events\/[0-9a-f-]{36}$/.test(f)) return f;
   if (/^floor-plans\/[A-Z]$/.test(f)) return f;
@@ -20,7 +20,7 @@ const unauthorized = () => NextResponse.json({ error: "Please log in again." }, 
 const forbidden = () => NextResponse.json({ error: "Only the committee can change this." }, { status: 403 });
 // Residents may read society folders and their own flat, and may only write to their own flat folder.
 const canRead = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
-  me.isCommittee || (folder !== "amc" && (!folder.startsWith("flats/") || folder === `flats/${me.flatId}`));
+  me.isCommittee || (folder !== "amc" && folder !== "minutes" && (!folder.startsWith("flats/") || folder === `flats/${me.flatId}`));
 const canWrite = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
   me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`);
 
