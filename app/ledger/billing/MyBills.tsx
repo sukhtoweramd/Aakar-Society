@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Flat } from "@/lib/society";
 import { loadSettings, loadSignatories, type Bill, type Payment, type PrintCtx } from "@/lib/billing";
 import LedgerCard from "./LedgerCard";
+import ReportPayment from "./ReportPayment";
 
 export default function MyBills({ flat, flats, email }: { flat: Flat; flats: Flat[]; email: string }) {
   const [data, setData] = useState<{ bills: Bill[]; pays: Payment[]; pc: PrintCtx } | null>(null);
@@ -23,6 +24,7 @@ export default function MyBills({ flat, flats, email }: { flat: Flat; flats: Fla
   return (
     <div>
       <div className="mono text-[10px] font-bold tracking-[0.14em] mb-2">MY BILLS &amp; RECEIPTS</div>
+      <ReportPayment flat={flat} bills={data.bills} pays={data.pays} />
       <LedgerCard flat={flat} bills={data.bills} pays={data.pays} pc={data.pc} editable={false} email={email} />
     </div>
   );
