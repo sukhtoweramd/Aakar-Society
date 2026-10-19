@@ -134,7 +134,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
 
       <div className="flex flex-wrap gap-2 items-center">
         {canWrite && !form && <><button onClick={() => open(blank("in"))} className="btn-navy px-3 py-2 font-bold">+ MONEY IN</button><button onClick={() => open(blank("out"))} className="btn-line px-3 py-2 font-bold">+ MONEY OUT</button></>}
-        <button onClick={() => openPrint(`${ev.title} statement`, [eventStatementHtml(evT, list, flats, team)])} className="btn-line px-3 py-2 ml-auto">🖨 STATEMENT</button>
+        <button onClick={() => openPrint(`${ev.title} statement`, eventStatementHtml(evT, list, flats, team))} className="btn-line px-3 py-2 ml-auto">🖨 STATEMENT</button>
       </div>
 
       {form && (
@@ -192,7 +192,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
           <div className="flex flex-wrap gap-2 items-center"><b>{ev.fund_per_flat ? `₹${inr(ev.fund_per_flat)} per flat • ` : ""}paid {Object.keys(paid).length} of {occupied.length} • ₹{inr(Object.values(paid).reduce((s, a) => s + a, 0))}</b>
             <select className="field !w-auto ml-auto" value={fundF} onChange={(e) => setFundF(e.target.value as any)}><option>ALL</option><option>PAID</option><option>NOT PAID</option></select>
             {canWrite && !batch && <button onClick={() => { setMsg(""); setBatch("fund"); }} className="btn-navy px-3 py-1.5">POST BY TOWER</button>}
-            <button onClick={() => openPrint(`${ev.title} fund`, [fundListHtml(evT, list, occupied, ev.fund_per_flat ?? null)])} className="btn-line px-3 py-1.5">🖨 LIST</button></div>
+            <button onClick={() => openPrint(`${ev.title} fund`, fundListHtml(evT, list, occupied, ev.fund_per_flat ?? null))} className="btn-line px-3 py-1.5">🖨 LIST</button></div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {fundRows.map((f) => (
               <div key={f.id} className={`border p-2 flex items-center gap-2 ${paid[f.id] ? "border-emerald-200 bg-emerald-50/50" : "border-[var(--border)] bg-[var(--bg)]"}`}>
@@ -218,7 +218,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
             {canWrite && !batch && <button onClick={() => { setMsg(""); setBatch("passes"); }} className="btn-navy px-3 py-1.5">MEMBER PASSES BY TOWER</button>}
             {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Guest", qty: "1", rate: String(ev.guest_pass_price ?? ""), amount: String(ev.guest_pass_price ?? ""), purpose: "" }))} className="btn-line px-3 py-1.5">+ GUEST PASSES</button>}
             {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Member", qty: "1", rate: String(ev.pass_price ?? ""), amount: String(ev.pass_price ?? "") }))} className="btn-line px-3 py-1.5">+ MEMBER PASSES</button>}
-            <button onClick={() => openPrint(`${ev.title} passes`, [passListHtml(evT, list, flats)])} className="btn-line px-3 py-1.5 ml-auto">🖨 GATE LIST</button></div>
+            <button onClick={() => openPrint(`${ev.title} passes`, passListHtml(evT, list, flats))} className="btn-line px-3 py-1.5 ml-auto">🖨 GATE LIST</button></div>
           {passes.length === 0 ? <div className="opacity-60">No passes sold yet. Set the member and guest pass prices in SETTINGS first.</div> :
             passes.map((m) => <div key={m.id} className="flex justify-between gap-2 border-b border-dashed border-[var(--border)] py-1"><span>{m.pass_type && <span className={`tag mr-1.5 ${m.pass_type === "Guest" ? "bg-amber-50 text-amber-800" : "bg-[var(--bg)]"}`}>{m.pass_type.toUpperCase()}</span>}{partyOf(flats, m)}{m.purpose && m.purpose !== "Member passes" ? ` • ${m.purpose}` : ""}</span><b className="whitespace-nowrap">{m.qty || 1} × ₹{inr(m.rate ?? m.amount)}{m.jain_qty ? <span className="text-amber-800"> • {m.jain_qty} Jain</span> : null}</b></div>)}
         </div>)}
