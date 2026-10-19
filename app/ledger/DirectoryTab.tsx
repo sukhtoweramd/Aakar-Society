@@ -21,6 +21,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [onlyShared, setOnlyShared] = useState(false);
+  const [who, setWho] = useState<"ALL" | "OWNERS" | "TENANTS">("ALL");
 
   useEffect(() => {
     supabase.from("member_directory").select("*").then(({ data, error }) => {
@@ -44,12 +45,13 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
   const shown = entries.filter((e) =>
     (towerFilter === "ALL" || (towerFilter === "COMMITTEE" ? e.is_committee : e.tower === towerFilter)) &&
     (!onlyShared || e.consent) &&
+    (who === "ALL" || (who === "TENANTS" ? !!e.tenant : !e.tenant)) &&
     (!s || flatLabel(e.flat_id).toLowerCase().includes(s) || (e.owner_name || "").toLowerCase().includes(s) || (e.tenant || "").toLowerCase().includes(s) ||
       e.members.some((m) => (m.member_name || "").toLowerCase().includes(s) || (m.mobile || "").replace(/\s/g, "").includes(s.replace(/\s/g, "")))));
   if (towerFilter === "COMMITTEE") shown.sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }));
   const sharedCount = entries.filter((e) => e.consent).length;
   const mine = entries.find((e) => e.flat_id === homeFlat);
-  const scope = filterName(towerFilter, categories);
+  const scope = filterName(towerFilter, categories) + (who === "OWNERS" ? " • owners living in their flat" : who === "TENANTS" ? " • rented flats (tenants)" : "");
 
   function printPdf() {
     const w = window.open("", "_blank");
@@ -75,7 +77,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const sections = groups.map(([t, list], i) => {
       return `<table class="${i ? "newpage" : ""}"><thead>
         <tr class="title"><td colspan="4"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — ${docTitle}</h1>
-          <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • Family details only for flats that gave consent</div></div>
+          <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • ${esc(scope)} • Family details only for flats that gave consent</div></div>
           <div class="tower">${esc(t)}</div></div></td></tr>
         <tr class="gap"><td colspan="4"></td></tr>
         <tr><th style="width:13%">Flat</th><th style="width:47%">Resident / family member</th><th style="width:17%">Relation</th><th style="width:23%">Mobile</th></tr>
@@ -116,6 +118,8 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, flat or mobile" className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 w-[220px] rounded-[2px] outline-none focus:border-[var(--gold)]" />
+          <select value={who} onChange={(e) => setWho(e.target.value as any)} className="mono text-[11px] border border-[var(--border)] bg-[var(--bg)] px-2 py-2 rounded-[2px]" title="Show all flats, only owner-occupied flats, or only rented flats">
+            <option value="ALL">All residents</option><option value="OWNERS">Owners living here</option><option value="TENANTS">Tenants only</option></select>
           <label className="mono text-[11px] flex items-center gap-1.5"><input type="checkbox" checked={onlyShared} onChange={(e) => setOnlyShared(e.target.checked)} /> Only flats sharing details</label>
           <button onClick={printPdf} disabled={!rows?.length} className="btn-navy mono text-[11px] px-3 py-2 tracking-[0.08em]">PDF</button>
         </div>
