@@ -10,9 +10,11 @@ import { isOverdue, KIND_LABEL, minutesHtml, type Action, type Meeting } from "@
 
 type ARow = { id?: string; task: string; owner_flat: string; due_date: string; status: "open" | "done" };
 type Form = { id?: string; kind: Meeting["kind"]; meeting_date: string; venue: string; chaired_by: string; attendees: string; agenda: string; minutes: string; file_url: string; status: Meeting["status"]; actions: ARow[] };
-const blank = (): Form => ({ kind: "Committee", meeting_date: today(), venue: "Society office", chaired_by: "", attendees: "", agenda: "", minutes: "", file_url: "", status: "draft", actions: [] });
+const blank = (ev?: boolean): Form => ({ kind: ev ? "Event" : "Committee", meeting_date: today(), venue: ev ? "" : "Society office", chaired_by: "", attendees: "", agenda: "", minutes: "", file_url: "", status: "draft", actions: [] });
 
-export default function MinutesPanel({ data, flats, committee, email, onChanged }: { data: { meetings: Meeting[]; actions: Action[] }; flats: Flat[]; committee: Flat[]; email: string; onChanged: () => void }) {
+/** Used in COMMITTEE → MINUTES, and inside an event (EVENTS → event → MINUTES) with `event` set:
+ *  then meetings are kind "Event", action points go to the event team, and only the convenor / committee can edit. */
+export default function MinutesPanel({ data, flats, committee, email, onChanged, event, canEdit = true }: { data: { meetings: Meeting[]; actions: Action[] }; flats: Flat[]; committee: Flat[]; email: string; onChanged: () => void; event?: { id: string; title: string }; canEdit?: boolean }) {
   const [form, setForm] = useState<Form | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
@@ -32,11 +34,11 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
     if (!form) return;
     if (!form.meeting_date) { setError("Enter the meeting date."); return; }
     if (!form.minutes.trim() && !file && !form.file_url) { setError("Type the minutes or attach the signed minutes."); return; }
-    if (form.status === "final" && form.kind !== "Committee" && !confirm("Marked FINAL: all members will see these minutes in NOTICES. Continue?")) return;
+    if (form.status === "final" && form.kind !== "Committee" && !confirm(`Marked FINAL: all members will see these minutes in ${event ? "EVENTS" : "NOTICES"}. Continue?`)) return;
     setBusy(true); setError("");
     try {
-      const file_url = file ? (await uploadFile(file, "minutes")).url : form.file_url || null;
-      const row: any = { kind: form.kind, meeting_date: form.meeting_date, venue: form.venue.trim() || null, chaired_by: form.chaired_by.trim() || null, attendees: form.attendees.trim() || null,
+      const file_url = file ? (await uploadFile(file, event ? `eventdocs/${event.id}` : "minutes")).url : form.file_url || null;
+      const row: any = { kind: form.kind, event_id: event ? event.id : null, meeting_date: form.meeting_date, venue: form.venue.trim() || null, chaired_by: form.chaired_by.trim() || null, attendees: form.attendees.trim() || null,
         agenda: form.agenda.trim() || null, minutes: form.minutes.trim() || null, file_url, status: form.status, updated_by: email, updated_at: new Date().toISOString() };
       let id = form.id;
       if (id) { const { error } = await supabase.from("meetings").update(row).eq("id", id); if (error) throw error; }
@@ -66,7 +68,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
     const { error } = await supabase.from("meeting_actions").update({ status: "done", done_note: note.trim() || null, done_at: new Date().toISOString(), done_by: email }).eq("id", a.id);
     if (error) setError(error.message); else onChanged();
   }
-  const print = (m: Meeting) => openPrint(`Minutes ${m.kind} ${dmy(m.meeting_date)}`, [minutesHtml(m, data.actions, flats)]);
+  const print = (m: Meeting) => openPrint(`Minutes ${event ? event.title : m.kind} ${dmy(m.meeting_date)}`, [minutesHtml(m, data.actions, flats, event?.title)]);
   const setA = (i: number, k: keyof ARow, v: string) => setForm((f) => f && ({ ...f, actions: f.actions.map((a, j) => (j === i ? { ...a, [k]: v } : a)) }));
   const T = (k: "attendees" | "agenda" | "minutes", l: string, rows: number, ph: string) => (
     <label className="text-[10px] opacity-80 block">{l}<textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={rows} placeholder={ph} value={(form as Form)[k]} onChange={(e) => setForm({ ...(form as Form), [k]: e.target.value })} /></label>
@@ -83,8 +85,8 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
                 <b className="text-[12px] flex-1 min-w-[220px]">{a.task}</b>
                 <span>{who(a.owner_flat)}</span>
                 <span>{a.due_date ? `by ${dmy(a.due_date)}${isOverdue(a) ? " (overdue)" : ""}` : "no date"}</span>
-                <span className="opacity-60">{m ? `${m.kind} ${dmy(m.meeting_date)}` : ""}</span>
-                <button onClick={() => markDone(a)} className="btn-navy px-2.5 py-1 text-[10px]">✓ DONE</button>
+                <span className="opacity-60">{m ? `${event ? "Meeting" : m.kind} ${dmy(m.meeting_date)}` : ""}</span>
+                {canEdit && <button onClick={() => markDone(a)} className="btn-navy px-2.5 py-1 text-[10px]">✓ DONE</button>}
               </div>); })}
           </div>
         </div>
@@ -95,11 +97,11 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
           <div className="font-bold tracking-[0.1em] text-[#8a6d14]">{form.id ? "EDIT MINUTES" : "NEW MINUTES"}</div>
           {error && <div className="border border-red-200 bg-red-50 text-red-700 p-2.5">{error}</div>}
           <div className="grid md:grid-cols-4 gap-3">
-            <label className="text-[10px] opacity-80">MEETING<select className="field mt-1" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as any })}>
-              <option value="Committee">Committee meeting</option><option value="AGM">Annual General Meeting (AGM)</option><option value="SGM">Special General Meeting (SGM)</option></select></label>
+            {!event && <label className="text-[10px] opacity-80">MEETING<select className="field mt-1" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as any })}>
+              <option value="Committee">Committee meeting</option><option value="AGM">Annual General Meeting (AGM)</option><option value="SGM">Special General Meeting (SGM)</option></select></label>}
             <label className="text-[10px] opacity-80">DATE *<input type="date" className="field mt-1" value={form.meeting_date} onChange={(e) => setForm({ ...form, meeting_date: e.target.value })} /></label>
             <label className="text-[10px] opacity-80">VENUE<input className="field mt-1" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} /></label>
-            <label className="text-[10px] opacity-80">CHAIRED BY<input className="field mt-1" placeholder="e.g. Chairman – name" value={form.chaired_by} onChange={(e) => setForm({ ...form, chaired_by: e.target.value })} /></label>
+            <label className="text-[10px] opacity-80">CHAIRED BY<input className="field mt-1" placeholder={event ? "e.g. Convenor – name" : "e.g. Chairman – name"} value={form.chaired_by} onChange={(e) => setForm({ ...form, chaired_by: e.target.value })} /></label>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {T("attendees", "PRESENT (one per line, or e.g. \"46 members present\")", 4, "Chairman – …\nSecretary – …\nTreasurer – …")}
@@ -111,7 +113,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
             {form.actions.map((a, i) => (
               <div key={i} className="flex flex-wrap gap-2 items-center mt-1.5">
                 <input className="field !w-auto flex-1 min-w-[240px]" placeholder="What is to be done" value={a.task} onChange={(e) => setA(i, "task", e.target.value)} />
-                <select className="field !w-[240px]" value={a.owner_flat} onChange={(e) => setA(i, "owner_flat", e.target.value)}><option value="">— responsible —</option>
+                <select className="field !w-[240px]" value={a.owner_flat} onChange={(e) => setA(i, "owner_flat", e.target.value)}><option value="">{event ? "— team member —" : "— responsible —"}</option>
                   {committee.map((f) => <option key={f.id} value={f.id}>{ownerText(f)}{f.committee_role ? ` – ${f.committee_role}` : ""} ({label(f)})</option>)}</select>
                 <input type="date" className="field !w-[150px]" value={a.due_date} onChange={(e) => setA(i, "due_date", e.target.value)} title="By when" />
                 {a.status === "done" && <span className="tag bg-emerald-50 text-emerald-700">DONE</span>}
@@ -123,7 +125,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
             <label className="text-[10px] opacity-80">SIGNED MINUTES (PDF / PHOTO){form.file_url && !file && <span className="ml-1 text-emerald-700">• attached</span>}<input type="file" accept=".pdf,.jpg,.jpeg,.png" className="field mt-1 !py-1.5" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
             <div className="text-[10px] opacity-80">STATUS
               <div className="flex gap-4 mt-1.5 text-[12px]">
-                <label className="flex items-center gap-1.5"><input type="radio" checked={form.status === "draft"} onChange={() => setForm({ ...form, status: "draft" })} /> Draft (committee only)</label>
+                <label className="flex items-center gap-1.5"><input type="radio" checked={form.status === "draft"} onChange={() => setForm({ ...form, status: "draft" })} /> Draft ({event ? "team" : "committee"} only)</label>
                 <label className="flex items-center gap-1.5"><input type="radio" checked={form.status === "final"} onChange={() => setForm({ ...form, status: "final" })} /> Final{form.kind !== "Committee" ? " (members see it)" : ""}</label>
               </div></div>
           </div>
@@ -134,11 +136,11 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px]">
         <div className="flex flex-wrap justify-between items-center gap-3 p-5">
-          <div><div className="serif text-[18px] font-bold">Minutes of meetings</div>
-            <div className="opacity-60 mt-0.5">AGM and SGM minutes marked FINAL are shown to all members in NOTICES. Committee meeting minutes stay with the committee.</div></div>
+          <div><div className="serif text-[18px] font-bold">{event ? "Team meetings" : "Minutes of meetings"}</div>
+            <div className="opacity-60 mt-0.5">{event ? "Drafts are seen by the organising team only. Minutes marked FINAL are shown to all members." : "AGM and SGM minutes marked FINAL are shown to all members in NOTICES. Committee meeting minutes stay with the committee."}</div></div>
           <div className="flex gap-2 items-center">
-            <select className="field !w-auto" value={kindF} onChange={(e) => setKindF(e.target.value as any)}><option value="ALL">All meetings</option><option value="AGM">AGM</option><option value="SGM">SGM</option><option value="Committee">Committee</option></select>
-            {!form && <button onClick={() => { setForm(blank()); setFile(null); setError(""); }} className="btn-navy px-4 py-2 font-bold">+ NEW MINUTES</button>}
+            {!event && <select className="field !w-auto" value={kindF} onChange={(e) => setKindF(e.target.value as any)}><option value="ALL">All meetings</option><option value="AGM">AGM</option><option value="SGM">SGM</option><option value="Committee">Committee</option></select>}
+            {!form && canEdit && <button onClick={() => { setForm(blank(!!event)); setFile(null); setError(""); }} className="btn-navy px-4 py-2 font-bold">+ NEW MINUTES</button>}
           </div>
         </div>
         <div className="overflow-x-auto border-t border-[var(--border)]">
@@ -156,10 +158,10 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged 
                   <td className="px-3 py-2.5 whitespace-nowrap text-right">
                     <button onClick={() => print(m)} className="underline font-bold text-[var(--navy)] mr-3">print</button>
                     {m.file_url && <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="underline mr-3">signed copy</a>}
-                    <button onClick={() => edit(m)} className="underline mr-3">edit</button>
-                    <button onClick={() => remove(m)} className="underline text-red-600">delete</button></td>
+                    {canEdit && <><button onClick={() => edit(m)} className="underline mr-3">edit</button>
+                    <button onClick={() => remove(m)} className="underline text-red-600">delete</button></>}</td>
                 </tr>); })}
-              {list.length === 0 && <tr><td colSpan={6} className="px-5 py-6 text-center opacity-60">No minutes yet. Add the last AGM and committee meetings with + NEW MINUTES.</td></tr>}
+              {list.length === 0 && <tr><td colSpan={6} className="px-5 py-6 text-center opacity-60">{event ? (canEdit ? "No team meetings recorded yet. Add one with + NEW MINUTES." : "No meeting minutes yet.") : "No minutes yet. Add the last AGM and committee meetings with + NEW MINUTES."}</td></tr>}
             </tbody>
           </table>
         </div>

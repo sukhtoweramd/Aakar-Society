@@ -20,7 +20,7 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
   const [areas, setAreas] = useState<Area[] | null | undefined>(undefined);
   const [amc, setAmc] = useState<{ amc: Amc[]; visits: Visit[] } | null | undefined>(undefined);
   const [mins, setMins] = useState<{ meetings: Meeting[]; actions: Action[] } | null | undefined>(undefined);
-  async function load() { const [a, m, mt] = await Promise.all([loadAreas(true), loadAmc(), loadMeetings()]); setAreas(a); setAmc(m); setMins(mt); }
+  async function load() { const [a, m, mt] = await Promise.all([loadAreas(true), loadAmc(), loadMeetings()]); setAreas(a); setAmc(m); setMins(mt && { meetings: mt.meetings.filter((x) => x.kind !== "Event"), actions: mt.actions.filter((x) => mt.meetings.some((y) => y.id === x.meeting_id && y.kind !== "Event")) }); }
   useEffect(() => { load(); }, []);
   const committee = useMemo(() => ctx.flats.filter((f) => f.is_committee).sort(byCommitteeRole), [ctx.flats]);
 

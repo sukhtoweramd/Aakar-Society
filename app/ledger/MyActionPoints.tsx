@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { dmy, openPrint, today } from "@/lib/billing";
-import { KIND_LABEL, minutesHtml } from "@/lib/minutes";
+import { meetingName, minutesHtml } from "@/lib/minutes";
 import type { Flat } from "@/lib/society";
 
-type Row = { id: string; meeting_id: string; task: string; due_date: string | null; status: "open" | "done"; done_note: string | null; meeting_kind: "AGM" | "SGM" | "Committee"; meeting_date: string };
+type Row = { id: string; meeting_id: string; task: string; due_date: string | null; status: "open" | "done"; done_note: string | null; meeting_kind: "AGM" | "SGM" | "Committee" | "Event"; meeting_date: string; event_title?: string | null };
 
 export default function MyActionPoints({ flats }: { flats: Flat[] }) {
   const [rows, setRows] = useState<Row[]>([]);
@@ -31,14 +31,14 @@ export default function MyActionPoints({ flats }: { flats: Flat[] }) {
   return (
     <div className="mt-4 border-2 border-[var(--gold)] bg-[#fffdf5] p-4 mono text-[11px]">
       <div className="font-bold tracking-[0.12em]">MY ACTION POINTS • {open.length}</div>
-      <div className="opacity-60 mt-0.5">Tasks given to you in committee / general meetings. Mark them done here; the committee sees it in MINUTES.</div>
+      <div className="opacity-60 mt-0.5">Tasks given to you in society or event committee meetings. Mark them done here; the committee or convenor sees it.</div>
       {error && <div className="mt-2 border border-red-200 bg-red-50 text-red-700 p-2">{error}</div>}
       <div className="mt-2 space-y-2">
         {open.map((r) => { const late = !!r.due_date && r.due_date < today(); return (
           <div key={r.id} className={`flex flex-wrap gap-x-3 gap-y-1 items-center border-b border-dashed border-[var(--border)] pb-2 ${late ? "text-red-700" : ""}`}>
             <b className="text-[12.5px] flex-1 min-w-[200px]">{r.task}</b>
             <span>{r.due_date ? `by ${dmy(r.due_date)}${late ? " (overdue)" : ""}` : "no date"}</span>
-            <button onClick={() => viewMinutes(r)} className="underline opacity-80" title="Open the minutes of this meeting">{KIND_LABEL[r.meeting_kind]} {dmy(r.meeting_date)} • view minutes</button>
+            <button onClick={() => viewMinutes(r)} className="underline opacity-80" title="Open the minutes of this meeting">{meetingName({ kind: r.meeting_kind, event_title: r.event_title })} {dmy(r.meeting_date)} • view minutes</button>
             <button onClick={() => done(r)} className="btn-navy px-2.5 py-1 text-[10px]">✓ DONE</button>
           </div>); })}
       </div>

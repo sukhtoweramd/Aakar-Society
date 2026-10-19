@@ -40,7 +40,7 @@ export default function MeetingMinutesList({ flats }: { flats: Flat[] }) {
   const [general, setGeneral] = useState<Meeting[]>([]);
   const [committee, setCommittee] = useState<Meeting[]>([]);
   useEffect(() => {
-    loadMeetings().then((d) => setGeneral((d?.meetings || []).filter((m) => m.kind !== "Committee" && m.status === "final")));
+    loadMeetings().then((d) => setGeneral((d?.meetings || []).filter((m) => (m.kind === "AGM" || m.kind === "SGM") && m.status === "final")));
     supabase.rpc("my_committee_meetings").then(({ data, error }) => { if (!error) setCommittee((data as Meeting[]) || []); });
   }, []);
   if (!general.length && !committee.length) return null;

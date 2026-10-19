@@ -13,16 +13,33 @@ function safeFolder(raw: string): string | null {
   if (f === "notices" || f === "vault" || f === "amc" || f === "minutes") return f;
   if (/^flats\/[A-Z]\d{1,5}$/.test(f)) return f;
   if (/^events\/[0-9a-f-]{36}$/.test(f)) return f;
+  if (/^eventdocs\/[0-9a-f-]{36}$/.test(f)) return f;   // event minutes, bills and receipts (event team only)
   if (/^floor-plans\/[A-Z]$/.test(f)) return f;
   return null;
 }
 const unauthorized = () => NextResponse.json({ error: "Please log in again." }, { status: 401 });
-const forbidden = () => NextResponse.json({ error: "Only the committee can change this." }, { status: 403 });
+const forbidden = () => NextResponse.json({ error: "You are not allowed to change this." }, { status: 403 });
+type Me = { isCommittee: boolean; flatId: string | null; db: any };
+/** Role of this flat in an event's organising team (Convenor / Treasurer / Member), or null */
+async function eventRole(me: Me, folder: string): Promise<string | null> {
+  const id = folder.split("/")[1];
+  if (!me.flatId || !id) return null;
+  const { data, error } = await me.db.rpc("my_event_role", { p_event: id });
+  return error ? null : (data as string | null);
+}
 // Residents may read society folders and their own flat, and may only write to their own flat folder.
-const canRead = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
-  me.isCommittee || (folder !== "amc" && folder !== "minutes" && (!folder.startsWith("flats/") || folder === `flats/${me.flatId}`));
-const canWrite = (me: { isCommittee: boolean; flatId: string | null }, folder: string) =>
-  me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`);
+// Event team: convenor uploads event photos; convenor / treasurer upload event papers (eventdocs); the team reads eventdocs.
+async function canRead(me: Me, folder: string) {
+  if (me.isCommittee) return true;
+  if (folder.startsWith("eventdocs/")) return !!(await eventRole(me, folder));
+  return folder !== "amc" && folder !== "minutes" && (!folder.startsWith("flats/") || folder === `flats/${me.flatId}`);
+}
+async function canWrite(me: Me, folder: string) {
+  if (me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`)) return true;
+  if (folder.startsWith("events/")) return (await eventRole(me, folder)) === "Convenor";
+  if (folder.startsWith("eventdocs/")) return ["Convenor", "Treasurer"].includes((await eventRole(me, folder)) || "");
+  return false;
+}
 
 export async function GET(req: NextRequest) {
   const me = await getAuthedClient(req);
@@ -31,7 +48,7 @@ export async function GET(req: NextRequest) {
   if (!r2) return NextResponse.json({ files: [], warning: "File storage (R2) is not configured." });
   const folder = safeFolder(req.nextUrl.searchParams.get("folder") || "");
   if (!folder) return NextResponse.json({ error: "Bad folder" }, { status: 400 });
-  if (!canRead(me, folder)) return forbidden();
+  if (!(await canRead(me, folder))) return forbidden();
   try {
     const files: any[] = [];
     let token: string | undefined;
@@ -64,7 +81,7 @@ export async function POST(req: NextRequest) {
     const slot = String(form.get("slot") || "").replace(/[^a-z0-9-]/g, "");
     if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
     if (!folder) return NextResponse.json({ error: "Bad folder" }, { status: 400 });
-    if (!canWrite(me, folder)) return forbidden();
+    if (!(await canWrite(me, folder))) return forbidden();
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (!ALLOWED_EXT[ext]) return NextResponse.json({ error: `Allowed files: ${Object.keys(ALLOWED_EXT).join(", ").toUpperCase()}` }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is larger than 4 MB." }, { status: 400 });
@@ -91,7 +108,7 @@ export async function DELETE(req: NextRequest) {
   if (!key) return NextResponse.json({ ok: true });
   const folder = safeFolder(key.slice(0, key.lastIndexOf("/")));
   if (!folder) return NextResponse.json({ error: "Bad file" }, { status: 400 });
-  if (!canWrite(me, folder)) return forbidden();
+  if (!(await canWrite(me, folder))) return forbidden();
   try {
     await r2.client.send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: key }));
     return NextResponse.json({ ok: true });
