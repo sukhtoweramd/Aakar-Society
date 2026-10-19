@@ -12,7 +12,8 @@
 
 -- 1. Settings on the existing events
 alter table public.events add column if not exists fund_per_flat numeric(12,2);     -- suggested contribution per flat
-alter table public.events add column if not exists pass_price numeric(12,2);        -- default price of one pass
+alter table public.events add column if not exists pass_price numeric(12,2);        -- member pass price
+alter table public.events add column if not exists guest_pass_price numeric(12,2);  -- guest pass price
 alter table public.events add column if not exists accounts_public boolean not null default false;
 
 -- 2. Organising team
@@ -42,9 +43,11 @@ create table if not exists public.event_money (
   rate numeric(12,2),
   amount numeric(12,2) not null default 0 check (amount >= 0),
   mode text not null default 'Cash' check (mode in ('Cash', 'UPI', 'Bank', 'Cheque', 'In kind')),   -- In kind = not counted in cash
+  pass_type text check (pass_type in ('Member', 'Guest')),   -- passes only
   reference text, note text, file_url text,     -- UPI ref / cheque no., bill or receipt photo
   created_by text, created_at timestamptz not null default now(), updated_at timestamptz
 );
+alter table public.event_money add column if not exists pass_type text check (pass_type in ('Member', 'Guest'));
 create index if not exists event_money_event_idx on public.event_money(event_id, entry_date);
 
 -- 4. Event meetings use the existing minutes tables
@@ -101,15 +104,28 @@ create policy convenor_actions on public.meeting_actions for all to authenticate
   using (exists (select 1 from public.meetings m where m.id = meeting_id and m.kind = 'Event' and public.my_event_role(m.event_id) = 'Convenor'))
   with check (exists (select 1 from public.meetings m where m.id = meeting_id and m.kind = 'Event' and public.my_event_role(m.event_id) = 'Convenor'));
 
--- 7. Convenor can set the fund / pass price / "show accounts to all" of their own event
-create or replace function public.set_event_money_settings(p_event uuid, p_fund numeric, p_pass numeric, p_public boolean)
+-- 7. Convenor can set the fund / pass prices / "show accounts to all" of their own event
+drop function if exists public.set_event_money_settings(uuid, numeric, numeric, boolean);
+create or replace function public.set_event_money_settings(p_event uuid, p_fund numeric, p_pass numeric, p_guest numeric, p_public boolean)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if not (public.is_committee() or public.my_event_role(p_event) = 'Convenor') then raise exception 'Only the committee or the event convenor can change this.'; end if;
-  update public.events set fund_per_flat = p_fund, pass_price = p_pass, accounts_public = coalesce(p_public, false) where id = p_event;
+  update public.events set fund_per_flat = p_fund, pass_price = p_pass, guest_pass_price = p_guest, accounts_public = coalesce(p_public, false) where id = p_event;
 end $$;
-revoke all on function public.set_event_money_settings(uuid, numeric, numeric, boolean) from public, anon;
-grant execute on function public.set_event_money_settings(uuid, numeric, numeric, boolean) to authenticated;
+revoke all on function public.set_event_money_settings(uuid, numeric, numeric, numeric, boolean) from public, anon;
+grant execute on function public.set_event_money_settings(uuid, numeric, numeric, numeric, boolean) to authenticated;
+
+-- Number of people living in each flat (counts only, no names), for default member passes.
+-- Only the committee, or a convenor / treasurer of some event, can read it.
+create or replace function public.flat_people_counts()
+returns table(flat_id text, people integer) language sql stable security definer set search_path = public as $$
+  select m.flat_id, count(*)::int from public.members m
+  where public.is_committee()
+     or exists (select 1 from public.event_team t where public.my_flat() is not null and t.flat_id = public.my_flat() and t.role in ('Convenor', 'Treasurer'))
+  group by m.flat_id
+$$;
+revoke all on function public.flat_people_counts() from public, anon;
+grant execute on function public.flat_people_counts() to authenticated;
 
 -- 8. MY ACTION POINTS shows the event name; "view minutes" also works for event meetings
 drop function if exists public.my_action_points();
@@ -183,7 +199,7 @@ end $$;
 revoke all on function public.restore_society_backup(jsonb) from public, anon, authenticated;
 grant execute on function public.restore_society_backup(jsonb) to service_role;
 
--- Check: should show tables 2, functions 4
+-- Check: should show tables 2, functions 5
 select 'tables' as item, count(*)::text as value from pg_tables where schemaname = 'public' and tablename in ('event_team','event_money')
 union all
-select 'functions', count(*)::text from pg_proc where proname in ('my_event_role','set_event_money_settings','my_action_points','my_meeting');
+select 'functions', count(*)::text from pg_proc where proname in ('my_event_role','set_event_money_settings','my_action_points','my_meeting','flat_people_counts');

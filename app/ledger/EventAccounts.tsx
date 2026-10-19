@@ -6,12 +6,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { dmy, inr, openPrint, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { isOccupied, label, ownerText, residentName, sortFlats, type EventRow, type Flat } from "@/lib/society";
+import EventBatch from "./EventBatch";
 import { EV_MODES, IN_CATS, OUT_CATS, eventStatementHtml, fundListHtml, loadMoney, particulars, partyOf, passListHtml, totals, type EventMoneySettings, type EventRole, type Money, type TeamRow } from "@/lib/events";
 
 type Ev = EventRow & Partial<EventMoneySettings>;
-type Form = { id?: string; direction: "in" | "out"; entry_date: string; category: string; flat_id: string; party: string; purpose: string; qty: string; rate: string; amount: string; mode: Money["mode"]; reference: string; note: string; file_url: string };
+type Form = { id?: string; direction: "in" | "out"; entry_date: string; category: string; flat_id: string; party: string; purpose: string; qty: string; rate: string; amount: string; mode: Money["mode"]; reference: string; note: string; file_url: string; pass_type: "Member" | "Guest" };
 const VIEWS = ["ENTRIES", "MEMBER FUND", "SPONSORS", "PASSES"] as const;
-const PURPOSE_HINT: Record<string, string> = { Sponsorship: "e.g. Day 3 dinner / Garba prizes", Passes: "e.g. Adult / Child / Family", Food: "e.g. Day 1 dinner – caterer", Prizes: "e.g. Best dressed (from fund)" };
+const PURPOSE_HINT: Record<string, string> = { Sponsorship: "e.g. Day 3 dinner / Garba prizes", Passes: "e.g. Day 5 only", Food: "e.g. Day 1 dinner – caterer", Prizes: "e.g. Best dressed (from fund)" };
 
 export default function EventAccounts({ ev, flats, team, isCommittee, myRole, email, onSettings }: { ev: Ev; flats: Flat[]; team: TeamRow[]; isCommittee: boolean; myRole: EventRole | null; email: string; onSettings: () => void }) {
   const canWrite = isCommittee || myRole === "Convenor" || myRole === "Treasurer";
@@ -22,9 +23,14 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
   const [form, setForm] = useState<Form | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const [set, setSet] = useState({ fund: ev.fund_per_flat != null ? String(ev.fund_per_flat) : "", pass: ev.pass_price != null ? String(ev.pass_price) : "", pub: !!ev.accounts_public });
+  const [set, setSet] = useState({ fund: ev.fund_per_flat != null ? String(ev.fund_per_flat) : "", pass: ev.pass_price != null ? String(ev.pass_price) : "", guest: ev.guest_pass_price != null ? String(ev.guest_pass_price) : "", pub: !!ev.accounts_public });
   const [fundF, setFundF] = useState<"ALL" | "PAID" | "NOT PAID">("ALL");
   const [dirF, setDirF] = useState<"ALL" | "in" | "out">("ALL");
+  const [batch, setBatch] = useState<"fund" | "passes" | null>(null);
+  const [msg, setMsg] = useState("");
+  const [people, setPeople] = useState<Record<string, number>>({});
+  useEffect(() => { if (canWrite) supabase.rpc("flat_people_counts").then(({ data }) => { const r: Record<string, number> = {}; ((data as any[]) || []).forEach((x) => { r[x.flat_id] = x.people; }); setPeople(r); }); }, [canWrite]);
+  const priceOf = (t: "Member" | "Guest") => (t === "Guest" ? ev.guest_pass_price : ev.pass_price) ?? null;
 
   async function load() { try { setList(await loadMoney(ev.id)); } catch (e: any) { setError(e.message); setList([]); } }
   useEffect(() => { load(); }, [ev.id]);
@@ -32,12 +38,20 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
   const occupied = useMemo(() => flats.filter(isOccupied).sort(sortFlats), [flats]);
   const paid = useMemo(() => { const r: Record<string, number> = {}; (list || []).filter((m) => m.category === "Member fund" && m.flat_id).forEach((m) => { r[m.flat_id!] = (r[m.flat_id!] || 0) + Number(m.amount); }); return r; }, [list]);
 
-  const blank = (direction: "in" | "out", over: Partial<Form> = {}): Form => ({ direction, entry_date: today(), category: direction === "in" ? "Member fund" : "Food", flat_id: "", party: "", purpose: "", qty: "", rate: "", amount: direction === "in" && ev.fund_per_flat ? String(ev.fund_per_flat) : "", mode: "Cash", reference: "", note: "", file_url: "", ...over });
+  const blank = (direction: "in" | "out", over: Partial<Form> = {}): Form => ({ direction, entry_date: today(), category: direction === "in" ? "Member fund" : "Food", flat_id: "", party: "", purpose: "", qty: "", rate: "", amount: direction === "in" && ev.fund_per_flat ? String(ev.fund_per_flat) : "", mode: "Cash", reference: "", note: "", file_url: "", pass_type: "Member", ...over });
   const open = (f: Form) => { setForm(f); setFile(null); setError(""); setTimeout(() => document.getElementById(`evform-${ev.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 50); };
   function setCat(category: string) {
     if (!form) return;
     const amount = category === "Member fund" && ev.fund_per_flat ? String(ev.fund_per_flat) : category === "Passes" && ev.pass_price ? String(Number(ev.pass_price) * (Number(form.qty) || 1)) : form.amount;
     setForm({ ...form, category, amount, qty: category === "Passes" ? form.qty || "1" : form.qty, rate: category === "Passes" ? form.rate || String(ev.pass_price ?? "") : form.rate });
+  }
+  /** Passes: member = flat's head count at member price; guest = guest price */
+  function setPass(p: Partial<Pick<Form, "pass_type" | "flat_id">>) {
+    setForm((f) => { if (!f) return f;
+      const n = { ...f, ...p };
+      if (p.pass_type) n.rate = String(priceOf(p.pass_type) ?? "");
+      if (n.pass_type === "Member" && p.flat_id !== undefined && p.flat_id) n.qty = String(Math.max(1, people[p.flat_id] || 1));
+      const a = Number(n.qty) * Number(n.rate); return { ...n, amount: a ? String(a) : n.amount }; });
   }
   const setQR = (k: "qty" | "rate", v: string) => form && setForm((f) => { if (!f) return f; const n = { ...f, [k]: v }; const a = Number(n.qty) * Number(n.rate); return { ...n, amount: a ? String(a) : n.amount }; });
 
@@ -51,7 +65,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
     try {
       const file_url = file ? (await uploadFile(file, `eventdocs/${ev.id}`)).url : form.file_url || null;
       const row = { event_id: ev.id, direction: form.direction, entry_date: form.entry_date || today(), category: form.category, flat_id: form.flat_id || null, party: form.party.trim() || null,
-        purpose: form.purpose.trim() || null, qty: form.qty ? Number(form.qty) : null, rate: form.rate ? Number(form.rate) : null, amount: amt || 0, mode: form.mode,
+        purpose: form.purpose.trim() || null, pass_type: form.category === "Passes" ? form.pass_type : null, qty: form.qty ? Number(form.qty) : null, rate: form.rate ? Number(form.rate) : null, amount: amt || 0, mode: form.mode,
         reference: form.reference.trim() || null, note: form.note.trim() || null, file_url };
       const { error } = form.id ? await supabase.from("event_money").update({ ...row, updated_at: new Date().toISOString() }).eq("id", form.id)
         : await supabase.from("event_money").insert([{ ...row, created_by: email }]);
@@ -67,11 +81,11 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
   }
   async function saveSettings() {
     setBusy(true); setError("");
-    const { error } = await supabase.rpc("set_event_money_settings", { p_event: ev.id, p_fund: set.fund ? Number(set.fund) : null, p_pass: set.pass ? Number(set.pass) : null, p_public: set.pub });
+    const { error } = await supabase.rpc("set_event_money_settings", { p_event: ev.id, p_fund: set.fund ? Number(set.fund) : null, p_pass: set.pass ? Number(set.pass) : null, p_guest: set.guest ? Number(set.guest) : null, p_public: set.pub });
     setBusy(false);
     if (error) setError(error.message); else onSettings();
   }
-  const edit = (m: Money) => open({ id: m.id, direction: m.direction, entry_date: m.entry_date, category: m.category, flat_id: m.flat_id || "", party: m.party || "", purpose: m.purpose || "", qty: m.qty ? String(m.qty) : "", rate: m.rate != null ? String(m.rate) : "", amount: String(m.amount), mode: m.mode, reference: m.reference || "", note: m.note || "", file_url: m.file_url || "" });
+  const edit = (m: Money) => open({ id: m.id, direction: m.direction, entry_date: m.entry_date, category: m.category, flat_id: m.flat_id || "", party: m.party || "", purpose: m.purpose || "", qty: m.qty ? String(m.qty) : "", rate: m.rate != null ? String(m.rate) : "", amount: String(m.amount), mode: m.mode, reference: m.reference || "", note: m.note || "", file_url: m.file_url || "", pass_type: m.pass_type === "Guest" ? "Guest" : "Member" });
   const evT = { title: ev.title, event_date: ev.event_date, end_date: ev.end_date };
 
   if (list === null) return <div className="mono text-[11px] opacity-60">Loading…</div>;
@@ -100,13 +114,19 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
         <div className="border border-[var(--border)] bg-[var(--bg)] p-3"><div className="opacity-60 text-[10px]">MEMBER FUND</div><div className="text-[17px] font-bold">{Object.keys(paid).length}<span className="text-[11px] font-normal opacity-60"> / {occupied.length} flats</span></div></div>
       </div>
       <div className="opacity-60">Kept separately from society maintenance billing. In-kind sponsorships are listed but not counted in cash.{ev.accounts_public ? " • Shown to all members." : " • Seen by the organising team and committee only."}</div>
+      {msg && <div className="border border-emerald-200 bg-emerald-50 text-emerald-800 p-2">{msg}</div>}
+      {batch && <EventBatch kind={batch} eventId={ev.id} occupied={occupied} people={people} email={email}
+        done={new Set((list || []).filter((m) => batch === "fund" ? m.category === "Member fund" : m.category === "Passes" && m.pass_type === "Member").map((m) => m.flat_id || ""))}
+        price={batch === "fund" ? ev.fund_per_flat ?? null : ev.pass_price ?? null}
+        onCancel={() => setBatch(null)} onDone={(n) => { setBatch(null); setMsg(`${n} entries posted.`); load(); }} />}
       {error && !form && <div className="border border-red-200 bg-red-50 text-red-700 p-2">{error}</div>}
 
       {canSettings && (
         <div className="flex flex-wrap gap-2 items-center border border-dashed border-[var(--border)] p-2.5">
           <span className="opacity-60">SETTINGS</span>
           <label className="flex items-center gap-1.5">Fund per flat ₹<input className="field !w-[90px]" inputMode="numeric" value={set.fund} onChange={(e) => setSet({ ...set, fund: e.target.value.replace(/[^\d.]/g, "") })} /></label>
-          <label className="flex items-center gap-1.5">Pass price ₹<input className="field !w-[90px]" inputMode="numeric" value={set.pass} onChange={(e) => setSet({ ...set, pass: e.target.value.replace(/[^\d.]/g, "") })} /></label>
+          <label className="flex items-center gap-1.5">Member pass ₹<input className="field !w-[80px]" inputMode="numeric" value={set.pass} onChange={(e) => setSet({ ...set, pass: e.target.value.replace(/[^\d.]/g, "") })} /></label>
+          <label className="flex items-center gap-1.5">Guest pass ₹<input className="field !w-[80px]" inputMode="numeric" value={set.guest} onChange={(e) => setSet({ ...set, guest: e.target.value.replace(/[^\d.]/g, "") })} /></label>
           <label className="flex items-center gap-1.5"><input type="checkbox" checked={set.pub} onChange={(e) => setSet({ ...set, pub: e.target.checked })} /> Show accounts to all members</label>
           <button onClick={saveSettings} disabled={busy} className="btn-line px-3 py-1.5">SAVE</button>
         </div>)}
@@ -126,11 +146,12 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <label className="text-[10px] opacity-80">DATE<input type="date" className="field mt-1" value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></label>
             <label className="text-[10px] opacity-80">HEAD *<select className="field mt-1" value={form.category} onChange={(e) => setCat(e.target.value)}>{(form.direction === "in" ? IN_CATS : OUT_CATS).map((c) => <option key={c}>{c}</option>)}</select></label>
-            <label className="text-[10px] opacity-80">{form.direction === "in" ? "FROM FLAT" : "PAID BY / FOR FLAT"}{form.category === "Member fund" ? " *" : ""}<select className="field mt-1" value={form.flat_id} onChange={(e) => setForm({ ...form, flat_id: e.target.value })}><option value="">— none / outside —</option>
+            <label className="text-[10px] opacity-80">{form.direction === "in" ? "FROM FLAT" : "PAID BY / FOR FLAT"}{form.category === "Member fund" ? " *" : ""}<select className="field mt-1" value={form.flat_id} onChange={(e) => (form.category === "Passes" ? setPass({ flat_id: e.target.value }) : setForm({ ...form, flat_id: e.target.value }))}><option value="">— none / outside —</option>
               {[...flats].sort(sortFlats).map((f) => <option key={f.id} value={f.id}>{label(f)} • {residentName(f) || ownerText(f)}</option>)}</select></label>
             <label className="text-[10px] opacity-80">{form.direction === "in" ? "NAME (sponsor / buyer)" : "PAID TO (vendor)"}<input className="field mt-1" value={form.party} onChange={(e) => setForm({ ...form, party: e.target.value })} /></label>
             <label className="text-[10px] opacity-80 sm:col-span-2">FOR<input className="field mt-1" placeholder={PURPOSE_HINT[form.category] || "What it is for"} value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} /></label>
             {form.category === "Passes" && <>
+              <label className="text-[10px] opacity-80">PASS TYPE<select className="field mt-1" value={form.pass_type} onChange={(e) => setPass({ pass_type: e.target.value as any })}><option value="Member">Member{ev.pass_price != null ? ` – ₹${inr(ev.pass_price)}` : ""}</option><option value="Guest">Guest{ev.guest_pass_price != null ? ` – ₹${inr(ev.guest_pass_price)}` : ""}</option></select></label>
               <label className="text-[10px] opacity-80">NO. OF PASSES<input className="field mt-1" inputMode="numeric" value={form.qty} onChange={(e) => setQR("qty", e.target.value.replace(/\D/g, ""))} /></label>
               <label className="text-[10px] opacity-80">PRICE PER PASS ₹<input className="field mt-1" inputMode="numeric" value={form.rate} onChange={(e) => setQR("rate", e.target.value.replace(/[^\d.]/g, ""))} /></label></>}
             <label className="text-[10px] opacity-80">AMOUNT ₹{form.mode === "In kind" ? " (value, optional)" : " *"}<input className="field mt-1 font-bold" inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^\d.]/g, "") })} /></label>
@@ -168,6 +189,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
         <div className="border border-[var(--border)] bg-[var(--surface)] p-2.5 space-y-2">
           <div className="flex flex-wrap gap-2 items-center"><b>{ev.fund_per_flat ? `₹${inr(ev.fund_per_flat)} per flat • ` : ""}paid {Object.keys(paid).length} of {occupied.length} • ₹{inr(Object.values(paid).reduce((s, a) => s + a, 0))}</b>
             <select className="field !w-auto ml-auto" value={fundF} onChange={(e) => setFundF(e.target.value as any)}><option>ALL</option><option>PAID</option><option>NOT PAID</option></select>
+            {canWrite && !batch && <button onClick={() => { setMsg(""); setBatch("fund"); }} className="btn-navy px-3 py-1.5">POST BY TOWER</button>}
             <button onClick={() => openPrint(`${ev.title} fund`, [fundListHtml(evT, list, occupied, ev.fund_per_flat ?? null)])} className="btn-line px-3 py-1.5">🖨 LIST</button></div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {fundRows.map((f) => (
@@ -189,11 +211,13 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
 
       {view === "PASSES" && (
         <div className="border border-[var(--border)] bg-[var(--surface)] p-2.5 space-y-2">
-          <div className="flex flex-wrap gap-2 items-center"><b>{passes.reduce((s, m) => s + Number(m.qty || 1), 0)} passes • ₹{inr(passes.reduce((s, m) => s + Number(m.amount), 0))}{ev.pass_price ? ` • ₹${inr(ev.pass_price)} each` : ""}</b>
-            {canWrite && <button onClick={() => open(blank("in", { category: "Passes", qty: "1", rate: String(ev.pass_price ?? ""), amount: String(ev.pass_price ?? "") }))} className="btn-navy px-3 py-1.5">+ SELL PASSES</button>}
+          <div className="flex flex-wrap gap-2 items-center"><b>{passes.reduce((s, m) => s + Number(m.qty || 1), 0)} passes • ₹{inr(passes.reduce((s, m) => s + Number(m.amount), 0))}{ev.pass_price != null ? ` • member ₹${inr(ev.pass_price)}` : ""}{ev.guest_pass_price != null ? ` • guest ₹${inr(ev.guest_pass_price)}` : ""}</b>
+            {canWrite && !batch && <button onClick={() => { setMsg(""); setBatch("passes"); }} className="btn-navy px-3 py-1.5">MEMBER PASSES BY TOWER</button>}
+            {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Guest", qty: "1", rate: String(ev.guest_pass_price ?? ""), amount: String(ev.guest_pass_price ?? ""), purpose: "" }))} className="btn-line px-3 py-1.5">+ GUEST PASSES</button>}
+            {canWrite && <button onClick={() => open(blank("in", { category: "Passes", pass_type: "Member", qty: "1", rate: String(ev.pass_price ?? ""), amount: String(ev.pass_price ?? "") }))} className="btn-line px-3 py-1.5">+ MEMBER PASSES</button>}
             <button onClick={() => openPrint(`${ev.title} passes`, [passListHtml(evT, list, flats)])} className="btn-line px-3 py-1.5 ml-auto">🖨 GATE LIST</button></div>
-          {passes.length === 0 ? <div className="opacity-60">No passes sold yet. Set the pass price in SETTINGS, then use + SELL PASSES.</div> :
-            passes.map((m) => <div key={m.id} className="flex justify-between gap-2 border-b border-dashed border-[var(--border)] py-1"><span>{partyOf(flats, m)}{m.purpose ? ` • ${m.purpose}` : ""}</span><b>{m.qty || 1} × ₹{inr(m.rate ?? m.amount)}</b></div>)}
+          {passes.length === 0 ? <div className="opacity-60">No passes sold yet. Set the member and guest pass prices in SETTINGS first.</div> :
+            passes.map((m) => <div key={m.id} className="flex justify-between gap-2 border-b border-dashed border-[var(--border)] py-1"><span>{m.pass_type && <span className={`tag mr-1.5 ${m.pass_type === "Guest" ? "bg-amber-50 text-amber-800" : "bg-[var(--bg)]"}`}>{m.pass_type.toUpperCase()}</span>}{partyOf(flats, m)}{m.purpose && m.purpose !== "Member passes" ? ` • ${m.purpose}` : ""}</span><b>{m.qty || 1} × ₹{inr(m.rate ?? m.amount)}</b></div>)}
         </div>)}
     </div>
   );
