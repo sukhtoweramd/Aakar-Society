@@ -78,6 +78,8 @@ do $$ declare t text; p record; begin
     end loop;
     execute format('create policy committee_all on public.%I for all to authenticated using (public.is_committee()) with check (public.is_committee())', t);
     execute format('revoke all on public.%I from anon', t);
+    -- Supabase no longer grants new tables automatically (from 30 Oct 2026): grant explicitly; rows are still limited by the rules below
+    execute format('grant select, insert, update, delete on public.%I to authenticated, service_role', t);
   end loop;
 end $$;
 -- team: everyone sees who organises; the convenor adds / removes treasurer and members
