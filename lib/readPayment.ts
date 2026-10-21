@@ -28,7 +28,11 @@ export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
   const work = (async (): Promise<ReadResult> => {
     const t = await token();
     stage = "preparing the image";
-    const image: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+    const image: string | null = await new Promise((res) => {
+      const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => res(null); r.readAsDataURL(file);
+      setTimeout(() => res(null), 10000);
+    });
+    if (!image) return { fields: {}, warnings: [], error: "This picture could not be opened on this device. Save it to Downloads (or the phone's Gallery) and choose it from there, or fill in the details by hand.", detail: "the browser could not read the file (often a OneDrive online-only file or office security software)" };
     stage = "sending to the server";
     const res = await fetch("/api/read-payment", { method: "POST", body: JSON.stringify({ image }), headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(45000) });
     stage = "reading the answer";
