@@ -1,14 +1,15 @@
 "use client";
 // ADMIN → Screenshot reading (AI): test with a screenshot and see exactly what came back; one-time Meta licence for the Llama model.
 import { useState } from "react";
-import { acceptLlamaLicence, readPaymentScreenshot, toJpeg, type ReadResult } from "@/lib/readPayment";
+import { acceptLlamaLicence, checkAiConnection, readPaymentScreenshot, toJpeg, type ReadResult } from "@/lib/readPayment";
 
 export default function AiReadPanel() {
-  const [busy, setBusy] = useState(""); const [res, setRes] = useState<ReadResult | null>(null); const [lic, setLic] = useState("");
+  const [busy, setBusy] = useState(""); const [res, setRes] = useState<ReadResult | null>(null); const [lic, setLic] = useState(""); const [chk, setChk] = useState<string[]>([]);
   async function test(f: File | null) {
     if (!f) return; setBusy("test"); setRes(null);
     setRes(await readPaymentScreenshot(await toJpeg(f, 1280))); setBusy("");
   }
+  async function check() { setBusy("check"); setChk([]); setChk(await checkAiConnection()); setBusy(""); }
   async function agree() {
     if (!confirm("Accept Meta's Llama 3.2 Community Licence and Acceptable Use Policy for the society's Cloudflare account?\n\nThis is needed once to use Cloudflare's Llama image model. Read the licence at llama.com/llama3_2/license before continuing.")) return;
     setBusy("agree"); const r = await acceptLlamaLicence(); setLic(`${r.ok ? "✓" : "✕"} ${r.answer}`); setBusy("");
@@ -19,8 +20,10 @@ export default function AiReadPanel() {
       <div className="opacity-60 mt-1">Used by "I have paid" to fill in payment details. Upload any payment screenshot to see what is read. Nothing is saved.</div>
       <div className="flex flex-wrap gap-2 mt-3">
         <label className="btn-navy px-4 py-2 cursor-pointer">{busy === "test" ? "READING…" : "TEST WITH A SCREENSHOT"}<input type="file" accept="image/*" hidden onChange={(e) => { test(e.target.files?.[0] || null); e.target.value = ""; }} /></label>
+        <button onClick={check} disabled={!!busy} className="btn-line px-4 py-2">{busy === "check" ? "CHECKING…" : "CHECK CONNECTION"}</button>
         <button onClick={agree} disabled={!!busy} className="btn-line px-4 py-2">{busy === "agree" ? "…" : "ACCEPT META LLAMA LICENCE (ONE TIME)"}</button>
       </div>
+      {chk.length > 0 && <div className="mt-2 border border-[var(--border)] bg-white p-2 space-y-0.5 break-words">{chk.map((l, i) => <div key={i}>{l}</div>)}</div>}
       {lic && <div className="mt-2 border border-[var(--border)] bg-white p-2 break-words">Licence: {lic}</div>}
       {res && (
         <div className="mt-3 border border-[var(--border)] bg-white p-3 space-y-1 break-words">

@@ -37,6 +37,20 @@ export async function POST(req: NextRequest) {
   if (!account || !token) return NextResponse.json({ error: "Screenshot reading is not set up yet. Please fill in the details by hand." }, { status: 503 });
   try {
     const form = await req.formData();
+    if (form.get("action") === "check") {
+      // ADMIN check without an image: is the token valid, and does it work on this account's Workers AI?
+      if (!me.isCommittee) return NextResponse.json({ error: "Only the committee can do this." }, { status: 403 });
+      const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+      const v = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", { headers: h, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch((e) => ({ errors: [{ message: e?.message }] }));
+      const ai = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/meta/llama-3.1-8b-instruct`, { method: "POST", headers: h, body: JSON.stringify({ prompt: "Reply with the word OK", max_tokens: 5 }), signal: AbortSignal.timeout(15000) })
+        .then(async (r) => ({ status: r.status, j: await r.json().catch(() => ({})) })).catch((e) => ({ status: 0, j: { errors: [{ message: e?.message }] } }));
+      return NextResponse.json({ lines: [
+        "Your device reached the server: yes",
+        `Token: ${v?.result?.status ? `${v.result.status}` : `not accepted (${v?.errors?.[0]?.message || "no answer"})`} • length ${token.length} characters`,
+        `Account id in use: …${account.slice(-4)} (${account.length} characters; should be 32)`,
+        `Workers AI on this account: ${ai.status === 200 ? "working" : `status ${ai.status} – ${ai.j?.errors?.[0]?.message || "no answer"}`}`,
+      ] });
+    }
     if (form.get("action") === "agree") {
       // One-time acceptance of Meta's Llama 3.2 licence for this Cloudflare account (committee only, pressed by a person in ADMIN).
       if (!me.isCommittee) return NextResponse.json({ error: "Only the committee can do this." }, { status: 403 });

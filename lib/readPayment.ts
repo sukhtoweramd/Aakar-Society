@@ -53,3 +53,13 @@ export async function acceptLlamaLicence(): Promise<{ ok: boolean; answer: strin
   const j = await res.json().catch(() => ({}));
   return { ok: !!j.ok, answer: j.answer || j.error || `status ${res.status}` };
 }
+
+/** ADMIN: check the connection to Cloudflare without sending an image. */
+export async function checkAiConnection(): Promise<string[]> {
+  try {
+    const fd = new FormData(); fd.append("action", "check");
+    const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` }, signal: AbortSignal.timeout(40000) });
+    const j = await res.json().catch(() => ({}));
+    return j.lines || [j.error || `server status ${res.status}`];
+  } catch (e: any) { return [`Your device could not reach the server: ${e?.name === "TimeoutError" ? "no answer in 40 seconds" : e?.message || e}`]; }
+}
