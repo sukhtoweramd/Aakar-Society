@@ -7,7 +7,7 @@ export default function AiReadPanel() {
   const [busy, setBusy] = useState(""); const [res, setRes] = useState<ReadResult | null>(null); const [lic, setLic] = useState("");
   async function test(f: File | null) {
     if (!f) return; setBusy("test"); setRes(null);
-    setRes(await readPaymentScreenshot(await toJpeg(f))); setBusy("");
+    setRes(await readPaymentScreenshot(await toJpeg(f, 1280))); setBusy("");
   }
   async function agree() {
     if (!confirm("Accept Meta's Llama 3.2 Community Licence and Acceptable Use Policy for the society's Cloudflare account?\n\nThis is needed once to use Cloudflare's Llama image model. Read the licence at llama.com/llama3_2/license before continuing.")) return;

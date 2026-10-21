@@ -34,7 +34,7 @@ export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: 
   async function pickScreenshot(raw: File | null) {
     if (!raw) return;
     setError(""); setNotes([]); setFilled(new Set());
-    const img = await toJpeg(raw);
+    const img = await toJpeg(raw, 1280);
     setFile(img); setThumb(img.type.startsWith("image/") ? URL.createObjectURL(img) : "");
     if (!img.type.startsWith("image/")) { setNotes([{ text: "PDFs cannot be read automatically. Please fill in the details below.", tone: "warn" }]); return; }
     setReading(true);

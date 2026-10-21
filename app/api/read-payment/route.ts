@@ -49,16 +49,21 @@ export async function POST(req: NextRequest) {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return NextResponse.json({ error: "Only photos can be read; please fill in the details by hand." }, { status: 400 });
     if (file.size > 3 * 1024 * 1024) return NextResponse.json({ error: "Image too large to read." }, { status: 400 });
     const dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+    // Each model gets at most 12 seconds so the whole request stays inside Vercel's 30-second limit.
     const run = (model: string, body: any) => fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
-      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(12000) });
     const attempts: [string, any][] = [
       [MISTRAL, { messages: [{ role: "user", content: [{ type: "text", text: PROMPT }, { type: "image_url", image_url: { url: dataUrl } }] }], max_tokens: 300, temperature: 0 }],
       [LLAMA, { messages: [{ role: "user", content: PROMPT }], image: dataUrl, max_tokens: 300, temperature: 0 }],
     ];
     let raw: any = null; const errors: string[] = []; let used = "";
     for (const [model, body] of attempts) {
-      const res = await run(model, body);
+      const t0 = Date.now(); const name = model.split("/").pop();
+      let res: Response;
+      try { res = await run(model, body); }
+      catch (e: any) { errors.push(`${name}: ${e?.name === "TimeoutError" ? "no answer in 12 s" : e?.message || "network error"}`); continue; }
       const j: any = await res.json().catch(() => ({}));
+      console.log(`read-payment ${name}: status ${res.status} in ${Date.now() - t0} ms`);
       if (!res.ok || j.success === false) { errors.push(`${model.split("/").pop()}: ${j?.errors?.[0]?.message || `status ${res.status}`}`); continue; }
       const out = j.result?.response;
       raw = typeof out === "string" ? firstJson(out) : out && typeof out === "object" ? out : null;
