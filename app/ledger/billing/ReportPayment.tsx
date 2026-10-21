@@ -35,7 +35,10 @@ export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: 
     if (!raw) return;
     setError(""); setNotes([]); setFilled(new Set());
     const img = await toJpeg(raw, 1280);
-    setFile(img); setThumb(img.type.startsWith("image/") ? URL.createObjectURL(img) : "");
+    // Proof sent to the committee: the original file when it is small enough (plain upload, works even on office
+    // laptops that block page scripts from reading files); the shrunk copy for big phone photos.
+    const proof = raw.size <= 3.8 * 1024 * 1024 && /^(image\/(jpeg|png|webp)|application\/pdf)$/.test(raw.type) ? raw : img;
+    setFile(proof); setThumb(proof.type.startsWith("image/") ? URL.createObjectURL(proof) : "");
     if (!img.type.startsWith("image/")) { setNotes([{ text: "PDFs cannot be read automatically. Please fill in the details below.", tone: "warn" }]); return; }
     setReading(true);
     const r = await readPaymentScreenshot(img);
