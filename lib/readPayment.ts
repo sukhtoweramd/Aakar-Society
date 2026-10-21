@@ -13,9 +13,14 @@ export async function toJpeg(file: File, max = 1600): Promise<File> {
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
     c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
-    const blob: Blob | null = await new Promise((res) => { c.toBlob((b) => res(b), "image/jpeg", 0.88); setTimeout(() => res(null), 10000); });
-    if (!blob || blob.size < 1000) return file; // conversion failed: use the original
-    return new File([blob], (file.name.replace(/\.[^.]+$/, "") || "screenshot") + ".jpg", { type: "image/jpeg" });
+    // toDataURL + plain JavaScript decoding: on some laptops a canvas.toBlob() result cannot be read back.
+    const url = c.toDataURL("image/jpeg", 0.88);
+    if (!url.startsWith("data:image/jpeg")) return file;
+    const bin = atob(url.slice(url.indexOf(",") + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (bytes.length < 1000) return file;
+    return new File([bytes], (file.name.replace(/\.[^.]+$/, "") || "screenshot") + ".jpg", { type: "image/jpeg" });
   } catch { return file; }
 }
 
