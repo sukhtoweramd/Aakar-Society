@@ -32,8 +32,8 @@ function istToday() { return new Date(Date.now() + 5.5 * 3600e3).toISOString().s
 export async function POST(req: NextRequest) {
   const me = await getAuthedClient(req);
   if (!me) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
-  const account = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
-  const token = process.env.CLOUDFLARE_AI_TOKEN;
+  const account = (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || "").trim();
+  const token = (process.env.CLOUDFLARE_AI_TOKEN || "").replace(/^Bearer\s+/i, "").trim();
   if (!account || !token) return NextResponse.json({ error: "Screenshot reading is not set up yet. Please fill in the details by hand." }, { status: 503 });
   try {
     const form = await req.formData();
