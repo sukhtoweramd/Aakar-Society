@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ChangePassword({ forced, who, onDone }: { forced: boolean; who: string; onDone: () => void }) {
@@ -30,10 +31,10 @@ export default function ChangePassword({ forced, who, onDone }: { forced: boolea
           {forced ? `Welcome, ${who}. Please replace the password the committee gave you with one only you know.` : who}
         </div>
         <div className="mt-6 space-y-4">
-          <label className="block"><div className="mono text-[10px] tracking-[0.16em]">NEW PASSWORD</div>
-            <input type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} className="field mt-1 mono" required /></label>
-          <label className="block"><div className="mono text-[10px] tracking-[0.16em]">REPEAT NEW PASSWORD</div>
-            <input type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} className="field mt-1 mono" required /></label>
+          <div className="block"><div className="mono text-[10px] tracking-[0.16em]">NEW PASSWORD</div>
+            <PasswordInput autoComplete="new-password" value={p1} onChange={setP1} required /></div>
+          <div className="block"><div className="mono text-[10px] tracking-[0.16em]">REPEAT NEW PASSWORD</div>
+            <PasswordInput autoComplete="new-password" value={p2} onChange={setP2} required /></div>
           {error && <div className="mono text-[12px] text-red-700 border border-red-200 bg-red-50 px-3 py-2">{error}</div>}
           <button disabled={busy} className="btn-navy w-full mono text-[12px] tracking-[0.16em] py-3">{busy ? "SAVING…" : "SAVE PASSWORD"}</button>
           {forced

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY } from "@/lib/society";
 import { flatEmail, normaliseFlat } from "@/lib/residents";
@@ -59,10 +60,10 @@ export default function Login() {
                 <div className="mono text-[10px] tracking-[0.16em]">FLAT NUMBER OR EMAIL</div>
                 <input type="text" autoComplete="username" autoCapitalize="characters" required value={email} onChange={(e) => setEmail(e.target.value)} className="field mt-1 mono" placeholder="A-101  or  you@example.com" />
               </label>
-              <label className="block">
+              <div className="block">
                 <div className="mono text-[10px] tracking-[0.16em]">PASSWORD</div>
-                <input type="password" autoComplete="current-password" required value={pass} onChange={(e) => setPass(e.target.value)} className="field mt-1 mono" />
-              </label>
+                <PasswordInput autoComplete="current-password" required value={pass} onChange={setPass} />
+              </div>
               {error && <div className="mono text-[12px] text-red-700 border border-red-200 bg-red-50 px-3 py-2">{error}</div>}
               <button disabled={busy} className="btn-navy w-full mono text-[12px] tracking-[0.16em] py-3">{busy ? "CHECKING…" : "LOGIN"}</button>
               <div className="mono text-[10px] opacity-50 text-center">No password yet, or forgot it? Ask the society committee.</div>
