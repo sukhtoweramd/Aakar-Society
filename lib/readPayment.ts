@@ -2,7 +2,7 @@
 // "I have paid": read a payment screenshot (server → Cloudflare Workers AI) and the duplicate-reference check.
 import { supabase } from "./supabaseClient";
 
-export type ReadResult = { fields: Partial<Record<"amount" | "paid_on" | "ref" | "mode" | "bank", string>>; warnings: string[]; error?: string };
+export type ReadResult = { fields: Partial<Record<"amount" | "paid_on" | "ref" | "mode" | "bank", string>>; warnings: string[]; error?: string; detail?: string; model?: string };
 
 /** Phone photos can be large or HEIC: turn them into a JPEG of at most 1600 px before reading / uploading. */
 export async function toJpeg(file: File, max = 1600): Promise<File> {
@@ -25,8 +25,8 @@ export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
     const fd = new FormData(); fd.append("file", file);
     const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` } });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) return { fields: {}, warnings: [], error: j.error || "Could not read the screenshot. Please fill in the details by hand." };
-    return { fields: j.fields || {}, warnings: j.warnings || [] };
+    if (!res.ok) return { fields: {}, warnings: [], error: j.error || "Could not read the screenshot. Please fill in the details by hand.", detail: j.detail };
+    return { fields: j.fields || {}, warnings: j.warnings || [], detail: j.detail, model: j.model };
   } catch { return { fields: {}, warnings: [], error: "Could not read the screenshot. Please fill in the details by hand." }; }
 }
 
@@ -35,4 +35,12 @@ export async function utrAlreadyReported(ref: string): Promise<{ found: boolean;
   if (ref.replace(/[^A-Za-z0-9]/g, "").length < 6) return { found: false };
   const { data, error } = await supabase.rpc("utr_already_reported", { p_ref: ref });
   return error || !data ? { found: false } : (data as any);
+}
+
+/** ADMIN: accept Meta's Llama 3.2 licence once for the society's Cloudflare account. */
+export async function acceptLlamaLicence(): Promise<{ ok: boolean; answer: string }> {
+  const fd = new FormData(); fd.append("action", "agree");
+  const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` } });
+  const j = await res.json().catch(() => ({}));
+  return { ok: !!j.ok, answer: j.answer || j.error || `status ${res.status}` };
 }
