@@ -9,10 +9,14 @@ export type EventRole = "Convenor" | "Treasurer" | "Member";
 export type TeamRow = { id: string; event_id: string; flat_id: string; person: string | null; role: EventRole; created_at: string };
 export type Money = {
   id: string; event_id: string; entry_date: string; direction: "in" | "out"; category: string; flat_id: string | null; party: string | null; purpose: string | null;
-  qty: number | null; rate: number | null; amount: number; pass_type?: "Member" | "Guest" | null; jain_qty?: number | null; mode: "Cash" | "UPI" | "Bank" | "Cheque" | "In kind"; reference: string | null; note: string | null; file_url: string | null;
+  qty: number | null; rate: number | null; amount: number; pass_type?: "Member" | "Guest" | null; jain_qty?: number | null; session?: string | null; collected_at?: string | null; collected_by?: string | null; mode: "Cash" | "UPI" | "Bank" | "Cheque" | "In kind"; reference: string | null; note: string | null; file_url: string | null;
   created_by: string | null; created_at: string;
 };
-export type EventMoneySettings = { fund_per_flat: number | null; pass_price: number | null; guest_pass_price: number | null; accounts_public: boolean };
+export type EventMoneySettings = { fund_per_flat: number | null; pass_price: number | null; guest_pass_price: number | null; accounts_public: boolean; pass_sessions?: Session[] };
+/** One day / meal that needs passes, e.g. "Breakfast" on 24 Oct (free for members) or "Dinner" (paid). */
+export type Session = { id: string; name: string; date: string | null; member_price: number | null; guest_price: number | null };
+export const sessionLabel = (x?: Session | null) => (x ? `${x.name}${x.date ? ` • ${dmy(x.date)}` : ""}` : "");
+export const sessionOf = (sessions: Session[] | undefined, id?: string | null) => (sessions || []).find((x) => x.id === id) || null;
 
 export const IN_CATS = ["Member fund", "Sponsorship", "Passes", "Donation", "Other income"];
 export const OUT_CATS = ["Food", "Prizes", "Decoration", "Sound & lights", "Venue / ground", "Artists", "Printing", "Other expense"];
@@ -128,15 +132,46 @@ export const food = (passes: Pick<Money, "qty" | "jain_qty">[]) => {
   return { normal: total - jain, jain };
 };
 /** Pass holders, for the gate. */
-export function passListHtml(ev: { title: string | null }, list: Money[], flats: Flat[]): string[] {
-  const p = list.filter((m) => m.category === "Passes");
+export function passListHtml(ev: { title: string | null }, list: Money[], flats: Flat[], session?: Session | null): string[] {
+  const p = list.filter((m) => m.category === "Passes" && (!session || m.session === session.id));
   const rows = p.map((m, i) => tr(td(String(i + 1)) + td(esc(partyOf(flats, m))) + td(esc(m.pass_type || m.purpose || "")) + td(String(m.qty || 1), true) + td(String(Number(m.qty || 1) - Number(m.jain_qty || 0)), true) + td(m.jain_qty ? String(m.jain_qty) : "—", true) + td("")));
   const n = p.reduce((s, m) => s + Number(m.qty || 1), 0);
   const nOf = (t: string) => p.filter((m) => m.pass_type === t).reduce((s, m) => s + Number(m.qty || 1), 0);
   const f = food(p);
-  const top = `<div style="margin-top:5mm;font-size:13pt;font-weight:800;color:var(--navy)">${esc(ev.title)} – Pass holders</div>
+  const top = `<div style="margin-top:5mm;font-size:13pt;font-weight:800;color:var(--navy)">${esc(ev.title)} – Pass holders${session ? ` – ${esc(sessionLabel(session))}` : ""}</div>
   <div style="font-size:10pt;margin-top:1mm"><b>${n}</b> passes (${nOf("Member")} member, ${nOf("Guest")} guest) issued to ${p.length} buyer${p.length === 1 ? "" : "s"}</div>
   <div style="margin-top:2mm;border:.4mm solid var(--navy);padding:2mm 3mm;font-size:11pt;font-weight:800;display:flex;gap:10mm">FOOD <span>Normal: ${f.normal}</span><span>Jain: ${f.jain}</span><span>Total: ${f.normal + f.jain}</span></div>`;
   return paged("EVENT PASSES", "GATE LIST", `As on <b>${esc(dmy(today()))}</b>`, top, th("#") + th("Name / flat") + th("Pass") + th("Qty", true) + th("Normal", true) + th("Jain", true) + th("Entry ✓"),
     rows, 26, 33, `${ev.title || "Event"} • pass holders`, "", tr(td("No passes yet") + td("") + td("") + td("") + td("") + td("") + td("")));
+}
+
+/** Printable passes: 16 per A4 (4 × 4) with cutting lines. Per flat "A-702 • 1 of 3"; Jain passes marked JAIN;
+ *  guests "A-702 • GUEST" (or the guest's name when no host flat). */
+export function passTicketsHtml(ev: { title: string | null }, list: Money[], flats: Flat[], session: Session | null, stamp: string): string[] {
+  const p = list.filter((m) => m.category === "Passes" && (!session || m.session === session.id));
+  type T = { who: string; sub: string; jain: boolean };
+  const tickets: T[] = [];
+  const lab = (id: string | null) => { const f = flats.find((x) => x.id === id); return f ? label(f) : ""; };
+  // members: all of a flat's member passes together, numbered 1 of n; Jain first
+  const byFlat: Record<string, { n: number; j: number }> = {};
+  p.filter((m) => m.pass_type !== "Guest" && m.flat_id).forEach((m) => { const r = (byFlat[m.flat_id!] ||= { n: 0, j: 0 }); r.n += Number(m.qty || 1); r.j += Number(m.jain_qty || 0); });
+  Object.entries(byFlat).sort((a, b) => lab(a[0]).localeCompare(lab(b[0]), "en", { numeric: true })).forEach(([fid, r]) => {
+    for (let i = 1; i <= r.n; i++) tickets.push({ who: lab(fid), sub: `${i} of ${r.n}`, jain: i <= r.j });
+  });
+  p.filter((m) => m.pass_type === "Guest" || !m.flat_id).forEach((m) => {
+    const n = Number(m.qty || 1), j = Number(m.jain_qty || 0);
+    for (let i = 1; i <= n; i++) tickets.push({ who: m.flat_id ? lab(m.flat_id) : "GUEST", sub: m.flat_id ? "GUEST" : (m.party || "").slice(0, 28), jain: i <= j });
+  });
+  const cell = (t: T) => `<div style="border:.3mm dashed #9a9488;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:3mm 2.5mm;text-align:center;overflow:hidden">
+    <div style="width:100%"><div style="font-size:10pt;font-weight:800;color:var(--navy);line-height:1.15">${esc(ev.title || "Event")}</div>
+      ${session ? `<div style="font-size:8pt;font-weight:700;color:var(--gold);margin-top:.8mm">${esc(sessionLabel(session))}</div>` : ""}</div>
+    <img src="${stamp}" alt="" style="width:24mm;height:24mm;object-fit:contain;opacity:.9">
+    <div style="width:100%">${t.jain ? `<div style="background:#b54708;color:#fff;font-size:9pt;font-weight:800;letter-spacing:.2em;padding:.6mm 0;margin-bottom:1mm">JAIN</div>` : ""}
+      <div style="font-size:15pt;font-weight:800;color:var(--ink);line-height:1.1">${esc(t.who)}</div><div style="font-size:9pt;font-weight:700;color:var(--mute)">${esc(t.sub)}</div></div></div>`;
+  const pages: string[] = [];
+  for (let i = 0; i < Math.max(1, tickets.length); i += 16) {
+    const chunk = tickets.slice(i, i + 16);
+    pages.push(`<section class="page" style="padding:8mm"><div style="display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);height:100%;gap:0">${chunk.map(cell).join("") || `<div style="grid-column:1/-1;padding:10mm;font-size:12pt">No passes${session ? ` for ${esc(sessionLabel(session))}` : ""} yet.</div>`}</div></section>`);
+  }
+  return pages;
 }

@@ -133,6 +133,37 @@ $$;
 revoke all on function public.flat_people_counts() from public, anon;
 grant execute on function public.flat_people_counts() to authenticated;
 
+-- 10. Pass sessions (one per day / meal, e.g. "Dussehra breakfast", "Dussehra dinner") and pass hand-over
+--     pass_sessions: [{"id":"s1","name":"Breakfast","date":"2026-10-24","member_price":0,"guest_price":null}, ...]
+alter table public.events add column if not exists pass_sessions jsonb not null default '[]'::jsonb;
+alter table public.event_money add column if not exists session text;           -- the session id a pass entry is for
+alter table public.event_money add column if not exists collected_at timestamptz; -- passes handed over to the flat
+alter table public.event_money add column if not exists collected_by text;
+
+create or replace function public.set_event_pass_sessions(p_event uuid, p_sessions jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_committee() or public.my_event_role(p_event) = 'Convenor') then raise exception 'Only the committee or the event convenor can change this.'; end if;
+  if jsonb_typeof(coalesce(p_sessions, '[]'::jsonb)) <> 'array' then raise exception 'Sessions must be a list.'; end if;
+  update public.events set pass_sessions = coalesce(p_sessions, '[]'::jsonb) where id = p_event;
+end $$;
+revoke all on function public.set_event_pass_sessions(uuid, jsonb) from public, anon;
+grant execute on function public.set_event_pass_sessions(uuid, jsonb) to authenticated;
+
+-- Any team member (e.g. the pass coordinator) can tick passes as handed over; nothing else changes.
+create or replace function public.mark_passes_collected(p_ids uuid[], p_on boolean)
+returns integer language plpgsql security definer set search_path = public as $$
+declare n integer;
+begin
+  update public.event_money m set collected_at = case when p_on then now() end, collected_by = case when p_on then auth.jwt() ->> 'email' end
+   where m.id = any(p_ids) and m.category = 'Passes'
+     and (public.is_committee() or public.my_event_role(m.event_id) is not null);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.mark_passes_collected(uuid[], boolean) from public, anon;
+grant execute on function public.mark_passes_collected(uuid[], boolean) to authenticated;
+
 -- 8. MY ACTION POINTS shows the event name; "view minutes" also works for event meetings
 drop function if exists public.my_action_points();
 create or replace function public.my_action_points()
@@ -205,7 +236,7 @@ end $$;
 revoke all on function public.restore_society_backup(jsonb) from public, anon, authenticated;
 grant execute on function public.restore_society_backup(jsonb) to service_role;
 
--- Check: should show tables 2, functions 5
+-- Check: should show tables 2, functions 7
 select 'tables' as item, count(*)::text as value from pg_tables where schemaname = 'public' and tablename in ('event_team','event_money')
 union all
-select 'functions', count(*)::text from pg_proc where proname in ('my_event_role','set_event_money_settings','my_action_points','my_meeting','flat_people_counts');
+select 'functions', count(*)::text from pg_proc where proname in ('my_event_role','set_event_money_settings','my_action_points','my_meeting','flat_people_counts','set_event_pass_sessions','mark_passes_collected');
