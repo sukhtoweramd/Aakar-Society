@@ -23,11 +23,12 @@ async function token() { return (await supabase.auth.getSession()).data.session?
 export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
   try {
     const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` } });
+    // Never leave the member waiting: give up after 45 seconds.
+    const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` }, signal: AbortSignal.timeout(45000) });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) return { fields: {}, warnings: [], error: j.error || "Could not read the screenshot. Please fill in the details by hand.", detail: j.detail };
+    if (!res.ok) return { fields: {}, warnings: [], error: j.error || "Could not read the screenshot. Please fill in the details by hand.", detail: j.detail || `status ${res.status}` };
     return { fields: j.fields || {}, warnings: j.warnings || [], detail: j.detail, model: j.model };
-  } catch { return { fields: {}, warnings: [], error: "Could not read the screenshot. Please fill in the details by hand." }; }
+  } catch (e: any) { return { fields: {}, warnings: [], error: "Could not read the screenshot. Please fill in the details by hand.", detail: e?.name === "TimeoutError" ? "took too long (over 45 seconds)" : e?.message }; }
 }
 
 /** Was this UTR / reference already reported or received? (never says by which flat) */
