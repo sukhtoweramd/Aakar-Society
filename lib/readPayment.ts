@@ -1,0 +1,38 @@
+"use client";
+// "I have paid": read a payment screenshot (server → Cloudflare Workers AI) and the duplicate-reference check.
+import { supabase } from "./supabaseClient";
+
+export type ReadResult = { fields: Partial<Record<"amount" | "paid_on" | "ref" | "mode" | "bank", string>>; warnings: string[]; error?: string };
+
+/** Phone photos can be large or HEIC: turn them into a JPEG of at most 1600 px before reading / uploading. */
+export async function toJpeg(file: File, max = 1600): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+    const blob: Blob = await new Promise((res) => c.toBlob((b) => res(b!), "image/jpeg", 0.88));
+    return new File([blob], (file.name.replace(/\.[^.]+$/, "") || "screenshot") + ".jpg", { type: "image/jpeg" });
+  } catch { return file; }
+}
+
+async function token() { return (await supabase.auth.getSession()).data.session?.access_token || ""; }
+
+export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
+  try {
+    const fd = new FormData(); fd.append("file", file);
+    const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` } });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return { fields: {}, warnings: [], error: j.error || "Could not read the screenshot. Please fill in the details by hand." };
+    return { fields: j.fields || {}, warnings: j.warnings || [] };
+  } catch { return { fields: {}, warnings: [], error: "Could not read the screenshot. Please fill in the details by hand." }; }
+}
+
+/** Was this UTR / reference already reported or received? (never says by which flat) */
+export async function utrAlreadyReported(ref: string): Promise<{ found: boolean; on?: string }> {
+  if (ref.replace(/[^A-Za-z0-9]/g, "").length < 6) return { found: false };
+  const { data, error } = await supabase.rpc("utr_already_reported", { p_ref: ref });
+  return error || !data ? { found: false } : (data as any);
+}
