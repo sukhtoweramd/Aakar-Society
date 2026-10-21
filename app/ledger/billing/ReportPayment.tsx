@@ -41,7 +41,7 @@ export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: 
     const r = await readPaymentScreenshot(img);
     setReading(false);
     const n: { text: string; tone: "ok" | "warn" | "bad" }[] = [];
-    if (r.error) n.push({ text: r.error, tone: "warn" });
+    if (r.error) n.push({ text: r.error + (r.detail ? ` (${r.detail.slice(0, 160)})` : ""), tone: "warn" });
     const got = Object.fromEntries(Object.entries(r.fields).filter(([, v]) => v)) as Record<string, string>;
     if (Object.keys(got).length) {
       setF((x) => ({ ...x, ...got }));
