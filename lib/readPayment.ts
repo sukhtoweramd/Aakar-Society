@@ -4,6 +4,10 @@ import { supabase } from "./supabaseClient";
 
 export type ReadResult = { fields: Partial<Record<"amount" | "paid_on" | "ref" | "mode" | "bank", string>>; warnings: string[]; error?: string; detail?: string; model?: string };
 
+// The shrunk picture as text, kept from toJpeg so it never has to be read back from the file
+// (on some office laptops the browser's file reading is blocked).
+const asText = new WeakMap<File, string>();
+
 /** Phone photos can be large or HEIC: turn them into a JPEG of at most 1600 px before reading / uploading. */
 export async function toJpeg(file: File, max = 1600): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
@@ -20,7 +24,9 @@ export async function toJpeg(file: File, max = 1600): Promise<File> {
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     if (bytes.length < 1000) return file;
-    return new File([bytes], (file.name.replace(/\.[^.]+$/, "") || "screenshot") + ".jpg", { type: "image/jpeg" });
+    const out = new File([bytes], (file.name.replace(/\.[^.]+$/, "") || "screenshot") + ".jpg", { type: "image/jpeg" });
+    asText.set(out, url);
+    return out;
   } catch { return file; }
 }
 
@@ -33,7 +39,7 @@ export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
   const work = (async (): Promise<ReadResult> => {
     const t = await token();
     stage = "preparing the image";
-    const image: string | null = await new Promise((res) => {
+    const image: string | null = asText.get(file) || await new Promise((res) => {
       const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => res(null); r.readAsDataURL(file);
       setTimeout(() => res(null), 10000);
     });
