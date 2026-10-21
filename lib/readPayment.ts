@@ -8,6 +8,9 @@ export type ReadResult = { fields: Partial<Record<"amount" | "paid_on" | "ref" |
 // (on some office laptops the browser's file reading is blocked).
 const asText = new WeakMap<File, string>();
 
+/** The shrunk picture as a data: URL, if toJpeg made it (for thumbnails and text uploads). */
+export function pictureText(file: File | null): string | undefined { return file ? asText.get(file) : undefined; }
+
 /** Phone photos can be large or HEIC: turn them into a JPEG of at most 1600 px before reading / uploading. */
 export async function toJpeg(file: File, max = 1600): Promise<File> {
   if (!file.type.startsWith("image/")) return file;

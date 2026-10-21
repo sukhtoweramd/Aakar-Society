@@ -18,10 +18,22 @@ export async function POST(req: NextRequest) {
   const r2 = getR2();
   if (!r2) return NextResponse.json({ error: "File storage is not set up; send the report without a screenshot." }, { status: 500 });
   try {
-    const form = await req.formData();
-    const file = form.get("file");
-    const flat = String(form.get("flat") || "");
-    if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
+    // Either JSON { image: "data:image/jpeg;base64,...", flat } (the shrunk screenshot as text: works on office
+    // laptops that block page scripts from reading files) or a normal form upload { file, flat }.
+    let file: File | null = null; let flat = "";
+    if ((req.headers.get("content-type") || "").includes("application/json")) {
+      const b: any = await req.json().catch(() => ({}));
+      flat = String(b?.flat || "");
+      const m = String(b?.image || "").match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+      if (!m) return NextResponse.json({ error: "Please attach a photo (JPG, PNG) or a PDF." }, { status: 400 });
+      const ext = m[1] === "jpeg" ? "jpg" : m[1];
+      file = new File([Buffer.from(m[2], "base64")], `screenshot.${ext}`, { type: `image/${m[1]}` });
+    } else {
+      const form = await req.formData();
+      const f = form.get("file"); flat = String(form.get("flat") || "");
+      if (f instanceof File) file = f;
+    }
+    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
     if (!/^[A-Z]\d{1,5}$/.test(flat)) return NextResponse.json({ error: "Bad flat" }, { status: 400 });
     if (!me.isCommittee && me.flatId !== flat) return NextResponse.json({ error: "Not your flat." }, { status: 403 });
     const ext = (file.name.split(".").pop() || "").toLowerCase();

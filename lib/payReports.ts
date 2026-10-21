@@ -1,6 +1,7 @@
 "use client";
 // "I have paid": payments reported by members, verified by the committee.
 import { supabase } from "./supabaseClient";
+import { pictureText } from "./readPayment";
 
 export type PayReport = {
   id: string; flat_id: string; bill_id: string | null; amount: number; paid_on: string; mode: string;
@@ -22,8 +23,12 @@ async function token() { return (await supabase.auth.getSession()).data.session?
 
 /** Uploads a screenshot; returns its secret key (kept in the report row only). */
 export async function uploadProof(file: File, flatId: string): Promise<string> {
-  const fd = new FormData(); fd.append("file", file); fd.append("flat", flatId);
-  const res = await fetch("/api/payment-proof", { method: "POST", body: fd, headers: { Authorization: `Bearer ${await token()}` } });
+  const text = pictureText(file);
+  const auth = { Authorization: `Bearer ${await token()}` };
+  const signal = AbortSignal.timeout(60000); // never leave "Sending…" hanging
+  let res: Response;
+  if (text) res = await fetch("/api/payment-proof", { method: "POST", body: JSON.stringify({ image: text, flat: flatId }), headers: { ...auth, "Content-Type": "application/json" }, signal });
+  else { const fd = new FormData(); fd.append("file", file); fd.append("flat", flatId); res = await fetch("/api/payment-proof", { method: "POST", body: fd, headers: auth, signal }); }
   const j = await res.json().catch(() => ({}));
   if (!res.ok || !j.key) throw new Error(j.error || "Upload failed");
   return j.key;

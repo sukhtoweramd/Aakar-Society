@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Flat } from "@/lib/society";
 import { billBalance, dmy, inr, MODES, num, today, type Bill, type Payment } from "@/lib/billing";
 import { loadReports, openProof, uploadProof, type PayReport } from "@/lib/payReports";
-import { readPaymentScreenshot, toJpeg, utrAlreadyReported } from "@/lib/readPayment";
+import { pictureText, readPaymentScreenshot, toJpeg, utrAlreadyReported } from "@/lib/readPayment";
 
 export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: Flat; bills: Bill[]; pays: Payment[]; onChanged?: () => void }) {
   const [reports, setReports] = useState<PayReport[] | null>(null);
@@ -35,10 +35,9 @@ export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: 
     if (!raw) return;
     setError(""); setNotes([]); setFilled(new Set());
     const img = await toJpeg(raw, 1280);
-    // Proof sent to the committee: the original file when it is small enough (plain upload, works even on office
-    // laptops that block page scripts from reading files); the shrunk copy for big phone photos.
-    const proof = raw.size <= 3.8 * 1024 * 1024 && /^(image\/(jpeg|png|webp)|application\/pdf)$/.test(raw.type) ? raw : img;
-    setFile(proof); setThumb(proof.type.startsWith("image/") ? URL.createObjectURL(proof) : "");
+    // Proof sent to the committee: the shrunk copy, sent as text (works on office laptops that block page
+    // scripts from reading files). PDFs and anything not shrunk go as a normal upload.
+    setFile(img); setThumb(pictureText(img) || (img.type.startsWith("image/") ? URL.createObjectURL(img) : ""));
     if (!img.type.startsWith("image/")) { setNotes([{ text: "PDFs cannot be read automatically. Please fill in the details below.", tone: "warn" }]); return; }
     setReading(true);
     const r = await readPaymentScreenshot(img);
@@ -80,7 +79,7 @@ export default function ReportPayment({ flat, bills, pays, onChanged }: { flat: 
         ref: f.ref.trim() || null, bank: f.bank.trim() || null, note: f.note.trim() || null, proof_key }]);
       if (error) throw error;
       setOpen(false); setFile(null); setThumb(""); setNotes([]); setFilled(new Set()); setManual(false); setMsg("Thank you. The committee will check the bank and send your receipt."); await load(); onChanged?.();
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) { setError(e?.name === "TimeoutError" ? "Sending the screenshot took too long. Please try again in a moment." : e.message); }
     setBusy(false);
   }
   async function withdraw(r: PayReport) {
