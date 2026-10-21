@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
   const token = (process.env.CLOUDFLARE_AI_TOKEN || "").replace(/^Bearer\s+/i, "").trim();
   if (!account || !token) return NextResponse.json({ error: "Screenshot reading is not set up yet. Please fill in the details by hand." }, { status: 503 });
   try {
-    const form = await req.formData();
+    // The image comes either as JSON text { image: "data:image/jpeg;base64,..." } (what the app sends:
+    // some office laptops' security software holds back file uploads) or as a normal form upload.
+    const isJson = (req.headers.get("content-type") || "").includes("application/json");
+    const body: any = isJson ? await req.json().catch(() => ({})) : null;
+    const form = isJson ? { get: (k: string) => body?.[k] ?? null } : await req.formData();
     if (form.get("action") === "check") {
       // ADMIN check without an image: is the token valid, and does it work on this account's Workers AI?
       if (!me.isCommittee) return NextResponse.json({ error: "Only the committee can do this." }, { status: 403 });
@@ -58,11 +62,20 @@ export async function POST(req: NextRequest) {
       const j: any = await r.json().catch(() => ({}));
       return NextResponse.json({ ok: r.ok, answer: j?.result?.response || j?.errors?.[0]?.message || `status ${r.status}` });
     }
-    const file = form.get("file");
-    if (!(file instanceof File)) return NextResponse.json({ error: "No image" }, { status: 400 });
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return NextResponse.json({ error: "Only photos can be read; please fill in the details by hand." }, { status: 400 });
-    if (file.size > 3 * 1024 * 1024) return NextResponse.json({ error: "Image too large to read." }, { status: 400 });
-    const dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+    let dataUrl = "";
+    if (isJson) {
+      const img = String(body?.image || "");
+      const m = img.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+      if (!m) return NextResponse.json({ error: "Only photos can be read; please fill in the details by hand." }, { status: 400 });
+      if (m[2].length > 4 * 1024 * 1024) return NextResponse.json({ error: "Image too large to read." }, { status: 400 });
+      dataUrl = img;
+    } else {
+      const file = form.get("file");
+      if (!(file instanceof File)) return NextResponse.json({ error: "No image" }, { status: 400 });
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return NextResponse.json({ error: "Only photos can be read; please fill in the details by hand." }, { status: 400 });
+      if (file.size > 3 * 1024 * 1024) return NextResponse.json({ error: "Image too large to read." }, { status: 400 });
+      dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+    }
     // Each model gets at most 12 seconds so the whole request stays inside Vercel's 30-second limit.
     const run = (model: string, body: any) => fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
       method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(12000) });

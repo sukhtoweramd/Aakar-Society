@@ -27,9 +27,10 @@ export async function readPaymentScreenshot(file: File): Promise<ReadResult> {
   let stage = "login check";
   const work = (async (): Promise<ReadResult> => {
     const t = await token();
+    stage = "preparing the image";
+    const image: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
     stage = "sending to the server";
-    const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/read-payment", { method: "POST", body: fd, headers: { Authorization: `Bearer ${t}` }, signal: AbortSignal.timeout(45000) });
+    const res = await fetch("/api/read-payment", { method: "POST", body: JSON.stringify({ image }), headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(45000) });
     stage = "reading the answer";
     const j = await res.json().catch(() => ({}));
     if (!res.ok) return { fields: {}, warnings: [], error: j.error || FAIL, detail: j.detail || `server status ${res.status}` };
