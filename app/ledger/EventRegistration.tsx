@@ -32,7 +32,14 @@ export default function EventRegistration(p: Props) {
   const [regs, setRegs] = useState<Reg[] | null | undefined>(undefined);
   const [forFlat, setForFlat] = useState("");
   const reload = () => loadRegs(ev.id).then(setRegs);
-  useEffect(() => { reload(); }, [ev.id]);
+  // keep it fresh: payments sent from other phones show up without reloading the page
+  useEffect(() => {
+    reload();
+    const onFocus = () => { if (document.visibilityState === "visible") reload(); };
+    const t = setInterval(onFocus, 30000);
+    window.addEventListener("focus", onFocus); document.addEventListener("visibilitychange", onFocus);
+    return () => { clearInterval(t); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
+  }, [ev.id]);
 
   if (regs === undefined) return <div className="mono text-[11px] opacity-60">Loading…</div>;
   if (regs === null) return <div className="border border-amber-200 bg-amber-50 text-amber-800 p-3 mono text-[11px]">Event registration is not set up yet. The main admin needs to run <b>EVENT_REGISTRATION.sql</b> once in Supabase.</div>;
@@ -371,8 +378,9 @@ function TeamView({ ev, regs, flats, team, keeper, homeFlat, onChanged }: { ev: 
       </div>
       {cashBy.length > 0 && keeper && <div className="mono text-[11px] border border-[var(--border)] bg-white p-3"><b>CASH WITH TEAM MEMBERS:</b> {cashBy.map(([k, v]) => `${who(k)} ₹${inr(v)}`).join(" • ")}</div>}
       {err && <div className="border border-red-200 bg-red-50 text-red-700 p-2 mono text-[11px]">{err}</div>}
+      {toCheck.length === 0 && <div className="mono text-[11px] border border-dashed border-[var(--border)] p-3 flex justify-between items-center gap-2"><span>PAYMENTS TO CONFIRM • none waiting{keeper ? "" : " for you"}</span><button onClick={onChanged} className="underline">refresh</button></div>}
       {toCheck.length > 0 && <div className="border-2 border-[var(--gold)] bg-[#fffbea] p-3 space-y-2">
-        <div className="mono text-[10px] tracking-[0.16em] font-bold">PAYMENTS TO CONFIRM • {toCheck.length}</div>
+        <div className="mono text-[10px] tracking-[0.16em] font-bold flex justify-between"><span>PAYMENTS TO CONFIRM • {toCheck.length}</span><button onClick={onChanged} className="underline font-normal">refresh</button></div>
         {toCheck.map((r) => (
           <div key={r.id} className="bg-white border border-[var(--border)] p-3 text-[13px] space-y-1">
             <div className="flex justify-between gap-2"><b>{flatName(flats, r.flat_id)}</b><b>₹{inr(r.pay_amount)}{Number(r.pay_amount) !== Number(r.amount) && <span className="text-amber-700 font-normal text-[11px]"> (due ₹{inr(r.amount)})</span>}</b></div>
