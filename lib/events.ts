@@ -51,7 +51,7 @@ export const partyOf = (flats: Flat[], m: Pick<Money, "flat_id" | "party">) => {
   return f ? `${label(f)} • ${ownerText(f)}${m.party ? ` (${m.party})` : ""}` : m.party || "—";
 };
 export const particulars = (flats: Flat[], m: Money) =>
-  [m.category === "Passes" && m.pass_type && !m.purpose ? `${m.pass_type} passes` : m.category, m.purpose, partyOf(flats, m) !== "—" ? partyOf(flats, m) : "", m.qty ? `${m.qty} × ₹${inr(m.rate)}${m.jain_qty ? ` (${m.jain_qty} Jain)` : ""}` : "", m.mode === "In kind" ? "in kind" : ""].filter(Boolean).join(" • ");
+  [m.category === "Passes" && m.pass_type && !m.purpose ? `${m.pass_type} passes` : m.category, m.purpose, partyOf(flats, m) !== "—" ? partyOf(flats, m) : "", m.qty ? (m.rate != null ? `${m.qty} × ₹${inr(m.rate)}` : `${m.qty} people`) + (m.jain_qty ? ` (${m.jain_qty} Jain)` : "") : "", m.mode === "In kind" ? "in kind" : ""].filter(Boolean).join(" • ");
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const th = (t: string, right = false) => `<th style="text-align:${right ? "right" : "left"};padding:1.4mm 2mm">${t}</th>`;

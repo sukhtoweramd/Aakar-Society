@@ -145,7 +145,7 @@ grant execute on function public.submit_event_payment(uuid, text, numeric, date,
 --    Confirming adds the money to the event accounts (Passes).
 create or replace function public.verify_event_payment(p_reg uuid, p_ok boolean, p_reason text)
 returns void language plpgsql security definer set search_path = public as $$
-declare r public.event_registrations; mid uuid; people int; jain int; who text := auth.jwt() ->> 'email';
+declare r public.event_registrations; mid uuid; people int; jain int; who text := auth.jwt() ->> 'email'; what text; s jsonb; c jsonb; m int; g int; taker text;
 begin
   select * into r from public.event_registrations where id = p_reg;
   if r.id is null then raise exception 'Registration not found.'; end if;
@@ -160,10 +160,22 @@ begin
   end if;
   select coalesce(sum((v->>'mr')::int + (v->>'mj')::int + (v->>'gr')::int + (v->>'gj')::int), 0), coalesce(sum((v->>'mj')::int + (v->>'gj')::int), 0)
     into people, jain from jsonb_each(r.counts) as e(k, v);
+  -- what was bought, e.g. "Dinner: 4 × ₹300 + 2 guests × ₹400; Breakfast: 4 (free)"
+  for s in select * from jsonb_array_elements((select pass_sessions from public.events where id = r.event_id)) loop
+    c := r.counts -> (s->>'id');
+    if c is null then continue; end if;
+    m := coalesce((c->>'mr')::int, 0) + coalesce((c->>'mj')::int, 0); g := coalesce((c->>'gr')::int, 0) + coalesce((c->>'gj')::int, 0);
+    if m + g = 0 then continue; end if;
+    what := concat_ws('; ', what, (s->>'name') || ': ' || concat_ws(' + ',
+      case when m > 0 then m || case when coalesce((s->>'member_price')::numeric, 0) > 0 then ' × ₹' || trim(to_char((s->>'member_price')::numeric, 'FM999999990.##')) else ' (free)' end end,
+      case when g > 0 then g || ' guest' || case when g > 1 then 's' else '' end || ' × ₹' || trim(to_char(coalesce((s->>'guest_price')::numeric, 0), 'FM999999990.##')) end));
+  end loop;
+  select coalesce(nullif(t.person, ''), nullif(f.owner_name, ''), r.cash_to) || ' (' || r.cash_to || ')' into taker
+    from public.flats f left join public.event_team t on t.flat_id = f.id and t.event_id = r.event_id where f.id = r.cash_to;
   insert into public.event_money (event_id, entry_date, direction, category, flat_id, purpose, qty, rate, amount, mode, jain_qty, reference, note, file_url, created_by)
-  values (r.event_id, r.pay_date, 'in', 'Passes', r.flat_id, 'Event registration', nullif(people, 0), null, r.pay_amount,
+  values (r.event_id, r.pay_date, 'in', 'Passes', r.flat_id, left(coalesce(what, 'Event registration'), 300), nullif(people, 0), null, r.pay_amount,
           r.pay_mode, case when people > 0 then least(jain, people) end, r.pay_ref,
-          case when r.pay_mode = 'Cash' then 'Cash received by ' || coalesce(r.cash_to, '') || ', confirmed by ' || coalesce(who, '') else 'UPI screenshot checked by ' || coalesce(who, '') end,
+          case when r.pay_mode = 'Cash' then 'Cash received by ' || coalesce(taker, r.cash_to, '') || ', confirmed by ' || coalesce(who, '') else 'UPI screenshot checked by ' || coalesce(who, '') end,
           null, who)
   returning id into mid;
   update public.event_registrations set pay_status = 'verified', verified_by = who, verified_at = now(), money_id = mid, updated_at = now() where id = p_reg;
@@ -215,6 +227,10 @@ begin
 end $$;
 revoke all on function public.restore_society_backup(jsonb) from public, anon, authenticated;
 grant execute on function public.restore_society_backup(jsonb) to service_role;
+
+-- Earlier confirmed entries: show what was bought instead of "6 × ₹0"
+update public.event_money m set purpose = 'Event registration (' || m.qty || ' people)'
+ where m.category = 'Passes' and m.purpose = 'Event registration' and m.rate is null and m.qty is not null;
 
 -- Check: should show tables 1, functions 4
 select 'tables' as item, count(*)::text as value from pg_tables where schemaname = 'public' and tablename = 'event_registrations'
