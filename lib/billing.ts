@@ -146,7 +146,7 @@ export const DEFAULT_STAMP = (() => {
 const CSS = `@page{size:A4 portrait;margin:0}
 :root{--navy:#0f1d3d;--gold:#b8932a;--cream:#fbf7ec;--line:#e2d9c0;--ink:#1a1a18;--mute:#6f6a5d}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{background:#e9e6dc;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+body{background:#e9e6dc;font-family:Inter,"Segoe UI","Noto Sans Gujarati","Nirmala UI",Shruti,Arial,sans-serif;color:var(--ink)}
 .page{position:relative;width:210mm;height:297mm;padding:9mm;background:#fff;break-after:page;overflow:hidden}.page:last-child{break-after:auto}
 .frame{height:100%;border:2.2mm solid var(--navy);padding:1.6mm;position:relative}
 .inner{height:100%;border:.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;background:radial-gradient(circle at 100% 0,rgba(184,147,42,.07),transparent 40%),#fff}
@@ -377,14 +377,41 @@ export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | 
   return `Aakar Co-op Housing Society: Gentle reminder for Flat ${label(f)} — dues as on ${dmy(today())}:\n${lines.join("\n")}\n\nTotal due: ₹${inr(total)}${bank}\n\nPlease pay at the earliest. Your full ledger is in the society app under MY FLAT. If already paid, kindly ignore. Thank you.`;
 }
 
+/** A society notice on the letterhead (any language: Gujarati prints with a Gujarati font). */
+export function noticeHtml(n: { title: string | null; content: string | null; tower: string | null; created_at: string; file_url?: string | null }, c: PrintCtx, signerId?: string | null): string {
+  const g = c.signatories.find((x) => x.id === signerId) || null;
+  const towers = !n.tower || /common|all/i.test(n.tower) ? "ALL MEMBERS" : `TOWER ${n.tower.replace(/tower\s*/i, "")}`;
+  const date = String(n.created_at).slice(0, 10);
+  const paras = String(n.content || "").trim().split(/\n\s*\n/).filter(Boolean).map((p) => `<p style="margin:0 0 4mm">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const img = n.file_url && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(n.file_url) ? `<div style="margin-top:4mm;text-align:center"><img src="${esc(n.file_url)}" alt="" style="max-width:100%;max-height:110mm;object-fit:contain;border:.3mm solid var(--line)"></div>` : "";
+  return `${frameStart}${header("NOTICE", towers, `Date <b>${dmy(date)}</b>`)}
+  <div style="margin-top:6mm;font-size:10.5pt;color:#2a2822">To: <b style="color:var(--navy)">All ${towers === "ALL MEMBERS" ? "members" : `members of ${towers.toLowerCase().replace("tower", "Tower")}`}</b></div>
+  <div style="margin-top:6mm;text-align:center;font-size:15pt;font-weight:800;color:var(--navy);line-height:1.5">${esc(n.title || "Notice")}</div>
+  <div style="width:30mm;height:.6mm;background:var(--gold);margin:2.5mm auto 0"></div>
+  <div style="margin-top:6mm;font-size:12pt;line-height:1.85;color:#1f1d18">${paras}</div>${img}
+  <div style="margin-top:6mm;font-size:10.5pt;color:#1f1d18">By order of the Managing Committee</div>
+  <div style="display:flex;align-items:flex-end;gap:8mm;margin-top:2mm">
+    <div style="min-width:70mm">
+      <div style="font-size:9pt;color:var(--navy);font-weight:700">For ${esc(SOCIETY.full)}</div>
+      ${g?.signature_image ? `<img src="${g.signature_image}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
+      <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${g ? `<b style="color:var(--navy)">${esc(g.name)}</b><br>` : ""}<span style="font-size:9.5pt">${esc(g?.designation ? `Hon. ${g.designation}` : "Managing Committee")}</span></div>
+    </div>
+    <img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
+  </div>
+  <div style="margin-top:4mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>Ahmedabad</b></span><span>Date: <b>${dmy(date, true)}</b></span></div>
+  <div class="grow"></div>
+  <div class="foot"><div>Generated from the society app • ${dmy(today())}</div><div>Notice • ${esc(towers)}</div></div>${frameEnd}`;
+}
+
 /** Open pages in a new window (opened first so pop-up blockers allow it). */
 export function openPrint(title: string, pages: string[], win?: Window | null) {
   const w = win || window.open("", "_blank");
   if (!w) { alert("Please allow pop-ups to print."); return; }
   w.document.open();
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${CSS}</style></head><body>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
     <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span></div>${pages.join("")}
-    <script>setTimeout(function(){document.body.dataset.ready='1';window.print()},700)</script></body></html>`);
+    <script>(function(){var done=false;function go(){if(done)return;done=true;document.body.dataset.ready='1';window.print()}
+      setTimeout(function(){(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(go,150)})},500);setTimeout(go,3000)})()</script></body></html>`);
   w.document.close(); w.focus();
 }
 export function preparingWindow(text = "Preparing…") {

@@ -5,6 +5,7 @@ import type { Notice } from "@/lib/society";
 import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MeetingMinutesList from "./MeetingMinutesList";
+import { loadSettings, loadSignatories, noticeHtml, openPrint, preparingWindow } from "@/lib/billing";
 
 type N = Notice & { is_banner?: boolean; banner_until?: string | null };
 type Form = { title: string; content: string; tower: string; banner: boolean; until: string };
@@ -12,6 +13,15 @@ const BLANK: Form = { title: "", content: "", tower: "Common", banner: false, un
 const isImage = (url?: string | null) => !!url && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
 const today = () => new Date().toISOString().slice(0, 10);
 const towerText = (t?: string | null) => (!t || /common|all/i.test(t) ? "ALL TOWERS" : `TOWER ${t.replace(/tower\s*/i, "")}`);
+
+/** Print / save as PDF on the society letterhead, signed by the Secretary (or the usual bill signer). */
+async function printNotice(x: N) {
+  const w = preparingWindow("Preparing the notice…");
+  const [settings, signatories] = await Promise.all([loadSettings(), loadSignatories()]);
+  const active = signatories.filter((g) => g.active);
+  const g = active.find((g) => /secretary/i.test(g.designation)) || active.find((g) => g.id === settings?.bill_signer) || active[0];
+  openPrint(`Notice – ${x.title || ""}`, [noticeHtml(x, { settings, signatories, flats: [] }, g?.id)], w);
+}
 
 export default function NoticesTab({ ctx }: { ctx: Ctx }) {
   const [notices, setNotices] = useState<N[]>([]);
@@ -169,6 +179,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                 </div>
                 {ctx.isCommittee && <div className="flex flex-col items-end gap-2 shrink-0 mono text-[10px]">
                   <button onClick={() => startEdit(x)} className="btn-navy px-3 py-1">EDIT</button>
+                  <button onClick={() => printNotice(x)} className="border border-[var(--navy)] px-2 py-1 font-bold">PRINT / PDF</button>
                   {bannerReady && (x.is_banner
                     ? <button onClick={() => setBanner(x, false)} className="border border-[var(--gold)] bg-[#fffdf5] px-2 py-1 font-bold">BANNER: ON ✕</button>
                     : <button onClick={() => setBanner(x, true)} className="border border-[var(--border)] px-2 py-1">SHOW AS BANNER</button>)}
