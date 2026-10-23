@@ -385,7 +385,7 @@ export function noticeHtml(n: { title: string | null; content: string | null; to
   const paras = String(n.content || "").trim().split(/\n\s*\n/).filter(Boolean).map((p) => `<p style="margin:0 0 4mm">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
   const img = n.file_url && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(n.file_url) ? `<div style="margin-top:4mm;text-align:center"><img src="${esc(n.file_url)}" alt="" style="max-width:100%;max-height:110mm;object-fit:contain;border:.3mm solid var(--line)"></div>` : "";
   return `${frameStart}${header("NOTICE", towers, `Date <b>${dmy(date)}</b>`)}
-  <div style="margin-top:6mm;font-size:10.5pt;color:#2a2822">To: <b style="color:var(--navy)">All ${towers === "ALL MEMBERS" ? "members" : `members of ${towers.toLowerCase().replace("tower", "Tower")}`}</b></div>
+  <div style="margin-top:6mm;font-size:10.5pt;color:#2a2822">To: <b style="color:var(--navy)">All ${towers === "ALL MEMBERS" ? "members" : `members of Tower ${towers.replace(/^TOWER\s*/, "")}`}</b></div>
   <div style="margin-top:6mm;text-align:center;font-size:15pt;font-weight:800;color:var(--navy);line-height:1.5">${esc(n.title || "Notice")}</div>
   <div style="width:30mm;height:.6mm;background:var(--gold);margin:2.5mm auto 0"></div>
   <div style="margin-top:6mm;font-size:12pt;line-height:1.85;color:#1f1d18">${paras}</div>${img}
