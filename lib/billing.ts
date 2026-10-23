@@ -378,8 +378,8 @@ export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | 
 }
 
 /** A society notice on the letterhead (any language: Gujarati prints with a Gujarati font). */
-export function noticeHtml(n: { title: string | null; content: string | null; tower: string | null; created_at: string; file_url?: string | null }, c: PrintCtx, signerId?: string | null): string {
-  const g = c.signatories.find((x) => x.id === signerId) || null;
+export type NoticeSigner = { name: string; designation: string; signature_image: string | null };
+export function noticeHtml(n: { title: string | null; content: string | null; tower: string | null; created_at: string; file_url?: string | null }, c: PrintCtx, g?: NoticeSigner | null): string {
   const towers = !n.tower || /common|all/i.test(n.tower) ? "ALL MEMBERS" : `TOWER ${n.tower.replace(/tower\s*/i, "")}`;
   const date = String(n.created_at).slice(0, 10);
   const paras = String(n.content || "").trim().split(/\n\s*\n/).filter(Boolean).map((p) => `<p style="margin:0 0 4mm">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");

@@ -5,7 +5,8 @@ import type { Notice } from "@/lib/society";
 import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MeetingMinutesList from "./MeetingMinutesList";
-import { loadSettings, loadSignatories, noticeHtml, openPrint, preparingWindow, type Signatory } from "@/lib/billing";
+import { loadSettings, loadSignatories, noticeHtml, openPrint, preparingWindow, type NoticeSigner, type Signatory } from "@/lib/billing";
+import { byCommitteeRole } from "@/lib/society";
 
 type N = Notice & { is_banner?: boolean; banner_until?: string | null };
 type Form = { title: string; content: string; tower: string; banner: boolean; until: string };
@@ -15,10 +16,23 @@ const today = () => new Date().toISOString().slice(0, 10);
 const towerText = (t?: string | null) => (!t || /common|all/i.test(t) ? "ALL TOWERS" : `TOWER ${t.replace(/tower\s*/i, "")}`);
 
 /** Print / save as PDF on the society letterhead, signed by the chosen committee member ("" = no signature). */
-async function printNotice(x: N, signerId: string) {
+async function printNotice(x: N, signer: NoticeSigner | null) {
   const w = preparingWindow("Preparing the notice…");
-  const [settings, signatories] = await Promise.all([loadSettings(), loadSignatories()]);
-  openPrint(`Notice – ${x.title || ""}`, [noticeHtml(x, { settings, signatories, flats: [] }, signerId || null)], w);
+  const settings = await loadSettings();
+  openPrint(`Notice – ${x.title || ""}`, [noticeHtml(x, { settings, signatories: [], flats: [] }, signer)], w);
+}
+/** Who can sign a printed notice: the committee members (from the flats list) plus anyone set up under
+ *  BILLING → SETTINGS → signatories. A matching signatory (same name) adds the signature image;
+ *  without one the name and designation print with an empty space for a hand signature. */
+function signerOptions(flats: Ctx["flats"], sigs: Signatory[]): (NoticeSigner & { key: string })[] {
+  const out: (NoticeSigner & { key: string })[] = [];
+  const same = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+  for (const f of flats.filter((f) => f.is_committee && f.owner_name?.trim()).sort(byCommitteeRole)) {
+    const g = sigs.find((g) => same(g.name, f.owner_name));
+    out.push({ key: `flat:${f.id}`, name: f.owner_name!.trim(), designation: g?.designation || f.committee_role?.trim() || "Committee Member", signature_image: g?.signature_image || null });
+  }
+  for (const g of sigs) if (!out.some((o) => same(o.name, g.name))) out.push({ key: `sig:${g.id}`, name: g.name, designation: g.designation, signature_image: g.signature_image });
+  return out;
 }
 
 export default function NoticesTab({ ctx }: { ctx: Ctx }) {
@@ -34,15 +48,15 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
   const [ef, setEf] = useState<Form>(BLANK);
   const [eFile, setEFile] = useState<File | null>(null);
   const [eRemoveFile, setERemoveFile] = useState(false);
-  const [signers, setSigners] = useState<Signatory[]>([]);
+  const [signers, setSigners] = useState<(NoticeSigner & { key: string })[]>([]);
   const [signer, setSigner] = useState("");
   useEffect(() => {
     if (!ctx.isCommittee) return;
-    Promise.all([loadSettings(), loadSignatories()]).then(([st, sg]) => {
-      const a = sg.filter((g) => g.active); setSigners(a);
-      setSigner((a.find((g) => /secretary/i.test(g.designation)) || a.find((g) => g.id === st?.bill_signer) || a[0])?.id || "");
+    loadSignatories().then((sg) => {
+      const a = signerOptions(ctx.flats, sg.filter((g) => g.active)); setSigners(a);
+      setSigner((a.find((g) => /secretary/i.test(g.designation)) || a[0])?.key || "");
     }).catch(() => {});
-  }, [ctx.isCommittee]);
+  }, [ctx.isCommittee, ctx.flats]);
 
   async function load() {
     const a = await supabase.from("notices").select("*").order("created_at", { ascending: false });
@@ -137,7 +151,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
           </div>}
           {ctx.isCommittee && notices.length > 0 && <label className="mt-4 flex flex-wrap items-center justify-end gap-2 mono text-[10px] tracking-[0.1em]">PRINTED NOTICES SIGNED BY
             <select className="field !w-[260px]" value={signer} onChange={(e) => setSigner(e.target.value)}>
-              <option value="">— no signature (Managing Committee) —</option>{signers.map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>}
+              <option value="">— no signature (Managing Committee) —</option>{signers.map((g) => <option key={g.key} value={g.key}>{g.designation} – {g.name}{g.signature_image ? "" : " (sign by hand)"}</option>)}</select></label>}
           <div className="mt-4 space-y-2">
             {notices.map((x) => editId === x.id ? (
               <div key={x.id} className="border-2 border-[var(--gold)] bg-[#fffdf5] p-4 space-y-2 mono text-[11px]">
@@ -189,7 +203,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                 </div>
                 {ctx.isCommittee && <div className="flex flex-col items-end gap-2 shrink-0 mono text-[10px]">
                   <button onClick={() => startEdit(x)} className="btn-navy px-3 py-1">EDIT</button>
-                  <button onClick={() => printNotice(x, signer)} className="border border-[var(--navy)] px-2 py-1 font-bold">PRINT / PDF</button>
+                  <button onClick={() => printNotice(x, signers.find((g) => g.key === signer) || null)} className="border border-[var(--navy)] px-2 py-1 font-bold">PRINT / PDF</button>
                   {bannerReady && (x.is_banner
                     ? <button onClick={() => setBanner(x, false)} className="border border-[var(--gold)] bg-[#fffdf5] px-2 py-1 font-bold">BANNER: ON ✕</button>
                     : <button onClick={() => setBanner(x, true)} className="border border-[var(--border)] px-2 py-1">SHOW AS BANNER</button>)}
