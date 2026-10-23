@@ -126,8 +126,9 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
         <div className="flex flex-wrap gap-2 items-center border border-dashed border-[var(--border)] p-2.5">
           <span className="opacity-60">SETTINGS</span>
           <label className="flex items-center gap-1.5">Fund per flat ₹<input className="field !w-[90px]" inputMode="numeric" value={set.fund} onChange={(e) => setSet({ ...set, fund: e.target.value.replace(/[^\d.]/g, "") })} /></label>
-          <label className="flex items-center gap-1.5">Member pass ₹<input className="field !w-[80px]" inputMode="numeric" value={set.pass} onChange={(e) => setSet({ ...set, pass: e.target.value.replace(/[^\d.]/g, "") })} /></label>
-          <label className="flex items-center gap-1.5">Guest pass ₹<input className="field !w-[80px]" inputMode="numeric" value={set.guest} onChange={(e) => setSet({ ...set, guest: e.target.value.replace(/[^\d.]/g, "") })} /></label>
+          {Array.isArray((ev as any).pass_sessions) && (ev as any).pass_sessions.length > 0 && <span className="w-full text-[10.5px] text-[#8a6d1e]">Online registration uses the prices per meal set in REGISTRATION. The pass prices below are only for passes entered by hand here.</span>}
+          <label className="flex items-center gap-1.5">{Array.isArray((ev as any).pass_sessions) && (ev as any).pass_sessions.length > 0 ? "Hand-entry member pass ₹" : "Member pass ₹"}<input className="field !w-[80px]" inputMode="numeric" value={set.pass} onChange={(e) => setSet({ ...set, pass: e.target.value.replace(/[^\d.]/g, "") })} /></label>
+          <label className="flex items-center gap-1.5">{Array.isArray((ev as any).pass_sessions) && (ev as any).pass_sessions.length > 0 ? "Hand-entry guest pass ₹" : "Guest pass ₹"}<input className="field !w-[80px]" inputMode="numeric" value={set.guest} onChange={(e) => setSet({ ...set, guest: e.target.value.replace(/[^\d.]/g, "") })} /></label>
           <label className="flex items-center gap-1.5"><input type="checkbox" checked={set.pub} onChange={(e) => setSet({ ...set, pub: e.target.checked })} /> Show accounts to all members</label>
           <button onClick={saveSettings} disabled={busy} className="btn-line px-3 py-1.5">SAVE</button>
         </div>)}
