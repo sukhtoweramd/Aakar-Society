@@ -10,9 +10,11 @@ import type { Action, Meeting } from "@/lib/minutes";
 import EventTeam, { teamName } from "./EventTeam";
 import EventAccounts from "./EventAccounts";
 import MinutesPanel from "./MinutesPanel";
+import EventRegistration from "./EventRegistration";
+import { deadlineText, isOpen, loadFlatRegs, passReady, sessionsOf, type Reg, type RegSettings } from "@/lib/eventReg";
 
-type Ev = EventRow & Partial<EventMoneySettings>;
-const SECTIONS = ["PHOTOS", "TEAM", "MINUTES", "ACCOUNTS"] as const;
+type Ev = EventRow & Partial<EventMoneySettings> & RegSettings;
+const SECTIONS = ["REGISTRATION", "PHOTOS", "TEAM", "MINUTES", "ACCOUNTS"] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** Minutes of one event's organising-team meetings (team sees drafts; everyone sees final). */
@@ -79,6 +81,8 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [edit, setEdit] = useState(EMPTY);
   const [viewer, setViewer] = useState<{ list: StoredFile[]; i: number } | null>(null);
+  const [myRegs, setMyRegs] = useState<Reg[]>([]);
+  useEffect(() => { if (ctx.homeFlat) loadFlatRegs(ctx.homeFlat).then(setMyRegs); }, [ctx.homeFlat, openId]);
 
   async function load() {
     const { data, error } = await supabase.from("events").select("*").order("event_date", { ascending: false });
@@ -172,7 +176,9 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
     const team = (teams || []).filter((t) => t.event_id === e.id);
     const convenor = team.find((t) => t.role === "Convenor");
     const canPhotos = canEdit || myRole === "Convenor";
-    const section: Section = sec[e.id] || "PHOTOS";
+    const hasReg = sessionsOf(e).length > 0 || ctx.isCommittee || myRole === "Convenor";
+    const regOpen = sessionsOf(e).length > 0 && isOpen(e);
+    const section: Section = sec[e.id] || (sessionsOf(e).length > 0 && (regOpen || myRegs.some((r) => r.event_id === e.id)) ? "REGISTRATION" : "PHOTOS");
     return (
       <div className={`border rounded-[4px] bg-[var(--surface)] ${open ? "border-[var(--gold)]" : "border-[var(--border)]"}`}>
         <button onClick={() => setOpenId(open ? null : e.id)} className="w-full text-left p-4 flex gap-4 items-start">
@@ -186,6 +192,7 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
               <div className="serif text-[16px] font-bold">{e.title}</div>
               {e.type && <span className="mono text-[9px] tracking-[0.12em] border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5">{e.type.toUpperCase()}</span>}
               {e.event_date && e.event_date <= today && lastDay(e) >= today && <span className="mono text-[9px] tracking-[0.12em] bg-emerald-600 text-white px-1.5 py-0.5">● ON NOW</span>}
+              {regOpen && <span className="mono text-[9px] tracking-[0.12em] bg-[var(--gold)] text-black font-bold px-1.5 py-0.5">REGISTER{e.reg_deadline ? ` BY ${deadlineText(e.reg_deadline).toUpperCase()}` : ""}</span>}
             </div>
             {e.description && <div className="text-[13px] opacity-80 mt-1">{e.description}</div>}
             {convenor && <div className="mono text-[10.5px] mt-1.5">Convenor <b>{teamName(ctx.flats, convenor)}</b>{(() => { const f = ctx.flats.find((x) => x.id === convenor.flat_id); return f ? ` • ${label(f)}` : ""; })()} • team of {team.length}{myRole ? <span className="ml-1.5 tag bg-[var(--gold)] text-[var(--navy)]">YOU: {myRole.toUpperCase()}</span> : null}</div>}
@@ -197,8 +204,9 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
         {open && (
           <div className="border-t border-[var(--border)] p-4 space-y-4">
             {teams !== null && <div className="flex flex-wrap gap-1.5 mono text-[11px]">
-              {SECTIONS.map((v) => <button key={v} onClick={() => setSec((x) => ({ ...x, [e.id]: v }))} className={`px-3 py-1.5 border ${section === v ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "border-[var(--border)] bg-[var(--bg)]"}`}>{v === "TEAM" ? `TEAM${team.length ? ` • ${team.length}` : ""}` : v}</button>)}
+              {SECTIONS.filter((v) => v !== "REGISTRATION" || hasReg).map((v) => <button key={v} onClick={() => setSec((x) => ({ ...x, [e.id]: v }))} className={`px-3 py-1.5 border ${section === v ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "border-[var(--border)] bg-[var(--bg)]"}`}>{v === "TEAM" ? `TEAM${team.length ? ` • ${team.length}` : ""}` : v}</button>)}
             </div>}
+            {section === "REGISTRATION" && <EventRegistration ev={e} flats={ctx.flats} team={team} isCommittee={ctx.isCommittee} myRole={myRole} homeFlat={ctx.homeFlat} onSettings={() => { load(); if (ctx.homeFlat) loadFlatRegs(ctx.homeFlat).then(setMyRegs); }} />}
             {section === "TEAM" && <EventTeam eventId={e.id} team={team} flats={ctx.flats} isCommittee={ctx.isCommittee} myRole={myRole} onChanged={reloadTeams} />}
             {section === "MINUTES" && <EventMinutes ev={e} ctx={ctx} team={team} canEdit={ctx.isCommittee || myRole === "Convenor"} />}
             {section === "ACCOUNTS" && <EventAccounts ev={e} flats={ctx.flats} team={team} isCommittee={ctx.isCommittee} myRole={myRole} email={ctx.email} onSettings={load} />}
@@ -252,6 +260,17 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
         </div>
       </div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px] whitespace-pre-wrap">{error}</div>}
+      {ctx.homeFlat && (() => {
+        const live = events.filter((e) => sessionsOf(e).length && lastDay(e) >= today);
+        const chips = live.map((e) => { const r = myRegs.find((x) => x.event_id === e.id); return { e, r, ready: passReady(r), open: isOpen(e) }; }).filter((c) => c.r || c.open);
+        if (!chips.length) return null;
+        return <div className="space-y-2">{chips.map(({ e, r, ready, open }) => (
+          <button key={e.id} onClick={() => { setOpenId(e.id); setSec((x) => ({ ...x, [e.id]: "REGISTRATION" })); }} className={`w-full text-left p-3 border-2 flex items-center gap-3 ${ready ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--gold)] bg-[#fffbea]"}`}>
+            <span className="text-[22px]" aria-hidden="true">{ready ? "🎫" : "📝"}</span>
+            <span className="flex-1 min-w-0"><b className="block truncate">{e.title}</b><span className="mono text-[11px] opacity-80">{ready ? "Your passes are ready" : r ? (r.pay_status === "submitted" ? "Payment sent • waiting for confirmation" : "Registered • payment pending") : `Registration open${e.reg_deadline ? ` till ${deadlineText(e.reg_deadline)}` : ""}`}</span></span>
+            <span className="mono text-[11px] font-bold">{ready ? "VIEW →" : r ? "OPEN →" : "REGISTER →"}</span>
+          </button>))}</div>;
+      })()}
 
       {ongoing.length > 0 && <div>
         <div className="mono text-[10px] tracking-[0.2em] text-emerald-700 mb-2">● HAPPENING NOW</div>

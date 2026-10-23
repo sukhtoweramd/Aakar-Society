@@ -63,7 +63,7 @@ const signs = `<div style="margin-top:12mm;display:flex;justify-content:space-be
   <div style="border-top:.3mm solid var(--ink);padding-top:1mm;min-width:55mm;text-align:center">Treasurer</div>
   <div style="border-top:.3mm solid var(--ink);padding-top:1mm;min-width:55mm;text-align:center">Convenor</div></div>`;
 /** Split a long table over several A4 pages: headings repeat, "continued" on later pages, signatures on the last. */
-function paged(kind: string, big: string, small: string, top: string, head: string, rows: string[], firstCap: number, nextCap: number, footLeft: string, tail = "", empty = "", weights?: number[]): string[] {
+export function paged(kind: string, big: string, small: string, top: string, head: string, rows: string[], firstCap: number, nextCap: number, footLeft: string, tail = "", empty = "", weights?: number[]): string[] {
   // fill pages by "row units" (a row that wraps to two lines counts as 2)
   const chunks: string[][] = [[]]; let used = 0;
   rows.forEach((r, i) => { const w = weights?.[i] || 1; const cap = chunks.length === 1 ? firstCap : nextCap;

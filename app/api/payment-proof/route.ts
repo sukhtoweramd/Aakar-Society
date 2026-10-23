@@ -51,33 +51,36 @@ export async function POST(req: NextRequest) {
 // pages from building the picture in the browser. The link is given only after the login check below.
 const LINK_SECONDS = 120;
 function linkSecret() { return process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.R2_SECRET_ACCESS_KEY || ""; }
-function sign(id: string, exp: number) { return createHmac("sha256", linkSecret()).update(`payproof:${id}:${exp}`).digest("hex"); }
-function validLink(id: string, exp: number, sig: string) {
+function sign(id: string, exp: number, kind = "") { return createHmac("sha256", linkSecret()).update(`payproof:${kind}${id}:${exp}`).digest("hex"); }
+function validLink(id: string, exp: number, sig: string, kind = "") {
   if (!linkSecret() || !(exp > Date.now() / 1000) || !/^[0-9a-f]{64}$/.test(sig)) return false;
-  const a = Buffer.from(sign(id, exp), "hex"), b = Buffer.from(sig, "hex");
+  const a = Buffer.from(sign(id, exp, kind), "hex"), b = Buffer.from(sig, "hex");
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
   const id = q.get("id") || "";
+  // kind=ev: the screenshot of an event registration payment; otherwise an "I have paid" bill payment report
+  const kind = q.get("kind") === "ev" ? "ev" : "";
+  const table = kind ? "event_registrations" : "payment_reports";
   if (!/^[0-9a-f-]{36}$/.test(id)) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   let data: { flat_id: string; proof_key: string | null } | null = null;
   if (q.get("sig")) {
     // Opening a viewing link: no login header here, the signature proves it was handed out after one.
-    if (!validLink(id, Number(q.get("exp")), q.get("sig") || "")) return new NextResponse("This link has expired. Close this tab and click view screenshot again.", { status: 403 });
+    if (!validLink(id, Number(q.get("exp")), q.get("sig") || "", kind)) return new NextResponse("This link has expired. Close this tab and click view screenshot again.", { status: 403 });
     const admin = getAdminClient();
     if (!admin) return NextResponse.json({ error: "Not set up" }, { status: 500 });
-    data = (await admin.from("payment_reports").select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
+    data = (await admin.from(table).select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
   } else {
     const me = await getAuthedClient(req);
     if (!me) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
     // Read through the user's own database session: the rules let a flat see only its own reports.
-    data = (await me.db.from("payment_reports").select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
+    data = (await me.db.from(table).select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
     if (data?.proof_key && q.get("link") === "1") {
       const exp = Math.floor(Date.now() / 1000) + LINK_SECONDS;
       if (!linkSecret()) return NextResponse.json({ error: "Not set up" }, { status: 500 });
-      return NextResponse.json({ url: `/api/payment-proof?id=${id}&exp=${exp}&sig=${sign(id, exp)}` });
+      return NextResponse.json({ url: `/api/payment-proof?id=${id}${kind ? "&kind=ev" : ""}&exp=${exp}&sig=${sign(id, exp, kind)}` });
     }
   }
   if (!data?.proof_key) return NextResponse.json({ error: "Not found" }, { status: 404 });

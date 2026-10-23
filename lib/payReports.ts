@@ -35,10 +35,10 @@ export async function uploadProof(file: File, flatId: string): Promise<string> {
 }
 
 /** Opens the screenshot in a new tab: asks (with the login) for a 2-minute private link, then the browser opens it. */
-export async function openProof(reportId: string) {
+export async function openProof(reportId: string, kind: "" | "ev" = "") {
   const w = window.open("", "_blank");
   try {
-    const res = await fetch(`/api/payment-proof?id=${reportId}&link=1`, { headers: { Authorization: `Bearer ${await token()}` } });
+    const res = await fetch(`/api/payment-proof?id=${reportId}&link=1${kind ? "&kind=ev" : ""}`, { headers: { Authorization: `Bearer ${await token()}` } });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.url) throw new Error(j.error || "Could not open");
     if (w) w.location.href = j.url; else window.open(j.url, "_blank");
