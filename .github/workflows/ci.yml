@@ -1,0 +1,30 @@
+# Checks every pull request and every push to main: tests, type check and a full production build.
+# Uses placeholder settings only — no real keys are needed or stored here.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Tests
+        run: npm test
+      - name: Type check
+        run: npx tsc --noEmit -p .
+      - name: Build
+        run: npm run build
