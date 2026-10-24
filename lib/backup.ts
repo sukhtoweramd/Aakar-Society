@@ -1,4 +1,5 @@
 // Server-only helpers: full backup of the society's records, copies in R2, main admin, access log.
+import { isCommitteeMeta } from "./roles";
 import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -29,7 +30,7 @@ export async function allUsers(admin: SupabaseClient): Promise<User[]> {
   }
   return all;
 }
-export const isCommitteeUser = (u: User) => (u.app_metadata as any)?.role !== "resident";
+export const isCommitteeUser = (u: User) => isCommitteeMeta(u.app_metadata);
 
 /** The main admin: MAIN_ADMIN_EMAIL in Vercel if set, otherwise the oldest committee login (the society's own account). */
 export function mainAdminId(committee: User[]): string | null {
@@ -54,7 +55,7 @@ export async function buildBackup(admin: SupabaseClient, by: string, kind: Backu
     tables[t] = rows; counts[t] = rows.length;
   }
   const users = await allUsers(admin);
-  const logins = users.map((u) => ({ email: u.email, role: (u.app_metadata as any)?.role || "committee", flat_id: (u.app_metadata as any)?.flat_id || null, name: (u.user_metadata as any)?.name || "" }));
+  const logins = users.map((u) => ({ email: u.email, role: (u.app_metadata as any)?.role || "none", flat_id: (u.app_metadata as any)?.flat_id || null, name: (u.user_metadata as any)?.name || "" }));
   return { app: "aakar-society", version: 1, created_at: new Date().toISOString(), created_by: by, kind, counts, skipped, tables, logins };
 }
 

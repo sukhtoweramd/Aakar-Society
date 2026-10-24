@@ -6,6 +6,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { normaliseFlat } from "@/lib/residents";
 import { logAccess, mainAdminId } from "@/lib/backup";
+import { isCommitteeMeta } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ async function committeeUsers(admin: SupabaseClient): Promise<User[]> {
     all.push(...data.users);
     if (data.users.length < 1000) break;
   }
-  return all.filter((u) => (u.app_metadata as any)?.role !== "resident");
+  return all.filter((u) => isCommitteeMeta(u.app_metadata));
 }
 
 async function guard(req: NextRequest) {
