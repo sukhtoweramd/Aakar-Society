@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import { roleOf } from "@/lib/roles";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
 import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
 import ChangePassword from "./ledger/ChangePassword";
@@ -36,8 +37,11 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const meta = (session?.user.app_metadata || {}) as Record<string, any>;
-  const isCommittee = meta.role !== "resident";
-  const myFlat: string | null = isCommittee ? null : String(meta.flat_id || "") || null;
+  // committee = role "committee"; flat login = role "resident"; no role = no access (see lib/roles.ts)
+  const role = roleOf(meta);
+  const isCommittee = role === "committee";
+  const myFlat: string | null = role === "resident" ? String(meta.flat_id || "") || null : null;
+  const [refreshed, setRefreshed] = useState(false);
   const homeFlat: string | null = String(meta.flat_id || "") || null; // committee logins may be linked to their own flat
 
   useEffect(() => {
@@ -62,7 +66,12 @@ export default function Home() {
     setFlats(list);
     setSelectedId((cur) => (isCommittee ? cur ?? list[0]?.id ?? null : myFlat));
   }
-  useEffect(() => { if (session) reloadFlats(); }, [session?.user.id]);
+  useEffect(() => { if (session && role) reloadFlats(); }, [session?.user.id, role]);
+  // A login whose role was set after it logged in still has the old session: fetch a fresh one once.
+  useEffect(() => {
+    if (!session || role || refreshed) return;
+    supabase.auth.refreshSession().then(({ data }) => { if (data.session) setSession(data.session); }).finally(() => setRefreshed(true));
+  }, [session?.user.id, role, refreshed]);
   // Members (flat logins) start on MY FLAT; committee logins start on the cover page.
   useEffect(() => { if (session && (session.user.app_metadata as any)?.role === "resident") setTab("DETAIL"); }, [session?.user.id]);
 
@@ -75,6 +84,15 @@ export default function Home() {
 
   if (checking) return <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
   if (!session) return <Login />;
+  if (!role) return refreshed ? (
+    <div className="min-h-screen grid place-items-center p-6 bg-[var(--bg)]">
+      <div className="max-w-[420px] w-full border border-[var(--border)] bg-[var(--surface)] p-6 space-y-3 text-center">
+        <div className="serif text-[20px] font-bold">This login has no access</div>
+        <div className="text-[13px] opacity-75">{session.user.email} is not set up as a committee login or a flat login. Please ask the society's main admin.</div>
+        <button onClick={() => supabase.auth.signOut()} className="btn-navy px-5 py-2.5 mono text-[12px] tracking-[0.1em]">LOG OUT</button>
+      </div>
+    </div>
+  ) : <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
   const mustChange = !isCommittee && !(session.user.user_metadata as any)?.password_changed;
   if (mustChange || showPassword) return <ChangePassword forced={mustChange} who={myFlat ? `Flat ${myFlat}` : session.user.email || ""} onDone={() => setShowPassword(false)} />;
   const visibleTabs = isCommittee ? [...TABS] : RESIDENT_TABS;

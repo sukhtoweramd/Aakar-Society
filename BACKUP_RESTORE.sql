@@ -72,8 +72,8 @@ grant execute on function public.restore_society_backup(jsonb) to service_role;
 --    access until its login token expires; now every check also confirms the login still exists.
 create or replace function public.is_committee() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', 'committee') <> 'resident'
-     and exists (select 1 from auth.users u where u.id = auth.uid())
+  -- committee = role 'committee' on the login itself (sql-security/02, Oct 2026); no role = not committee
+  select exists (select 1 from auth.users u where u.id = auth.uid() and u.raw_app_meta_data ->> 'role' = 'committee')
 $$;
 create or replace function public.my_flat() returns text
 language sql stable security definer set search_path = public as $$

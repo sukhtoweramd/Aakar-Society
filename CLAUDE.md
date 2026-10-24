@@ -8,6 +8,13 @@
 - `GRANTS_ALL.sql` re-applies these grants to every table; safe to run again (e.g. after a restore).
 - Scripts are run by hand in the Supabase SQL Editor: keep them safe to re-run, and end with a short check query.
 
+## Who is committee (Oct 2026)
+- A login is committee only if `app_metadata.role = 'committee'`; flat logins have `role = 'resident'` + `flat_id`.
+  No role = no access. Code: `lib/roles.ts`; database: `is_committee()` (reads `auth.users`, see `sql-security/02`).
+- New committee logins get the role from ADMIN → committee logins (`/api/committee`); never create logins in the
+  Supabase dashboard without setting the role. Public sign-up and anonymous sign-in stay OFF.
+- Security changes go in `sql-security/` as numbered scripts, each with a check and an `_UNDO`.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.

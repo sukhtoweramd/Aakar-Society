@@ -20,8 +20,9 @@ alter table public.events add column if not exists end_date date;
 
 -- 1. Helper functions
 create or replace function public.is_committee() returns boolean
-language sql stable as $$
-  select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', 'committee') <> 'resident'
+language sql stable security definer set search_path = public as $$
+  -- committee = role 'committee' on the login itself (sql-security/02, Oct 2026); no role = not committee
+  select exists (select 1 from auth.users u where u.id = auth.uid() and u.raw_app_meta_data ->> 'role' = 'committee')
 $$;
 
 create or replace function public.my_flat() returns text
