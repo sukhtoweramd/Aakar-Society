@@ -9,10 +9,22 @@ import { getAuthedClient } from "@/lib/serverAuth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 const MODELS = ["@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/meta/llama-3.1-8b-instruct"];
-let KB = "";
-function kb() {
-  if (!KB) { try { KB = readFileSync(path.join(process.cwd(), "content", "help-kb.md"), "utf8"); } catch { KB = ""; } }
-  return KB;
+let FILE_KB = "";
+/** The built-in guide shipped with the app (used until the committee saves one in ADMIN → HELP GUIDE). */
+function builtInGuide() {
+  if (!FILE_KB) { try { FILE_KB = readFileSync(path.join(process.cwd(), "content", "help-kb.md"), "utf8"); } catch { FILE_KB = ""; } }
+  return FILE_KB;
+}
+async function guideFor(db: any): Promise<string> {
+  const { data } = await db.from("help_guide").select("content").eq("id", 1).maybeSingle();
+  return (data?.content as string) || builtInGuide();
+}
+
+/** GET: the built-in guide, for the ADMIN editor's starting text / reset (committee only). */
+export async function GET(req: NextRequest) {
+  const me = await getAuthedClient(req);
+  if (!me?.isCommittee) return NextResponse.json({ error: "Only the committee can do this." }, { status: 403 });
+  return NextResponse.json({ content: builtInGuide() });
 }
 // very small guard against loops / misuse (per server instance)
 const recent = new Map<string, number[]>();
@@ -27,7 +39,8 @@ export async function POST(req: NextRequest) {
   if (!me) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
   const account = (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || "").trim();
   const token = (process.env.CLOUDFLARE_AI_TOKEN || "").replace(/^Bearer\s+/i, "").trim();
-  if (!account || !token || !kb()) return NextResponse.json({ error: "Help is not set up yet." }, { status: 503 });
+  const KB = await guideFor(me.db).catch(() => builtInGuide());
+  if (!account || !token || !KB) return NextResponse.json({ error: "Help is not set up yet." }, { status: 503 });
   if (tooMany(me.userId)) return NextResponse.json({ error: "Too many questions in a minute. Please wait a little." }, { status: 429 });
   const body: any = await req.json().catch(() => ({}));
   const question = String(body?.question || "").trim().slice(0, 600);
@@ -47,7 +60,7 @@ Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
 
 HELP GUIDE:
-${kb()}`;
+${KB}`;
 
   const errors: string[] = [];
   for (const model of MODELS) {
