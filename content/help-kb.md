@@ -18,9 +18,33 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Members cannot sign up by themselves; logins are created only by the committee.
 
 ## Finding your way
-- Tabs across the top: COVER, INDEX (all flats), MY FLAT (shown as DETAIL for committee logins), DIRECTORY, NOTICES, EVENTS, BUSINESS, VAULT, FLOOR. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
+- Tabs across the top: COVER, INDEX, FLOOR, MY FLAT (called DETAIL in committee logins), BUSINESS, DIRECTORY, NOTICES, EVENTS, VAULT. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
 - On a phone the row of tabs is wider than the screen: swipe the tab row left to see more tabs.
-- Your own flat: the MY FLAT tab (or tap your flat in INDEX). It shows family members, vehicles, emergency contacts, your flat documents, and MY BILLS & RECEIPTS.
+- The left panel (on a computer) shows Tower A, B, C and the COMMITTEE with FILTER links, and the SOCIETY NOTICE.
+
+## What each tab shows
+- **COVER**: the society's record page: name, registration number and date, address, the SOCIETY SEAL box (90 flats: Tower A 40, Tower B 40, Tower C 10), ledger status, the committee members with their flats, short notes (terrace logic, vault), quick links to the other tabs, and WHO TO CONTACT (the committee member responsible for each area, like lift or water).
+- **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT.
+- **FLOOR**: floor plans tower-wise. Shows PLAN READY or NO PLAN UPLOADED. Committee can upload a plan with UPLOAD FLOOR PLAN PDF/DWG. Top-floor flats own the terrace (TERRACE LOGIC).
+- **MY FLAT**: everything about your own flat (details below).
+- **BUSINESS**: the society business directory: members' professions and businesses with flat, office address and phone. HOW TO GET LISTED: open MY FLAT → FAMILY MEMBERS → Edit (or + ADD MEMBER) and fill in Profession / Business, office address and office phone; it appears in BUSINESS automatically.
+- **DIRECTORY**: MEMBER DIRECTORY of families and mobile numbers, only for flats that gave consent (others show only flat number and owner or tenant name). Also a COMMITTEE DIRECTORY. PRINT / SAVE AS PDF prints it.
+- **NOTICES**: society notices (see Notices and banners).
+- **EVENTS**: events, photos, registration and passes (see Events).
+- **VAULT**: SOCIETY DOCUMENT VAULT with the society's official documents (for example Registration Certificate, Society Bye-laws, Terrace Ownership Agreement marked IMPORTANT, Building Plan Approval, Fire NOC, Lift AMC) and OTHER SOCIETY DOCUMENTS. Tap VIEW to open a document. Only the committee can UPLOAD, REPLACE or DELETE.
+- Committee only: **BILLING** (bills, receipts, VERIFY PAYMENTS, dues, letters, settings), **COMMITTEE** (meetings and minutes, responsibilities, AMC contracts), **ADMIN** (logins, backup, test tools, HELP GUIDE, storage), **REPORTS** (flat-wise reports: PDF REPORT, CSV / EXCEL, FLAT PROFILE CARDS).
+
+## MY FLAT in detail
+- Top of the page: flat number, tower, floor, type, owner, and QUICK ACTIONS: VIEW FLOOR, PRINT MY CARD (a one-page flat profile card), EDIT MY DETAILS, MY LEDGER ↓, MY VEHICLES ↓, MY LETTERS ↓, WHO TO CONTACT ↓.
+- **EDIT MY DETAILS**: update your flat's details shown on the page (such as contact details), then SAVE TO LEDGER.
+- **FAMILY MEMBERS**: the people living in the flat. + ADD MEMBER to add someone, Edit to change, then SAVE MEMBER. Each member can have a Profession / Business (shown in the BUSINESS directory).
+- **VEHICLES**: + ADD VEHICLE with type and number (for example GJ 01 AB 1234).
+- **EMERGENCY CONTACTS**: + ADD CONTACT for people outside the society to call if something happens. Seen only by your flat and the committee. Please add at least one.
+- **MEMBER DIRECTORY CONSENT**: tick "Share our family details with society members" to appear in DIRECTORY. Without it, only flat number and owner (or tenant) name are shown. You can change it any time.
+- **FLAT DOCUMENTS**: UPLOAD DOCUMENT for your sale deed, share certificate and similar (enter the document type first). Seen only by your flat and the committee.
+- **MY BILLS & RECEIPTS** and **MY LETTERS**: your bills, receipts, ledger and letters from the society.
+- **MY ACTION POINTS**: tasks given to you in committee meeting minutes, with a link to view the minutes.
+- Rented flats: the tenant's family, vehicles and rent agreement date are recorded; the owner is marked "does not live here".
 
 ## Bills, receipts and paying maintenance
 - Your bills and receipts are in MY FLAT → MY BILLS & RECEIPTS, with the balance due and a MEMBER LEDGER CARD. PRINT MY LEDGER and STATEMENT PDF give printable copies.
@@ -55,8 +79,6 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Event money is kept separate from society maintenance bills.
 
 ## Directory, business and documents
-- DIRECTORY shows families and mobile numbers only for flats that gave consent. You can give or withdraw consent for your flat in MY FLAT.
-- BUSINESS lists members' professions and businesses.
 - VAULT holds the society's documents (registration certificate, bye-laws, plans, NOC, AMCs). Flat documents (sale deed, share certificate) are in MY FLAT and are visible only to your flat and the committee.
 - Maximum file size 4 MB; PDF, JPG, PNG, DOCX, XLSX.
 

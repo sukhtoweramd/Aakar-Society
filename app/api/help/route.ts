@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).
-Be short: at most 6 short lines or numbered steps. No greetings, no closing lines.
+Give a complete, helpful answer: explain what the screen or feature shows and the steps to use it, as numbered steps where there are steps (up to about 12 short lines). No greetings, no closing lines.
+Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly as in the guide. If the guide does not say how to do something, do not guess a path.
 You cannot see the member's bills, payments or data; if they ask about their own amounts or a specific record, tell them where in the app to see it.
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
@@ -67,7 +68,7 @@ ${KB}`;
     try {
       const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
         method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [{ role: "system", content: system }, ...history, { role: "user", content: question }], max_tokens: 450, temperature: 0.2 }),
+        body: JSON.stringify({ messages: [{ role: "system", content: system }, ...history, { role: "user", content: question }], max_tokens: 700, temperature: 0.2 }),
         signal: AbortSignal.timeout(14000),
       });
       const j: any = await res.json().catch(() => ({}));
