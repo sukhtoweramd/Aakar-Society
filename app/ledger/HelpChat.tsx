@@ -18,13 +18,14 @@ function Rich({ text }: { text: string }) {
   ))}</>;
 }
 
-function Contacts({ flats, areas, question }: { flats: Flat[]; areas: Area[]; question: string }) {
+function Contacts({ flats, areas, question, isCommittee }: { flats: Flat[]; areas: Area[]; question: string; isCommittee: boolean }) {
   const app = areas.filter((a) => /\bapp\b|software|website|technical|\bit\b/i.test(`${a.name} ${a.description || ""}`));
-  const list = app.length ? app : areas;
-  if (!list.length) return <div className="text-[12px] opacity-75">Please contact a society committee member.</div>;
+  // No "App support" area yet: don't list unrelated areas (lift, water…); point to the committee instead.
+  if (!app.length) return <div className="border border-[var(--border)] bg-white p-2.5 text-[13px]">Please contact a society committee member{isCommittee ? <div className="text-[11px] opacity-60 mt-1">Committee: add an area named “App support” with the coordinator's flat and mobile in COMMITTEE → RESPONSIBILITIES, and HELP will show that person here.</div> : "."}</div>;
+  const list = app;
   return (
     <div className="space-y-2">
-      <div className="mono text-[10px] tracking-[0.14em] font-bold">{app.length ? "APP COORDINATOR" : "WHO TO CONTACT"}</div>
+      <div className="mono text-[10px] tracking-[0.14em] font-bold">APP COORDINATOR</div>
       {list.slice(0, 4).map((a) => { const p = personOf(flats, a.holder_flat); return (
         <div key={a.id} className="border border-[var(--border)] bg-white p-2.5 text-[13px]">
           <b>{p?.name || a.name}</b>{p?.flat ? <span className="opacity-60"> • {p.flat}</span> : null}<div className="text-[11px] opacity-70">{a.name}</div>
@@ -38,7 +39,7 @@ function Contacts({ flats, areas, question }: { flats: Flat[]; areas: Area[]; qu
   );
 }
 
-export default function HelpChat({ flats }: { flats: Flat[] }) {
+export default function HelpChat({ flats, isCommittee }: { flats: Flat[]; isCommittee: boolean }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState(""); const [busy, setBusy] = useState(false);
@@ -87,7 +88,7 @@ export default function HelpChat({ flats }: { flats: Flat[] }) {
                 ? <div key={i} className="ml-auto max-w-[85%] bg-[var(--navy)] text-white px-3 py-2 text-[14px] w-fit">{m.text}</div>
                 : <div key={i} className="max-w-[92%] space-y-2">
                     <div className={`border px-3 py-2.5 text-[14px] leading-relaxed ${m.error ? "border-amber-300 bg-amber-50 text-amber-900" : "border-[var(--border)] bg-white"}`}><Rich text={m.text} /></div>
-                    {m.notFound && i === msgs.length - 1 && <Contacts flats={flats} areas={areas} question={lastUser} />}
+                    {m.notFound && i === msgs.length - 1 && <Contacts flats={flats} areas={areas} question={lastUser} isCommittee={isCommittee} />}
                   </div>)}
               {busy && <div className="text-[13px] opacity-60">Looking it up…</div>}
               <div ref={end} />

@@ -164,7 +164,7 @@ export default function Home() {
         </main>
       </div>
 
-      <HelpChat flats={flats} />
+      <HelpChat flats={flats} isCommittee={isCommittee} />
       <footer className="border-t border-[var(--border)] mt-8 mono text-[10px] px-6 py-4 opacity-60 flex flex-wrap gap-4 justify-between max-w-[1600px] mx-auto">
         <span>AAKAR CO-OP HOUSING SOCIETY {SOCIETY.reg} • Sukh Tower • Mirambica Road Naranpura • Ahmedabad • EST 1994</span>
         <span>Logged in: {who}{isCommittee ? " • Committee" : " • Resident"}</span>
