@@ -7,6 +7,8 @@ import type { Ctx } from "./ctx";
 import MeetingMinutesList from "./MeetingMinutesList";
 import { loadSettings, loadSignatories, noticeHtml, openPrint, preparingWindow, type NoticeSigner, type Signatory } from "@/lib/billing";
 import { byCommitteeRole } from "@/lib/society";
+import { FileLink, SecureImg } from "./SecureFile";
+import { fileLink } from "@/lib/fileLinks";
 
 type N = Notice & { is_banner?: boolean; banner_until?: string | null };
 type Form = { title: string; content: string; tower: string; banner: boolean; until: string };
@@ -19,7 +21,9 @@ const towerText = (t?: string | null) => (!t || /common|all/i.test(t) ? "ALL TOW
 async function printNotice(x: N, signer: NoticeSigner | null) {
   const w = preparingWindow("Preparing the notice…");
   const settings = await loadSettings();
-  openPrint(`Notice – ${x.title || ""}`, [noticeHtml(x, { settings, signatories: [], flats: [] }, signer)], w);
+  // the picture prints through a short-lived signed link (the stored link is not opened directly)
+  const file_url = x.file_url ? await fileLink(x.file_url).catch(() => null) : null;
+  openPrint(`Notice – ${x.title || ""}`, [noticeHtml({ ...x, file_url }, { settings, signatories: [], flats: [] }, signer)], w);
 }
 /** Who can sign a printed notice: the committee members (from the flats list) plus anyone set up under
  *  BILLING → SETTINGS → signatories. A matching signatory (same name) adds the signature image;
@@ -167,8 +171,8 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                 <div className="border border-[var(--border)] bg-white p-2.5 flex flex-wrap items-center gap-3">
                   <span className="font-bold">PICTURE / FILE</span>
                   {x.file_url && !eRemoveFile && !eFile && (isImage(x.file_url)
-                    ? <img src={x.file_url} alt="" className="h-14 w-14 object-cover border border-[var(--border)]" />
-                    : <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="underline">📎 current file</a>)}
+                    ? <SecureImg src={x.file_url} alt="" className="h-14 w-14 object-cover border border-[var(--border)]" />
+                    : <FileLink file={x.file_url} className="underline">📎 current file</FileLink>)}
                   {x.file_url && eRemoveFile && <span className="text-red-700">will be removed</span>}
                   {!x.file_url && !eFile && <span className="opacity-60">none</span>}
                   <label className="btn-line px-3 py-1.5 cursor-pointer">{x.file_url ? "REPLACE" : "ADD"}
@@ -186,7 +190,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
             ) : (
               <div key={x.id} className="border border-[var(--border)] bg-[var(--surface)] p-4 flex justify-between gap-3">
                 <div className="min-w-0 flex gap-3">
-                  {isImage(x.file_url) && <a href={x.file_url!} target="_blank" rel="noopener noreferrer" className="shrink-0"><img src={x.file_url!} alt="" className="h-20 w-20 object-cover border border-[var(--border)]" /></a>}
+                  {isImage(x.file_url) && <FileLink file={x.file_url} className="shrink-0"><SecureImg src={x.file_url} alt="" className="h-20 w-20 object-cover border border-[var(--border)]" /></FileLink>}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="serif text-[15px] font-bold">{x.title}</div>
@@ -197,7 +201,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                     {x.content && <div className="text-[13px] opacity-80 mt-1 whitespace-pre-wrap">{x.content}</div>}
                     <div className="mono text-[10px] opacity-50 mt-2">
                       {new Date(x.created_at).toLocaleString("en-IN")}{x.created_by ? ` • ${x.created_by}` : ""}
-                      {x.file_url && <a href={x.file_url} target="_blank" rel="noopener noreferrer" className="ml-2 underline text-[var(--navy)] opacity-100">📎 View file</a>}
+                      {x.file_url && <FileLink file={x.file_url} className="ml-2 underline text-[var(--navy)] opacity-100">📎 View file</FileLink>}
                     </div>
                   </div>
                 </div>

@@ -7,6 +7,7 @@ import { label, ownerText, type Flat } from "@/lib/society";
 import { dmy, openPrint, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { isOverdue, KIND_LABEL, minutesHtml, type Action, type Meeting } from "@/lib/minutes";
+import { FileLink } from "./SecureFile";
 
 type ARow = { id?: string; task: string; owner_flat: string; due_date: string; status: "open" | "done" };
 type Form = { id?: string; kind: Meeting["kind"]; meeting_date: string; venue: string; chaired_by: string; attendees: string; agenda: string; minutes: string; file_url: string; status: Meeting["status"]; actions: ARow[] };
@@ -157,7 +158,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged,
                   <td className="px-3 py-2.5">{m.status === "final" ? <span className="tag bg-emerald-50 text-emerald-700">FINAL{m.kind !== "Committee" ? " • MEMBERS SEE" : ""}</span> : <span className="tag bg-amber-50 text-amber-700">DRAFT</span>}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-right">
                     <button onClick={() => print(m)} className="underline font-bold text-[var(--navy)] mr-3">print</button>
-                    {m.file_url && <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="underline mr-3">signed copy</a>}
+                    {m.file_url && <FileLink file={m.file_url} className="underline mr-3">signed copy</FileLink>}
                     {canEdit && <><button onClick={() => edit(m)} className="underline mr-3">edit</button>
                     <button onClick={() => remove(m)} className="underline text-red-600">delete</button></>}</td>
                 </tr>); })}

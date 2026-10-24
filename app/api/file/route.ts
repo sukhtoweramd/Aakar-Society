@@ -1,22 +1,18 @@
-// Files in Cloudflare R2: notice attachments, flat documents, society vault, floor plans.
-// Every request needs a logged-in committee member.
+// Files in Cloudflare R2: notice attachments, flat documents, society vault, floor plans, minutes, AMC, events.
+// Every request needs a login. Files are shown through short-lived signed links (lib/r2Access.ts), never the
+// bucket's public address, so a forwarded link stops working after a few minutes.
+// GET ?folder=…  → list a folder (url = 10-minute signed link)
+// POST (form)    → upload; returns { key, url: the form stored in rows, view: signed link }
+// DELETE         → { key } or { url } (old public address or key)
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getAuthedClient } from "@/lib/serverAuth";
 import { getR2, MAX_FILE_BYTES, ALLOWED_EXT } from "@/lib/r2Client";
+import { folderAccess, parseFileRef, safeFolder } from "@/lib/r2Keys";
+import { publicBases, signKey, SHOW_SECONDS } from "@/lib/r2Access";
 
 export const dynamic = "force-dynamic";
 
-// Allowed folders: notices/, vault/, amc/ and minutes/ (committee only listing), flats/A1001/, floor-plans/A/, events/<event id>/
-function safeFolder(raw: string): string | null {
-  const f = raw.replace(/^\/+|\/+$/g, "");
-  if (f === "notices" || f === "vault" || f === "amc" || f === "minutes") return f;
-  if (/^flats\/[A-Z]\d{1,5}$/.test(f)) return f;
-  if (/^events\/[0-9a-f-]{36}$/.test(f)) return f;
-  if (/^eventdocs\/[0-9a-f-]{36}$/.test(f)) return f;   // event minutes, bills and receipts (event team only)
-  if (/^floor-plans\/[A-Z]$/.test(f)) return f;
-  return null;
-}
 const unauthorized = () => NextResponse.json({ error: "Please log in again." }, { status: 401 });
 const forbidden = () => NextResponse.json({ error: "You are not allowed to change this." }, { status: 403 });
 type Me = { isCommittee: boolean; flatId: string | null; db: any };
@@ -27,12 +23,13 @@ async function eventRole(me: Me, folder: string): Promise<string | null> {
   const { data, error } = await me.db.rpc("my_event_role", { p_event: id });
   return error ? null : (data as string | null);
 }
-// Residents may read society folders and their own flat, and may only write to their own flat folder.
-// Event team: convenor uploads event photos; convenor / treasurer upload event papers (eventdocs); the team reads eventdocs.
+// Listing a whole folder: committee; residents for society folders and their own flat; the event team for eventdocs.
+// (Single files attached to a meeting or event entry are opened through /api/file/link, which checks that row.)
 async function canRead(me: Me, folder: string) {
-  if (me.isCommittee) return true;
-  if (folder.startsWith("eventdocs/")) return !!(await eventRole(me, folder));
-  return folder !== "amc" && folder !== "minutes" && (!folder.startsWith("flats/") || folder === `flats/${me.flatId}`);
+  const a = folderAccess(folder, me);
+  if (a === "yes") return true;
+  if (a === "team") return !!(await eventRole(me, folder));
+  return false;
 }
 async function canWrite(me: Me, folder: string) {
   if (me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`)) return true;
@@ -58,11 +55,12 @@ export async function GET(req: NextRequest) {
         if (!o.Key || o.Key.endsWith("/")) continue;
         const rest = o.Key.slice(folder.length + 1);
         if (rest.includes("/")) continue; // only direct children
-        files.push({ key: o.Key, name: rest.replace(/^\d{10,}_/, ""), url: `${r2.publicUrl}/${o.Key}`, size: o.Size || 0, uploaded: o.LastModified?.toISOString() || null });
+        files.push({ key: o.Key, name: rest.replace(/^\d{10,}_/, ""), url: "", size: o.Size || 0, uploaded: o.LastModified?.toISOString() || null });
       }
       token = res.IsTruncated ? res.NextContinuationToken : undefined;
     } while (token);
     files.sort((a, b) => (b.uploaded || "").localeCompare(a.uploaded || ""));
+    for (const f of files) f.url = (await signKey(f.key, SHOW_SECONDS)) || "";
     return NextResponse.json({ files });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -90,7 +88,9 @@ export async function POST(req: NextRequest) {
     // Vault slots use a fixed name so a new upload replaces the old document.
     const key = folder === "vault" && slot ? `vault/${slot}.${ext}` : `${folder}/${Date.now()}_${safeName}.${ext}`;
     await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || ALLOWED_EXT[ext] }));
-    return NextResponse.json({ ok: true, key, url: `${r2.publicUrl}/${key}` });
+    // url = what screens save in their rows: same form as before (public address) while one is set, so rows stay
+    // uniform; the address is only read back as a name for the key. view = a signed link to show it now.
+    return NextResponse.json({ ok: true, key, url: r2.publicUrl ? `${r2.publicUrl}/${key}` : key, view: await signKey(key, SHOW_SECONDS) });
   } catch (e: any) {
     console.error(e);
     return NextResponse.json({ error: e.message || "Upload failed" }, { status: 500 });
@@ -103,11 +103,9 @@ export async function DELETE(req: NextRequest) {
   const r2 = getR2();
   if (!r2) return NextResponse.json({ ok: true });
   const { url, key: rawKey } = await req.json().catch(() => ({}));
-  let key = typeof rawKey === "string" ? rawKey : "";
-  if (!key && typeof url === "string" && url.startsWith(`${r2.publicUrl}/`)) key = url.slice(r2.publicUrl.length + 1);
-  if (!key) return NextResponse.json({ ok: true });
-  const folder = safeFolder(key.slice(0, key.lastIndexOf("/")));
-  if (!folder) return NextResponse.json({ error: "Bad file" }, { status: 400 });
+  const ref = parseFileRef(typeof rawKey === "string" && rawKey ? rawKey : typeof url === "string" ? url : "", publicBases());
+  if (!ref || ref.kind !== "r2") return NextResponse.json({ ok: true });   // nothing of ours to delete
+  const { key, folder } = ref;
   if (!(await canWrite(me, folder))) return forbidden();
   try {
     await r2.client.send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: key }));

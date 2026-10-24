@@ -8,6 +8,7 @@ import { uploadFile } from "@/lib/ledgerClient";
 import { isOccupied, label, ownerText, residentName, sortFlats, type EventRow, type Flat } from "@/lib/society";
 import EventBatch from "./EventBatch";
 import { food, EV_MODES, IN_CATS, OUT_CATS, eventStatementHtml, fundListHtml, loadMoney, particulars, partyOf, passListHtml, totals, type EventMoneySettings, type EventRole, type Money, type TeamRow } from "@/lib/events";
+import { FileLink } from "./SecureFile";
 
 type Ev = EventRow & Partial<EventMoneySettings>;
 type Form = { id?: string; direction: "in" | "out"; entry_date: string; category: string; flat_id: string; party: string; purpose: string; qty: string; rate: string; amount: string; mode: Money["mode"]; reference: string; note: string; file_url: string; pass_type: "Member" | "Guest"; jain: string };
@@ -181,7 +182,7 @@ export default function EventAccounts({ ev, flats, team, isCommittee, myRole, em
                 <td className="px-2.5 py-1.5 text-right text-emerald-700 font-bold whitespace-nowrap">{m.direction === "in" ? (m.mode === "In kind" ? "in kind" : `₹${inr(m.amount)}`) : ""}</td>
                 <td className="px-2.5 py-1.5 text-right text-red-700 font-bold whitespace-nowrap">{m.direction === "out" ? `₹${inr(m.amount)}` : ""}</td>
                 <td className="px-2.5 py-1.5 whitespace-nowrap">{m.mode}{m.reference ? <div className="opacity-60">{m.reference}</div> : null}</td>
-                <td className="px-2.5 py-1.5 whitespace-nowrap text-right">{m.file_url && <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="underline mr-2">bill</a>}
+                <td className="px-2.5 py-1.5 whitespace-nowrap text-right">{m.file_url && <FileLink file={m.file_url} className="underline mr-2">bill</FileLink>}
                   {canWrite && <><button onClick={() => edit(m)} className="underline mr-2">edit</button><button onClick={() => remove(m)} className="underline text-red-600">delete</button></>}</td>
               </tr>))}
               {rows.length === 0 && <tr><td colSpan={6} className="px-3 py-5 text-center opacity-60">No entries yet.{canWrite ? " Use + MONEY IN / + MONEY OUT." : ""}</td></tr>}</tbody>
