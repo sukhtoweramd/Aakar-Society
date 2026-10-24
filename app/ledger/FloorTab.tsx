@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { rupees, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
+import { FileLink } from "./SecureFile";
 
 export default function FloorTab({ ctx }: { ctx: Ctx }) {
   const { categories, flats } = ctx;
@@ -65,7 +66,7 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
                           <div className="opacity-50 mt-1 text-[9px]">R2 • {fmtDate(latest.uploaded)} • {fmtSize(latest.size)}</div>
                         </div>
                       </div>
-                      <a href={latest.url} target="_blank" rel="noopener noreferrer" className="mt-2 mono text-[11px] bg-[var(--navy)] text-white px-3 py-2 text-center rounded-[2px] hover:bg-[var(--navy-light)] font-semibold tracking-[0.04em]">VIEW PLAN ↗</a>
+                      <FileLink file={latest.key} className="mt-2 mono text-[11px] bg-[var(--navy)] text-white px-3 py-2 text-center rounded-[2px] hover:bg-[var(--navy-light)] font-semibold tracking-[0.04em]">VIEW PLAN ↗</FileLink>
                     </div>
                   ) : (
                     <div className="h-full w-full grid place-items-center mono text-[10px] opacity-60 text-center p-4">
@@ -92,7 +93,7 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
                   <div className="mt-3 space-y-1">
                     {files.map((f) => (
                       <div key={f.key} className="flex items-center justify-between gap-2 mono text-[10px] border border-[var(--border)] bg-white px-2 py-1">
-                        <a href={f.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{f.name}</a>
+                        <FileLink file={f.key} className="truncate hover:underline">{f.name}</FileLink>
                         {ctx.isCommittee && <button onClick={() => remove(f)} className="text-red-600 shrink-0">✕</button>}
                       </div>
                     ))}

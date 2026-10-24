@@ -15,6 +15,17 @@
   Supabase dashboard without setting the role. Public sign-up and anonymous sign-in stay OFF.
 - Security changes go in `sql-security/` as numbered scripts, each with a check and an `_UNDO`.
 
+## Files in R2 (Oct 2026)
+- Screens never show a file by its public R2 address. They ask `POST /api/file/link` (login checked) for a short-lived
+  signed link: 10 minutes for pictures and lists, 2 minutes for a file opened with a click. Client: `lib/fileLinks.ts`
+  (`openFile`, `useFileLink`) and `app/ledger/SecureFile.tsx` (`<FileLink>`, `<SecureImg>`); server: `lib/r2Access.ts`.
+- Who may open what: `lib/r2Keys.ts` (`folderAccess`). Minutes and event papers attached to a meeting / event entry are
+  also opened by members who can see that row (checked through their own database rules). A new folder is committee-only
+  until a rule is added there.
+- Rows keep the stored form (old public address or key); both are read as the key. `R2_PUBLIC_URL` stays set after the
+  bucket is made private: it is only used to recognise old links.
+- Payment screenshots (`payproofs/`) and backups (`backups/`) never go through these routes.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.

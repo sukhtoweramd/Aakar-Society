@@ -7,6 +7,7 @@ import type { Flat } from "@/lib/society";
 import { supabase } from "@/lib/supabaseClient";
 import { dmy, openPrint } from "@/lib/billing";
 import { KIND_LABEL, loadMeetings, minutesHtml, type Action, type Meeting } from "@/lib/minutes";
+import { FileLink } from "./SecureFile";
 
 /** Open full minutes (with action points). Falls back to the minutes alone if the newer SQL is not run yet. */
 export async function readMinutes(m: Meeting, flats: Flat[]) {
@@ -28,7 +29,7 @@ function List({ title, note, list, flats }: { title: string; note: string; list:
               {m.status === "draft" && <span className="ml-2 text-red-700 font-bold">DRAFT</span>}</div>
             <div className="flex gap-3">
               <button onClick={() => readMinutes(m, flats)} className="btn-navy px-3 py-1.5">READ MINUTES</button>
-              {m.file_url && <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="btn-line px-3 py-1.5">SIGNED COPY</a>}
+              {m.file_url && <FileLink file={m.file_url} className="btn-line px-3 py-1.5">SIGNED COPY</FileLink>}
             </div>
           </div>))}
       </div>

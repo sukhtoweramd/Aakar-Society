@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Notice } from "@/lib/society";
+import { FileLink, SecureImg } from "./SecureFile";
 
 type Banner = Notice & { is_banner?: boolean; banner_until?: string | null };
 const SLIDE_MS = 6000;
@@ -75,11 +76,11 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
             </div>
             <h2 className="serif text-[28px] sm:text-[34px] font-bold leading-tight mt-3">{reading.title}</h2>
             {reading.content && <div className="text-[15px] leading-relaxed mt-3 whitespace-pre-wrap">{reading.content}</div>}
-            {rimg && <a href={rimg} target="_blank" rel="noopener noreferrer" title="Open full size"><img src={rimg} alt={reading.title || ""} className="mt-5 w-full h-auto border border-[var(--border)]" /></a>}
-            {reading.file_url && !rimg && <a href={reading.file_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-5 btn-navy mono text-[12px] px-4 py-2.5">📎 OPEN ATTACHMENT</a>}
+            {rimg && <FileLink file={rimg} title="Open full size"><SecureImg src={rimg} alt={reading.title || ""} className="mt-5 w-full h-auto border border-[var(--border)]" /></FileLink>}
+            {reading.file_url && !rimg && <FileLink file={reading.file_url} className="inline-block mt-5 btn-navy mono text-[12px] px-4 py-2.5">📎 OPEN ATTACHMENT</FileLink>}
             <div className="mt-6 pt-4 border-t border-[var(--border)] flex flex-wrap justify-between gap-3 mono text-[11px]">
               <button onClick={() => { setReading(null); close(); onRead(); }} className="underline">See all society notices</button>
-              {rimg && <a href={rimg} target="_blank" rel="noopener noreferrer" className="underline">Open picture full size ↗</a>}
+              {rimg && <FileLink file={rimg} className="underline">Open picture full size ↗</FileLink>}
             </div>
           </div>
         </div>
@@ -105,8 +106,8 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
 
         {img ? (
           <div className="relative flex-1 min-h-[300px] sm:min-h-[220px] bg-black">
-            <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-50" />
-            <img src={img} alt="" className="absolute inset-0 w-full h-full object-contain cursor-zoom-in" onClick={() => setReading(b)} />
+            <SecureImg src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-50" />
+            <SecureImg src={img} alt="" className="absolute inset-0 w-full h-full object-contain cursor-zoom-in" onClick={() => setReading(b)} />
             <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[var(--navy)] to-transparent pointer-events-none" />
           </div>
         ) : (

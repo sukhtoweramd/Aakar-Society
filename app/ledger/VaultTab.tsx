@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { VAULT_SLOTS, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
+import { FileLink } from "./SecureFile";
 
 export default function VaultTab({ ctx }: { ctx: Ctx }) {
   const canEdit = ctx.isCommittee;
@@ -66,7 +67,7 @@ export default function VaultTab({ ctx }: { ctx: Ctx }) {
                 <div className="h-8 w-8 border border-[var(--border)] grid place-items-center mono text-[10px] shrink-0">{f ? (f.key.split(".").pop() || "").toUpperCase() : "—"}</div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 items-center">
-                {f ? <a href={f.url} target="_blank" rel="noopener noreferrer" className="btn-navy mono text-[11px] px-3 py-1.5 inline-block">VIEW</a>
+                {f ? <FileLink file={f.key} className="btn-navy mono text-[11px] px-3 py-1.5 inline-block">VIEW</FileLink>
                    : <span className="mono text-[11px] px-3 py-1.5 border border-dashed border-[var(--border)] opacity-60">NO FILE</span>}
                 {canEdit && <label className="btn-gold mono text-[11px] px-3 py-1.5 inline-flex items-center gap-2">
                   {busy === s.id ? "UPLOADING…" : f ? "REPLACE" : "UPLOAD"}
@@ -89,7 +90,7 @@ export default function VaultTab({ ctx }: { ctx: Ctx }) {
         <div className="mt-3 space-y-1">
           {others.map((f) => (
             <div key={f.key} className="flex justify-between items-center gap-2 mono text-[11px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2">
-              <a href={f.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{f.name}</a>
+              <FileLink file={f.key} className="truncate hover:underline">{f.name}</FileLink>
               <span className="flex gap-3 items-center shrink-0"><span className="opacity-50 text-[10px]">{fmtDate(f.uploaded)} • {fmtSize(f.size)}</span>{canEdit && <button onClick={() => remove(f)} className="text-red-600 text-[10px]">✕</button>}</span>
             </div>
           ))}

@@ -1,0 +1,89 @@
+// Server only. Decides which R2 files a login may open and hands out short-lived signed links for them.
+// The signed link is made with the R2 keys (S3 API), so it keeps working after the bucket's public access
+// is turned off. Rules: lib/r2Keys.ts.
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { Authed } from "./serverAuth";
+import { getR2Signer } from "./r2Client";
+import { folderAccess, parseFileRef, storedForms } from "./r2Keys";
+
+/** How long a link works. Pictures and file lists: 10 minutes. A file opened with a click: 2 minutes. */
+export const SHOW_SECONDS = 600;
+export const OPEN_SECONDS = 120;
+
+/** Every public R2 address the app has stored in rows (used only to read old links, never to serve files). */
+export function publicBases(): string[] {
+  return [process.env.R2_PUBLIC_URL, process.env.CLOUDFLARE_R2_PUBLIC_URL]
+    .map((v) => String(v || "").trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
+export async function signKey(key: string, seconds = SHOW_SECONDS): Promise<string | null> {
+  const r2 = getR2Signer();
+  if (!r2) return null;
+  return getSignedUrl(r2.client, new GetObjectCommand({ Bucket: r2.bucket, Key: key }), { expiresIn: seconds });
+}
+
+type Me = Pick<Authed, "isCommittee" | "flatId" | "db">;
+
+/** Is this flat on the organising team of the event (Convenor / Treasurer / Member)? */
+async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<boolean>>) {
+  if (!me.flatId) return false;
+  if (!memo.has(eventId)) {
+    memo.set(eventId, Promise.resolve(me.db.rpc("my_event_role", { p_event: eventId }))
+      .then(({ data, error }: any) => !error && !!data).catch(() => false));
+  }
+  return memo.get(eventId)!;
+}
+
+/** Rows this login can see (through its own database rules) that carry one of these stored links. */
+async function visibleLinks(me: Me, table: string, forms: string[]): Promise<Set<string>> {
+  const seen = new Set<string>();
+  for (let i = 0; i < forms.length; i += 30) {
+    const { data, error } = await me.db.from(table).select("file_url").in("file_url", forms.slice(i, i + 30));
+    if (error) continue;   // table not set up yet: nothing visible through it
+    for (const r of (data as any[]) || []) if (r.file_url) seen.add(String(r.file_url));
+  }
+  return seen;
+}
+
+/** Of these keys, the ones this login may open. */
+export async function allowedKeys(me: Me, items: { key: string; folder: string }[]): Promise<Set<string>> {
+  const ok = new Set<string>();
+  const needRecord: { key: string; folder: string }[] = [];
+  const memo = new Map<string, Promise<boolean>>();
+  for (const it of items) {
+    const a = folderAccess(it.folder, me);
+    if (a === "yes") ok.add(it.key);
+    else if (a === "team" && (await onEventTeam(me, it.folder.split("/")[1], memo))) ok.add(it.key);
+    else if (a === "team" || a === "record") needRecord.push(it);
+  }
+  if (needRecord.length) {
+    const bases = publicBases();
+    const formsOf = (k: string) => storedForms(k, bases);
+    const minutesForms = needRecord.flatMap((it) => formsOf(it.key));
+    const eventForms = needRecord.filter((it) => it.folder.startsWith("eventdocs/")).flatMap((it) => formsOf(it.key));
+    const seen = await visibleLinks(me, "meetings", minutesForms);          // signed minutes (final AGM / SGM, own event's minutes…)
+    if (eventForms.length) (await visibleLinks(me, "event_money", eventForms)).forEach((f) => seen.add(f));   // event bills, when shown to members
+    for (const it of needRecord) if (formsOf(it.key).some((f) => seen.has(f))) ok.add(it.key);
+  }
+  return ok;
+}
+
+/**
+ * Signed links for stored links (keys or old public addresses). Each answer is a link, or null when the file is
+ * not one this login may open. Links to other websites come back unchanged.
+ */
+export async function linksFor(me: Me, refs: string[], seconds = SHOW_SECONDS): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  const bases = publicBases();
+  const parsed = refs.map((ref) => ({ ref, p: parseFileRef(ref, bases) }));
+  const r2Items = parsed.flatMap(({ p }) => (p?.kind === "r2" ? [{ key: p.key, folder: p.folder }] : []));
+  const ok = await allowedKeys(me, r2Items);
+  for (const { ref, p } of parsed) {
+    if (!p) out[ref] = null;
+    else if (p.kind === "external") out[ref] = p.url;
+    else out[ref] = ok.has(p.key) ? await signKey(p.key, seconds) : null;
+  }
+  return out;
+}

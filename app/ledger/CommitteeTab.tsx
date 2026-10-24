@@ -9,6 +9,7 @@ import { amcAlerts, amcState, daysLeft, loadAmc, loadAreas, personOf, type Amc, 
 import type { Ctx } from "./ctx";
 import MinutesPanel from "./MinutesPanel";
 import { isOverdue, loadMeetings, type Action, type Meeting } from "@/lib/minutes";
+import { FileLink } from "./SecureFile";
 
 const VIEWS = ["RESPONSIBILITIES", "AMC CONTRACTS", "MINUTES"] as const;
 type View = (typeof VIEWS)[number];
@@ -225,7 +226,7 @@ function AmcRegister({ data, areas, flats, email, onChanged }: { data: { amc: Am
                     {vs[0] && <div className="opacity-60 text-[11px]">last {dmy(vs[0].visit_date)}</div>}</td>
                   <td className="px-3 py-2.5"><span className={`tag ${tagCls(s.key)}`}>{s.text}</span>{a.status === "active" && s.key === "active" && <div className="opacity-60 text-[11px] mt-1">{daysLeft(a.end_date)} days left</div>}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-right">
-                    {a.file_key && <a href={a.file_key} target="_blank" rel="noopener noreferrer" className="underline mr-3">contract</a>}
+                    {a.file_key && <FileLink file={a.file_key} className="underline mr-3">contract</FileLink>}
                     {a.status === "active" && <><button onClick={() => startRenew(a)} className="underline mr-3 font-bold text-[var(--navy)]">renew</button><button onClick={() => startEdit(a)} className="underline mr-3">edit</button><button onClick={() => close(a)} className="underline text-red-600">close</button></>}</td>
                 </tr>,
                 openVisits === a.id && (

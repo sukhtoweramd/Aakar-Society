@@ -12,6 +12,7 @@ import MyBills from "./billing/MyBills";
 import LettersPanel from "./billing/LettersPanel";
 import WhoToContact, { useContacts } from "./WhoToContact";
 import MyActionPoints from "./MyActionPoints";
+import { FileLink } from "./SecureFile";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -398,7 +399,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 mono text-[10px]">
-                {f.r2_url && <a href={f.r2_url} target="_blank" rel="noopener noreferrer" className="border border-[var(--border)] bg-white p-2 flex justify-between items-center hover:border-[var(--gold)]"><span className="truncate">Earlier document</span><span>↗</span></a>}
+                {f.r2_url && <FileLink file={f.r2_url} className="border border-[var(--border)] bg-white p-2 flex justify-between items-center hover:border-[var(--gold)]"><span className="truncate">Earlier document</span><span>↗</span></FileLink>}
                 {docs.map((d) => (
                   <div key={d.key} className="border border-[var(--border)] bg-white p-2 hover:border-[var(--gold)]">
                     {editDocKey === d.key ? (
@@ -411,7 +412,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0">
                           {docTypesReady && <div className={`font-bold text-[11px] ${docTypes[d.key] ? "text-[var(--navy)]" : "text-amber-700"}`}>{docTypes[d.key] || "Type not set"}</div>}
-                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="block truncate hover:underline">{d.name}</a>
+                          <FileLink file={d.key} className="block truncate hover:underline">{d.name}</FileLink>
                           <div className="opacity-50">{fmtDate(d.uploaded)} • {fmtSize(d.size)}</div>
                         </div>
                         <span className="flex items-center gap-2 shrink-0">
@@ -445,7 +446,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
               <div className="mt-3 space-y-1">
                 {vaultDocs.slice(0, 3).map((s) => (
-                  <a key={s.id} href={s.file!.url} target="_blank" rel="noopener noreferrer" className="flex justify-between border border-[var(--border)] bg-white p-2 hover:border-[var(--gold)]"><span className="truncate">{s.name}</span><span>↗</span></a>
+                  <FileLink key={s.id} file={s.file!.key} className="flex justify-between border border-[var(--border)] bg-white p-2 hover:border-[var(--gold)]"><span className="truncate">{s.name}</span><span>↗</span></FileLink>
                 ))}
                 {vaultDocs.length === 0 && <div className="opacity-50">No vault documents uploaded yet.</div>}
               </div>

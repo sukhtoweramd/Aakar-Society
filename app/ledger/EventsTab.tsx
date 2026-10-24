@@ -8,6 +8,7 @@ import { loadTeams, type EventMoneySettings, type TeamRow } from "@/lib/events";
 import { label, sortFlats } from "@/lib/society";
 import type { Action, Meeting } from "@/lib/minutes";
 import EventTeam, { teamName } from "./EventTeam";
+import { FileLink, SecureImg } from "./SecureFile";
 import EventAccounts from "./EventAccounts";
 import MinutesPanel from "./MinutesPanel";
 import EventRegistration from "./EventRegistration";
@@ -198,7 +199,7 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
             {convenor && <div className="mono text-[10.5px] mt-1.5">Convenor <b>{teamName(ctx.flats, convenor)}</b>{(() => { const f = ctx.flats.find((x) => x.id === convenor.flat_id); return f ? ` • ${label(f)}` : ""; })()} • team of {team.length}{myRole ? <span className="ml-1.5 tag bg-[var(--gold)] text-[var(--navy)]">YOU: {myRole.toUpperCase()}</span> : null}</div>}
             <div className="mono text-[10px] opacity-60 mt-2">{fmtRange(e.event_date, e.end_date)} • 📷 {pics.length} photo{pics.length === 1 ? "" : "s"} • {open ? "click to close" : "click to open"}</div>
           </div>
-          {pics[0] && !open && <img src={pics[0].url} alt="" className="hidden sm:block h-16 w-24 object-cover border border-[var(--border)] shrink-0" loading="lazy" />}
+          {pics[0] && !open && <SecureImg src={pics[0].key} alt="" className="hidden sm:block h-16 w-24 object-cover border border-[var(--border)] shrink-0" loading="lazy" />}
         </button>
 
         {open && (
@@ -239,7 +240,7 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {pics.map((p, i) => (
                   <button key={p.key} onClick={() => setViewer({ list: pics, i })} className="aspect-square overflow-hidden border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--gold)]">
-                    <img src={p.url} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
+                    <SecureImg src={p.key} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -308,14 +309,14 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
           <div className="flex justify-between items-center p-3 text-white mono text-[12px]" onClick={(e) => e.stopPropagation()}>
             <span>{viewer.i + 1} / {viewer.list.length}</span>
             <div className="flex gap-3">
-              <a href={viewer.list[viewer.i].url} target="_blank" rel="noopener noreferrer" className="underline">Open full size</a>
+              <FileLink file={viewer.list[viewer.i].key} className="underline">Open full size</FileLink>
               {(canEdit || roleIn(viewer.list[viewer.i].key.split("/")[1]) === "Convenor") && <button onClick={() => { const id = viewer.list[viewer.i].key.split("/")[1]; removePhoto(id, viewer.list[viewer.i]); }} className="text-red-300">Delete</button>}
               <button onClick={() => setViewer(null)} className="text-[18px] leading-none">✕</button>
             </div>
           </div>
           <div className="flex-1 flex items-center justify-between gap-2 px-2 min-h-0" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setViewer({ ...viewer, i: (viewer.i - 1 + viewer.list.length) % viewer.list.length })} className="text-white text-[32px] px-3">‹</button>
-            <img src={viewer.list[viewer.i].url} alt="" className="max-h-full max-w-[85vw] object-contain" />
+            <SecureImg src={viewer.list[viewer.i].key} alt="" className="max-h-full max-w-[85vw] object-contain" />
             <button onClick={() => setViewer({ ...viewer, i: (viewer.i + 1) % viewer.list.length })} className="text-white text-[32px] px-3">›</button>
           </div>
         </div>
