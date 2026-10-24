@@ -189,7 +189,7 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   ins text[] := array['flats','billing_settings','signatories','events','notices','maintenance','businesses',
                       'members','emergency_contacts','vehicles','flat_docs','bills','payments','letters','payment_reports','committee_areas','amc_contracts','amc_visits','meetings','meeting_actions',
-                      'event_team','event_money','event_registrations'];
+                      'event_team','event_money','event_registrations','help_guide'];
   t text; i int; cols text; n int; seq text; col record; result jsonb := '{}'::jsonb;
 begin
   if p is null or p->>'app' is distinct from 'aakar-society' or jsonb_typeof(p->'tables') <> 'object' then
