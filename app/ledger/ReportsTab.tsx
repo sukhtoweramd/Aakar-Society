@@ -94,7 +94,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="serif text-[22px] font-bold">Directory Reports</div>
         <div className="mono text-[11px] opacity-60 mt-1">Scope: {scope} • Click a tower or floor card in the sidebar to export only those flats</div>
-        <div className="mt-5 grid sm:grid-cols-2 gap-4">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 [&>*]:min-w-0">
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mono text-[11px] font-bold tracking-[0.12em]">CSV / EXCEL</div>
             <div className="mono text-[10px] opacity-60 mt-1">All columns with headings • opens in Excel</div>
@@ -106,7 +106,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
             <button onClick={exportPDF} className="btn-gold mono text-[12px] tracking-[0.1em] w-full py-2.5 mt-4">CREATE PDF</button>
           </div>
           <VehicleReport list={list} members={members} scope={scope} />
-          <div className="sm:col-span-2"><DocsReport list={list} scope={scope} /></div>
+          <div className="sm:col-span-2 min-w-0"><DocsReport list={list} scope={scope} /></div>
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5 sm:col-span-2 flex flex-wrap justify-between items-center gap-3">
             <div>
               <div className="mono text-[11px] font-bold tracking-[0.12em]">FLAT PROFILE CARDS</div>

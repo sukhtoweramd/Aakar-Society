@@ -37,12 +37,12 @@ async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<bo
 }
 
 /** Rows this login can see (through its own database rules) that carry one of these stored links. */
-async function visibleLinks(me: Me, table: string, forms: string[]): Promise<Set<string>> {
+async function visibleLinks(me: Me, table: string, forms: string[], column = "file_url"): Promise<Set<string>> {
   const seen = new Set<string>();
   for (let i = 0; i < forms.length; i += 30) {
-    const { data, error } = await me.db.from(table).select("file_url").in("file_url", forms.slice(i, i + 30));
+    const { data, error } = await me.db.from(table).select(column).in(column, forms.slice(i, i + 30));
     if (error) continue;   // table not set up yet: nothing visible through it
-    for (const r of (data as any[]) || []) if (r.file_url) seen.add(String(r.file_url));
+    for (const r of (data as any[]) || []) if (r[column]) seen.add(String(r[column]));
   }
   return seen;
 }
@@ -65,6 +65,8 @@ export async function allowedKeys(me: Me, items: { key: string; folder: string }
     const eventForms = needRecord.filter((it) => it.folder.startsWith("eventdocs/")).flatMap((it) => formsOf(it.key));
     const seen = await visibleLinks(me, "meetings", minutesForms);          // signed minutes (final AGM / SGM, own event's minutes…)
     if (eventForms.length) (await visibleLinks(me, "event_money", eventForms)).forEach((f) => seen.add(f));   // event bills, when shown to members
+    const complaintForms = needRecord.filter((it) => it.folder.startsWith("complaints/")).flatMap((it) => formsOf(it.key));
+    if (complaintForms.length) (await visibleLinks(me, "complaints", complaintForms, "photo_key")).forEach((f) => seen.add(f));   // photo of a complaint assigned to this flat
     for (const it of needRecord) if (formsOf(it.key).some((f) => seen.has(f))) ok.add(it.key);
   }
   return ok;

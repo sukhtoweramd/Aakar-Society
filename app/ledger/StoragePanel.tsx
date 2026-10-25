@@ -6,7 +6,7 @@ import { api } from "@/lib/ledgerClient";
 const LABELS: Record<string, string> = {
   events: "Event photos", eventdocs: "Event team documents", notices: "Notice posters & attachments", payproofs: "Payment screenshots (I have paid)",
   vault: "Society documents (VAULT)", flats: "Flat documents", amc: "AMC contracts", minutes: "Minutes attachments", backups: "Backups",
-  "floor-plans": "Floor plans",
+  "floor-plans": "Floor plans", complaints: "Complaint photos",
 };
 const DB_LIMIT = 500 * 1024 * 1024; // Supabase free plan
 const R2_LIMIT = 10 * 1024 * 1024 * 1024; // Cloudflare R2 free allowance

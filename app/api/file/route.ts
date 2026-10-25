@@ -32,7 +32,7 @@ async function canRead(me: Me, folder: string) {
   return false;
 }
 async function canWrite(me: Me, folder: string) {
-  if (me.isCommittee || (!!me.flatId && folder === `flats/${me.flatId}`)) return true;
+  if (me.isCommittee || (!!me.flatId && (folder === `flats/${me.flatId}` || folder === `complaints/${me.flatId}`))) return true;
   if (folder.startsWith("events/")) return (await eventRole(me, folder)) === "Convenor";
   if (folder.startsWith("eventdocs/")) return ["Convenor", "Treasurer"].includes((await eventRole(me, folder)) || "");
   return false;
