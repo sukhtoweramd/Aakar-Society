@@ -5,6 +5,7 @@ import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees
 import type { Ctx } from "./ctx";
 import VehicleReport from "./VehicleReport";
 import DocsReport from "./DocsReport";
+import NominationReport from "./NominationReport";
 import { printFlatCards } from "@/lib/flatCard";
 import { backBar } from "@/lib/printBack";
 
@@ -107,6 +108,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
           </div>
           <VehicleReport list={list} members={members} scope={scope} />
           <div className="sm:col-span-2 min-w-0"><DocsReport list={list} scope={scope} /></div>
+          <div className="sm:col-span-2 min-w-0"><NominationReport list={list} onOpen={(id) => { ctx.selectFlat(id); ctx.go("DETAIL"); setTimeout(() => document.getElementById("sec-nominee")?.scrollIntoView({ behavior: "smooth" }), 600); }} /></div>
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5 sm:col-span-2 flex flex-wrap justify-between items-center gap-3">
             <div>
               <div className="mono text-[11px] font-bold tracking-[0.12em]">FLAT PROFILE CARDS</div>
