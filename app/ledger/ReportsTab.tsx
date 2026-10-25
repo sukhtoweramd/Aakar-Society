@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import VehicleReport from "./VehicleReport";
+import DocsReport from "./DocsReport";
 import { printFlatCards } from "@/lib/flatCard";
 import { backBar } from "@/lib/printBack";
 
@@ -105,6 +106,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
             <button onClick={exportPDF} className="btn-gold mono text-[12px] tracking-[0.1em] w-full py-2.5 mt-4">CREATE PDF</button>
           </div>
           <VehicleReport list={list} members={members} scope={scope} />
+          <div className="sm:col-span-2"><DocsReport list={list} scope={scope} /></div>
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5 sm:col-span-2 flex flex-wrap justify-between items-center gap-3">
             <div>
               <div className="mono text-[11px] font-bold tracking-[0.12em]">FLAT PROFILE CARDS</div>

@@ -4,7 +4,8 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
-import { RESIDENT_TABS, TABS, type Ctx, type Tab } from "./ledger/ctx";
+import { TABS, type Ctx, type Tab } from "./ledger/ctx";
+import { residentTabs } from "@/lib/memberTabs";
 import ChangePassword from "./ledger/ChangePassword";
 import HelpChat from "./ledger/HelpChat";
 import { InstallApp } from "./ledger/PwaRegister";
@@ -77,7 +78,18 @@ export default function Home() {
 
   const categories = useMemo(() => buildCategories(flats), [flats]);
 
+  // Which tabs flat logins may open (ADMIN → MEMBER SCREENS). null = not set up yet: all member tabs, as before.
+  const [memberTabs, setMemberTabs] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!session || role !== "resident") return;
+    supabase.from("app_settings").select("member_tabs").eq("id", 1).maybeSingle()
+      .then(({ data, error }) => setMemberTabs(!error && Array.isArray((data as any)?.member_tabs) ? (data as any).member_tabs : null));
+  }, [session?.user.id, role]);
+  const residentAllowed = useMemo(() => residentTabs(memberTabs), [memberTabs]);
+  useEffect(() => { if (role === "resident" && !residentAllowed.includes(tab)) setTab("DETAIL"); }, [role, residentAllowed, tab]);
+
   function go(t: Tab) {
+    if (!isCommittee && !residentAllowed.includes(t)) { alert("This screen is not open for members. Please ask the committee."); return; }
     setTab(t);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -95,7 +107,7 @@ export default function Home() {
   ) : <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
   const mustChange = !isCommittee && !(session.user.user_metadata as any)?.password_changed;
   if (mustChange || showPassword) return <ChangePassword forced={mustChange} who={myFlat ? `Flat ${myFlat}` : session.user.email || ""} onDone={() => setShowPassword(false)} />;
-  const visibleTabs = isCommittee ? [...TABS] : RESIDENT_TABS;
+  const visibleTabs = isCommittee ? [...TABS] : residentAllowed;
   const who = myFlat ? `FLAT ${label({ id: myFlat, flat_no: myFlat } as any)}` : session.user.email;
 
   const ctx: Ctx = {

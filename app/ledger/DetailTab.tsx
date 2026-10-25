@@ -13,6 +13,8 @@ import LettersPanel from "./billing/LettersPanel";
 import WhoToContact, { useContacts } from "./WhoToContact";
 import MyActionPoints from "./MyActionPoints";
 import { FileLink } from "./SecureFile";
+import { DOC_TYPES, OTHER, docChecklist } from "@/lib/flatDocTypes";
+import { compressForUpload, sizeNote } from "@/lib/compressFile";
 
 
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
@@ -34,7 +36,9 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const [familyVersion, setFamilyVersion] = useState(0); // bump to make the family list reload
   const [docTypes, setDocTypes] = useState<Record<string, string>>({}); // R2 key -> document type
   const [docTypesReady, setDocTypesReady] = useState(true);
-  const [newDocType, setNewDocType] = useState("");
+  const [newDocType, setNewDocType] = useState("");    // chosen from DOC_TYPES, or OTHER
+  const [otherDocType, setOtherDocType] = useState(""); // typed when OTHER is chosen
+  const [docNote, setDocNote] = useState("");           // "Compressed 4.2 MB → 0.6 MB"
   const [editDocKey, setEditDocKey] = useState<string | null>(null);
   const [editDocType, setEditDocType] = useState("");
 
@@ -166,17 +170,21 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     reloadFlats();
   }
 
-  async function uploadDoc(file: File) {
-    const type = newDocType.trim();
-    if (docTypesReady && !type) { setError("First type what the document is (e.g. Sale deed), then choose the file."); return; }
-    setBusy("doc"); setError("");
+  const chosenDocType = () => (newDocType === OTHER ? otherDocType.trim() : newDocType);
+  async function uploadDoc(original: File) {
+    const type = chosenDocType();
+    if (docTypesReady && !type) { setError("First choose which document it is, then choose the file."); return; }
+    setBusy("doc"); setError(""); setDocNote("");
     try {
-      const up = await uploadFile(file, `flats/${f!.id}`);
+      const c = await compressForUpload(original);
+      if (c.file.size > 4 * 1024 * 1024) throw new Error(`The file is ${sizeNote(c).replace(/^Uploaded as it is /, "")} even after compressing; the limit is 4 MB. Scan at a lower resolution or split it.`);
+      const up = await uploadFile(c.file, `flats/${f!.id}`);
+      setDocNote(`${type || "Document"}: ${sizeNote(c)}`);
       if (docTypesReady && up.key) {
         const { error } = await supabase.from("flat_docs").upsert({ key: up.key, flat_id: f!.id, doc_type: type, uploaded_by: ctx.email });
         if (error) setError(`File uploaded, but the document type was not saved: ${error.message}`);
       }
-      setNewDocType("");
+      setNewDocType(""); setOtherDocType("");
       await loadExtras(f!.id);
     } catch (e: any) { setError(e.message); }
     setBusy(null);
@@ -387,24 +395,40 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div>
                   <div className="mono text-[10px] font-bold tracking-[0.14em]">FLAT DOCUMENTS • R2</div>
-                  <div className="mono text-[11px] mt-1 opacity-70">{rented ? "Rent agreement, police verification, sale deed, share certificate" : "Sale deed, share certificate, receipts"} for {label(f)}. Max 4 MB each.</div>
+                  <div className="mono text-[11px] mt-1 opacity-70">Documents the society needs from {label(f)}. Photos and scanned PDFs are compressed before upload (max 4 MB after compressing).</div>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                {docTypesReady && <input className="field !w-[240px] !py-2 mono text-[11px]" placeholder="Document type *  e.g. Sale deed" value={newDocType} onChange={(e) => setNewDocType(e.target.value)} />}
-                <label className={`btn-navy mono text-[11px] px-4 py-2 cursor-pointer ${docTypesReady && !newDocType.trim() ? "opacity-60" : ""}`}
-                  onClick={(e) => { if (docTypesReady && !newDocType.trim()) { e.preventDefault(); setError("First type what the document is (e.g. Sale deed), then choose the file."); } }}>
-                  {busy === "doc" ? "UPLOADING…" : "UPLOAD DOCUMENT"}
+                {docTypesReady && <select className="field !w-[200px] !py-2 mono text-[11px]" value={newDocType} onChange={(e) => setNewDocType(e.target.value)}>
+                  <option value="">Which document? *</option>
+                  {DOC_TYPES.filter((t) => !t.onlyIfRented || rented).map((t) => <option key={t.key} value={t.name}>{t.name}</option>)}
+                  <option value={OTHER}>Other…</option>
+                </select>}
+                {docTypesReady && newDocType === OTHER && <input className="field !w-[180px] !py-2 mono text-[11px]" placeholder="Type the document name" value={otherDocType} onChange={(e) => setOtherDocType(e.target.value)} />}
+                <label className={`btn-navy mono text-[11px] px-4 py-2 cursor-pointer ${docTypesReady && !chosenDocType() ? "opacity-60" : ""}`}
+                  onClick={(e) => { if (docTypesReady && !chosenDocType()) { e.preventDefault(); setError("First choose which document it is, then choose the file."); } }}>
+                  {busy === "doc" ? "COMPRESSING & UPLOADING…" : "UPLOAD DOCUMENT"}
                   <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" disabled={!!busy} onChange={(e) => { const x = e.target.files?.[0]; e.target.value = ""; if (x) uploadDoc(x); }} />
                 </label>
                 </div>
               </div>
+              {docNote && <div className="mt-2 mono text-[11px] text-emerald-700">✓ {docNote}</div>}
+              {docTypesReady && (() => {
+                const list = docChecklist(docs.map((d) => docTypes[d.key]), rented);
+                const missing = list.filter((x) => !x.uploaded).length;
+                return (
+                  <div className="mt-3 flex flex-wrap gap-1.5 mono text-[10px]" aria-label="Document checklist">
+                    {list.map((x) => <span key={x.key} className={`px-2 py-1 border ${x.uploaded ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-400 bg-white text-amber-800"}`}>{x.uploaded ? "✓" : "○"} {x.name}</span>)}
+                    <span className="px-2 py-1 opacity-70">{missing ? `${missing} still to upload` : "All documents uploaded"}</span>
+                  </div>);
+              })()}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 mono text-[10px]">
                 {f.r2_url && <FileLink file={f.r2_url} className="border border-[var(--border)] bg-white p-2 flex justify-between items-center hover:border-[var(--gold)]"><span className="truncate">Earlier document</span><span>↗</span></FileLink>}
                 {docs.map((d) => (
                   <div key={d.key} className="border border-[var(--border)] bg-white p-2 hover:border-[var(--gold)]">
                     {editDocKey === d.key ? (
                       <div className="flex gap-2 items-center">
-                        <input autoFocus className="field !py-1 !text-[11px]" value={editDocType} onChange={(e) => setEditDocType(e.target.value)} placeholder="Document type" />
+                        <input autoFocus list="aakar-doc-types" className="field !py-1 !text-[11px]" value={editDocType} onChange={(e) => setEditDocType(e.target.value)} placeholder="Document type" />
+                        <datalist id="aakar-doc-types">{DOC_TYPES.map((t) => <option key={t.key} value={t.name} />)}</datalist>
                         <button onClick={() => saveDocType(d.key)} className="btn-navy px-2 py-1">SAVE</button>
                         <button onClick={() => setEditDocKey(null)} className="underline">Cancel</button>
                       </div>

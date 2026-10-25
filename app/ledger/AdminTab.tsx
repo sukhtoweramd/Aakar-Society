@@ -7,6 +7,7 @@ import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
 import BackupPanel from "./BackupPanel";
+import MemberScreensPanel from "./MemberScreensPanel";
 import TestDataPanel from "./TestDataPanel";
 import AiReadPanel from "./AiReadPanel";
 import StoragePanel from "./StoragePanel";
@@ -146,6 +147,7 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
 
       <LoginsPanel ctx={ctx} />
 
+      <MemberScreensPanel email={ctx.email} />
       <BackupPanel />
 
       <TestDataPanel />
