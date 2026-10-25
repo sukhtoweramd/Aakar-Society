@@ -90,7 +90,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
       </>}
       {mine.length > 0 && <>
         <div className="mt-4 mono text-[11px] font-bold tracking-[0.12em]">MY COMPLAINTS</div>
-        <div className="mt-2 grid gap-3">{mine.slice(0, 20).map((c) => card(c, false))}</div>
+        <div className="mt-2 grid gap-3">{mine.slice(0, 20).map((c) => card(c, isCommittee || (!!flatId && (c.assigned_flat === flatId || c.backup_flat === flatId))))}</div>
       </>}
     </div>
   );
