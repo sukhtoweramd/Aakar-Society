@@ -13,6 +13,7 @@ import LettersPanel from "./billing/LettersPanel";
 import WhoToContact, { useContacts } from "./WhoToContact";
 import MyActionPoints from "./MyActionPoints";
 import ComplaintsPanel from "./ComplaintsPanel";
+import NomineePanel from "./NomineePanel";
 import { FileLink } from "./SecureFile";
 import { DOC_TYPES, OTHER, docChecklist } from "@/lib/flatDocTypes";
 import { compressForUpload, sizeNote } from "@/lib/compressFile";
@@ -229,6 +230,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               <button onClick={() => jump("sec-letters", "No letters have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS ↓</button>
               <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
               <button onClick={() => jump("sec-complaints", "Complaints are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">COMPLAINTS ↓</button>
+              {!rented && <button onClick={() => jump("sec-nominee", "The nominee form is not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">NOMINEE ↓</button>}
             </>}
           </div>
         </div>
@@ -236,6 +238,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
         {(!isCommittee || f.id === ctx.homeFlat) && <MyActionPoints key={f.id} flats={flats} />}
         {(!isCommittee || f.id === ctx.homeFlat) && <ComplaintsPanel key={`c-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
+        {(isCommittee || !rented) && <NomineePanel key={`n-${f.id}`} flat={f} isCommittee={isCommittee} email={ctx.email} />}
 
         {editing && (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
