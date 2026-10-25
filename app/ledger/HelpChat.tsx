@@ -66,9 +66,9 @@ export default function HelpChat({ flats, isCommittee }: { flats: Flat[]; isComm
 
   return (
     <>
-      {!open && <button onClick={() => setOpen(true)} aria-label="Help" className="fixed z-40 bg-[var(--navy)] text-white border-2 border-[var(--gold)] shadow-[0_6px_18px_rgba(0,0,0,.25)] rounded-full h-14 px-5 flex items-center gap-2 font-bold tracking-[0.08em] text-[13px]"
+      {!open && <button onClick={() => setOpen(true)} aria-label="Help" className="fixed z-40 bg-[var(--navy)] text-white border-2 border-[var(--gold)] shadow-[0_6px_18px_rgba(0,0,0,.25)] rounded-full h-12 w-12 sm:h-14 sm:w-auto sm:px-5 flex items-center justify-center gap-2 font-bold tracking-[0.08em] text-[13px]"
         style={{ right: "calc(16px + env(safe-area-inset-right, 0px))", bottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}>
-        <span className="h-6 w-6 rounded-full bg-[var(--gold)] text-[var(--navy)] grid place-items-center text-[15px]" aria-hidden="true">?</span>HELP
+        <span className="h-6 w-6 rounded-full bg-[var(--gold)] text-[var(--navy)] grid place-items-center text-[15px]" aria-hidden="true">?</span><span className="hidden sm:inline">HELP</span>
       </button>}
       {open && (
         <div className="fixed inset-0 z-[60] bg-black/40 sm:bg-black/25 flex sm:justify-end" onClick={() => setOpen(false)} role="dialog" aria-modal="true" aria-label="Help">

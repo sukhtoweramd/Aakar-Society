@@ -26,6 +26,11 @@
   bucket is made private: it is only used to recognise old links.
 - Payment screenshots (`payproofs/`) and backups (`backups/`) never go through these routes.
 
+## Screens (Oct 2026)
+- Most members use the app on phones: build every new screen for a phone first (about 390 px wide): cards instead of
+  wide tables, buttons at least ~44 px tall, text boxes use `.field` (16 px on phones so iPhones don't zoom).
+  A wide table goes inside its own `overflow-auto` box, and grid children get `min-w-0`, so the page never scrolls sideways.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.

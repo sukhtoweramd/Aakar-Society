@@ -42,6 +42,9 @@ test("who may open which folder", () => {
   assert.equal(folderAccess("eventdocs/0a1b2c3d-0000-4000-8000-000000000000", a503), "team");
   for (const f of ["notices", "vault", "floor-plans/A", "events/0a1b2c3d-0000-4000-8000-000000000000"]) assert.equal(folderAccess(f, a503), "yes", f);
   assert.equal(folderAccess("flats/A503", { isCommittee: false, flatId: null }), "no");
+  assert.equal(folderAccess("complaints/A503", a503), "yes");
+  assert.equal(folderAccess("complaints/B101", a503), "record");
+  assert.equal(folderAccess("complaints/B101", committee), "yes");
 });
 
 test("stored forms cover key and public address", () => {

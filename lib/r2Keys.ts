@@ -12,6 +12,8 @@
 //                                                                              the meeting it is attached to
 //   eventdocs/<event id>/ event minutes, bills, receipts                     → committee, that event's team, or a
 //                                                                              member who can see the entry it is attached to
+//   complaints/<flat>/    complaint photos                                   → committee, that flat, and the member(s)
+//                                                                              the complaint is assigned to
 // Not served by these routes: payproofs/ (own route /api/payment-proof) and backups/ (main admin only).
 
 export function safeFolder(raw: string): string | null {
@@ -21,6 +23,7 @@ export function safeFolder(raw: string): string | null {
   if (/^events\/[0-9a-f-]{36}$/.test(f)) return f;
   if (/^eventdocs\/[0-9a-f-]{36}$/.test(f)) return f;
   if (/^floor-plans\/[A-Z]$/.test(f)) return f;
+  if (/^complaints\/[A-Z]\d{1,5}$/.test(f)) return f;
   return null;
 }
 
@@ -75,6 +78,7 @@ export function folderAccess(folder: string, who: Who): FolderAccess {
   if (who.isCommittee) return "yes";
   if (folder === "notices" || folder === "vault" || folder.startsWith("floor-plans/") || folder.startsWith("events/")) return "yes";
   if (folder.startsWith("flats/")) return !!who.flatId && folder === `flats/${who.flatId}` ? "yes" : "no";
+  if (folder.startsWith("complaints/")) return !!who.flatId && folder === `complaints/${who.flatId}` ? "yes" : "record";
   if (folder === "minutes") return "record";
   if (folder.startsWith("eventdocs/")) return "team";
   return "no";   // amc and anything new: committee only until a rule is added here
