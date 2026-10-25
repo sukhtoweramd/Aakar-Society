@@ -138,6 +138,12 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
           <div className="serif text-[22px] font-bold">Society Notices</div>
           <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored in R2</div>
+          {(() => { const live = notices.filter((x) => x.is_banner && (!x.banner_until || x.banner_until >= today())).length; return live > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 mono text-[11px]">
+              <span><b>{live}</b> notice{live === 1 ? " is" : "s are"} shown as a login banner{ctx.isCommittee ? "" : " for some towers"}.</span>
+              <button onClick={() => { try { Object.keys(sessionStorage).filter((k) => k.startsWith("aakar_banner_closed_")).forEach((k) => sessionStorage.removeItem(k)); } catch {} location.reload(); }}
+                className="btn-line px-3 py-1.5 font-bold">SEE LOGIN BANNERS NOW</button>
+            </div>); })()}
           {ctx.isCommittee && <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] p-4 space-y-2 mono text-[11px]">
             <div className="text-[10px] tracking-[0.14em] font-bold opacity-70">NEW NOTICE</div>
             <div className="grid sm:grid-cols-[1fr_140px] gap-2">
@@ -209,8 +215,8 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                   <button onClick={() => startEdit(x)} className="btn-navy px-3 py-1">EDIT</button>
                   <button onClick={() => printNotice(x, signers.find((g) => g.key === signer) || null)} className="border border-[var(--navy)] px-2 py-1 font-bold">PRINT / PDF</button>
                   {bannerReady && (x.is_banner
-                    ? <button onClick={() => setBanner(x, false)} className="border border-[var(--gold)] bg-[#fffdf5] px-2 py-1 font-bold">BANNER: ON ✕</button>
-                    : <button onClick={() => setBanner(x, true)} className="border border-[var(--border)] px-2 py-1">SHOW AS BANNER</button>)}
+                    ? <button onClick={() => setBanner(x, false)} title="Shown as a banner after login. Tap to stop." className="border border-[var(--gold)] bg-[var(--gold)] text-black px-2 py-1 font-bold">★ BANNER ON • TURN OFF</button>
+                    : <button onClick={() => setBanner(x, true)} title="Not a banner now. Tap to show it after login." className="border border-dashed border-[var(--border)] px-2 py-1 opacity-80">BANNER OFF • TURN ON</button>)}
                   <button onClick={() => removeNotice(x)} className="text-red-600">DELETE</button>
                 </div>}
               </div>
