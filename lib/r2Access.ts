@@ -64,6 +64,12 @@ export async function allowedKeys(me: Me, items: { key: string; folder: string }
     const minutesForms = needRecord.flatMap((it) => formsOf(it.key));
     const eventForms = needRecord.filter((it) => it.folder.startsWith("eventdocs/")).flatMap((it) => formsOf(it.key));
     const seen = await visibleLinks(me, "meetings", minutesForms);          // signed minutes (final AGM / SGM, own event's minutes…)
+    // committee meeting minutes listed to a committee member's own flat login (NOTICES → Committee meeting minutes):
+    // that list comes from my_committee_meetings(), so its signed copies must open too
+    if (needRecord.some((it) => it.folder === "minutes") && !me.isCommittee) {
+      const { data, error } = await me.db.rpc("my_committee_meetings");
+      if (!error) for (const m of (data as any[]) || []) if (m?.file_url) seen.add(String(m.file_url));
+    }
     if (eventForms.length) (await visibleLinks(me, "event_money", eventForms)).forEach((f) => seen.add(f));   // event bills, when shown to members
     const complaintForms = needRecord.filter((it) => it.folder.startsWith("complaints/")).flatMap((it) => formsOf(it.key));
     if (complaintForms.length) (await visibleLinks(me, "complaints", complaintForms, "photo_key")).forEach((f) => seen.add(f));   // photo of a complaint assigned to this flat
