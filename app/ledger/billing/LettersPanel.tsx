@@ -9,7 +9,10 @@ import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
 const TO_ALL = "TO WHOMSOEVER IT MAY CONCERN";
 
-export default function LettersPanel({ flat, flats, isCommittee, email }: { flat: Flat; flats: Flat[]; isCommittee: boolean; email: string }) {
+/** prefill: open the form already filled in (from a member's letter request); onIssued: told the new letter after it is issued. */
+export default function LettersPanel({ flat, flats, isCommittee, email, onChanged, prefill, onIssued }: {
+  flat: Flat; flats: Flat[]; isCommittee: boolean; email: string; onChanged?: () => void;
+  prefill?: { key: string; subject: string; to: string; body?: string }; onIssued?: (l: Letter) => void }) {
   const [letters, setLetters] = useState<Letter[] | null>(null);
   const [missing, setMissing] = useState(false);
   const [pc, setPc] = useState<PrintCtx>({ settings: null, signatories: [], flats });
@@ -33,6 +36,11 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
     setForm((f) => ({ ...f, signer: f.signer || sec?.id || "" }));
   }
   useEffect(() => { load(); setOpen(false); setForm(blank()); }, [flat.id]);
+  useEffect(() => {
+    if (!prefill || !isCommittee) return;
+    setOpen(true); setError("");
+    setForm((f) => ({ ...f, subject: prefill.subject, kind: prefill.to.trim() ? "third" : "all", to: prefill.to, body: prefill.body ?? f.body }));
+  }, [prefill?.key]);
 
   const signers = pc.signatories.filter((g) => g.active);
   const draft = (ref: string): Letter => {
@@ -58,7 +66,8 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
       const { data, error } = await supabase.from("letters").insert([row]).select().single();
       if (error) throw error;
       openPrint(`Letter ${ref}`, [letterHtml(data as Letter, pc)], w);
-      setOpen(false); setForm(blank()); await load();
+      onIssued?.(data as Letter);
+      setOpen(false); setForm(blank()); await load(); onChanged?.();
     } catch (err: any) { w?.close(); setError(/letter/i.test(err.message || "") && /column|function|series/i.test(err.message) ? "Run LETTERS.sql in Supabase first." : err.message); }
     setBusy(false);
   }
@@ -66,7 +75,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email }: { flat
     const why = prompt(`Cancel letter ${l.ref_no}?\nIt stays on record marked CANCELLED.\n\nReason:`);
     if (!why?.trim()) return;
     const { error } = await supabase.from("letters").update({ status: "cancelled", cancel_reason: why.trim(), cancelled_by: email, cancelled_at: new Date().toISOString() }).eq("id", l.id);
-    if (error) setError(error.message); else load();
+    if (error) setError(error.message); else { load(); onChanged?.(); }
   }
 
   if (letters === null) return null;
