@@ -14,6 +14,8 @@ import { backBar } from "@/lib/printBack";
 import VerifyPayments from "./VerifyPayments";
 import { loadReports, type PayReport } from "@/lib/payReports";
 
+const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
 const VIEWS = ["LEDGER", "VERIFY PAYMENTS", "NEW BILLS", "OTHER BILL", "DUES", "SETTINGS"] as const;
 type View = (typeof VIEWS)[number];
 
@@ -269,9 +271,9 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
   function print() {
     const w = window.open("", "_blank"); if (!w) return;
     w.document.write(`<html><head><title>Dues list</title><style>body{font-family:Inter,Arial;margin:24px;color:#1a1a18}h1{color:#0f1d3d;font-size:17px;margin:0}.s{font-size:11px;color:#6f6a5d;margin:4px 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0f1d3d;color:#fff;text-align:left;padding:6px}td{padding:5px 6px;border-bottom:1px solid #e8e2d1}.r{text-align:right}tfoot td{font-weight:800;background:#f7f2e4}@page{size:A4;margin:12mm}</style></head><body>${backBar()}
-      <h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — DUES LIST</h1><div class="s">${tower === "ALL" ? "All towers" : "Tower " + tower} • as on ${dmy(today())} • ${rows.length} flats</div>
+      <h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — DUES LIST</h1><div class="s">${esc(tower === "ALL" ? "All towers" : "Tower " + tower)} • as on ${dmy(today())} • ${rows.length} flats</div>
       <table><thead><tr><th>Flat</th><th>Owner</th><th>Mobile</th><th>Unpaid bills</th><th>Oldest due date</th><th class="r">Amount due ₹</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr><td><b>${label(r.f)}</b></td><td>${r.f.owner_name || ""}</td><td>${mobileOf(r.f.id) || ""}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>
+      ${rows.map((r) => `<tr><td><b>${esc(label(r.f))}</b></td><td>${esc(r.f.owner_name || "")}</td><td>${esc(mobileOf(r.f.id) || "")}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL</td><td class="r">${inr(total)}</td></tr></tfoot></table><script>setTimeout(()=>print(),400)</script></body></html>`);
     w.document.close();
   }

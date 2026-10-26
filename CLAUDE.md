@@ -35,6 +35,14 @@
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.
 
+## Before merging (security checklist, from the audit of 25 Oct 2026)
+1. Every value from the database printed into HTML (print windows, PDFs, `document.write`) goes through `esc()`.
+2. Uploaded files: the server sets the file type from the extension, never from the browser (`file.type`).
+3. A new table: RLS + rules + grants in the same script, AND added to `BACKUP_TABLES` (`lib/backup.ts`) and to the
+   restore function in a new `sql-security/` script (test `tests/restoreTables.test.ts` checks this).
+4. A new API action: who may call it (flat / committee / main admin) is checked on the server, not only by hiding a button.
+5. No keys or passwords in any file, including `.env.example`, old HTML and comments.
+
 ## Handover document (requested 21 Oct 2026 — prepare at project completion)
 - One-page technical document for the committee: services used (Vercel, Supabase, Cloudflare R2 + Workers AI, GitHub),
   and every Vercel environment variable: its NAME, what it is for, and where to get it (site + screen). Never the values.

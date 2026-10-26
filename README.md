@@ -11,11 +11,11 @@ Next.js 14 (App Router) · Supabase (database + login) · Cloudflare R2 (files) 
 Committee members log in with **email + password** using Supabase Auth.
 There are no built-in or hardcoded passwords.
 
-Add a committee member: Supabase → Authentication → Users → **Add user** → *Create new user* (tick *Auto Confirm User*).
+Committee logins are added only from ADMIN → committee logins in the app (this sets role = committee). Never create logins in the Supabase dashboard.
 Keep **Authentication → Sign In / Providers → "Allow new users to sign up" turned OFF**, otherwise anyone could create a login.
 
 ## Setup
-1. Run `SUPABASE_SETUP.sql` once in Supabase → SQL Editor (safe to re-run; deletes nothing).
+1. SQL scripts are run in the order they were added; security scripts are in `sql-security/`.
 2. Vercel → Settings → Environment Variables (see `.env.example` for names):
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or `..._ANON_KEY`),
    `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`
