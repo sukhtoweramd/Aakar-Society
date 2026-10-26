@@ -10,8 +10,10 @@ export async function pagesToPdf(pages: string[], css: string, fileName: string)
   try {
     const doc = frame.contentDocument!;
     doc.open();
-    doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>${css}
-      body{background:#fff!important;margin:0} .page{margin:0!important;box-shadow:none!important}</style></head><body>${pages.join("")}</body></html>`);
+    // same building background choice as the print bar (remembered on this device)
+    let bg = true; try { bg = localStorage.getItem("aakar_print_bg") !== "0"; } catch {}
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${window.location.origin}/"><style>${css}
+      body{background:#fff!important;margin:0} .page{margin:0!important;box-shadow:none!important}</style></head><body class="${bg ? "" : "nobg"}">${pages.join("")}</body></html>`);
     doc.close();
     // wait for images (signature, stamp) and fonts, but never hang
     const imgs = Array.from(doc.images).map((im) => (im.complete ? Promise.resolve() : new Promise<void>((r) => { im.onload = im.onerror = () => r(); })));

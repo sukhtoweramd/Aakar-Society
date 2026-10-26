@@ -149,19 +149,20 @@ const CSS = `@page{size:A4 portrait;margin:0}
 body{background:#e9e6dc;font-family:Inter,"Segoe UI","Noto Sans Gujarati","Nirmala UI",Shruti,Arial,sans-serif;color:var(--ink)}
 .page{position:relative;width:210mm;height:297mm;padding:9mm;background:#fff;break-after:page;overflow:hidden}.page:last-child{break-after:auto}
 .frame{height:100%;border:2.2mm solid var(--navy);padding:1.6mm;position:relative}
-.inner{height:100%;border:.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;background:radial-gradient(circle at 100% 0,rgba(184,147,42,.07),transparent 40%),#fff}
+.inner{height:100%;border:.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;background:radial-gradient(circle at 100% 0,rgba(184,147,42,.07),transparent 40%),#fff;isolation:isolate}
+.wm{position:absolute;left:50%;top:54%;width:158mm;max-height:205mm;object-fit:contain;transform:translate(-50%,-50%);z-index:-1;pointer-events:none}.nobg .wm{display:none}
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}.c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
 .head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:.6mm solid var(--navy)}
 .seal{width:17mm;height:17mm;border-radius:50%;border:.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}
 .soc{flex:1;min-width:0}.soc h1{font-weight:800;font-size:12.5pt;line-height:1.2;letter-spacing:.01em;color:var(--navy)}.soc .a{font-size:8.2pt;color:var(--mute);margin-top:1mm}
 .title{text-align:right;flex-shrink:0;max-width:72mm;margin-left:2mm}.title .t{font-size:8pt;letter-spacing:.2em;color:var(--gold);font-weight:700}.title .f{font-weight:800;font-size:18pt;color:var(--navy);line-height:1.25;white-space:nowrap}.title .f.long{font-size:14.5pt}.title .s{font-size:8pt;color:var(--mute);white-space:nowrap;margin-top:.8mm}.title .s b{color:var(--navy)}
 .meta{display:grid;grid-template-columns:1.3fr 1fr;gap:3.5mm;margin-top:4mm}
-.box{border:.3mm solid var(--line);padding:2.4mm 3.5mm;background:#fff}.box .lbl{font-size:6.6pt;letter-spacing:.16em;color:var(--gold);font-weight:700}
+.box{border:.3mm solid var(--line);padding:2.4mm 3.5mm;background:rgba(255,255,255,.72)}.box .lbl{font-size:6.6pt;letter-spacing:.16em;color:var(--gold);font-weight:700}
 .box .nm{font-size:13pt;font-weight:700;color:var(--navy);margin-top:.6mm}.box .ln{font-size:8.6pt;color:#3a372f;margin-top:.8mm;line-height:1.45}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:1mm 4mm;font-size:8.8pt;margin-top:1.4mm}.kv span{color:var(--mute)}.kv b{color:var(--navy)}
 table{width:100%;border-collapse:collapse;font-size:9pt;margin-top:4mm}
 th{background:var(--navy);color:#fff;text-align:left;font-weight:600;font-size:7.4pt;letter-spacing:.06em;padding:2mm 2.6mm}
-td{padding:2.3mm 2.6mm;border-bottom:.25mm solid var(--line);vertical-align:top}tr:nth-child(even) td{background:var(--cream)}
+td{padding:2.3mm 2.6mm;border-bottom:.25mm solid var(--line);vertical-align:top}tr:nth-child(even) td{background:rgba(251,247,236,.78)}
 .r{text-align:right;white-space:nowrap}td.n{font-weight:600;color:var(--navy)}td .sub{display:block;font-size:7.6pt;color:var(--mute);margin-top:.3mm;font-weight:400}
 tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:11pt;border:0}tr.mid td{background:#fff!important}
 .words{margin-top:2mm;font-size:8.6pt;color:#3a372f}.words b{color:var(--navy)}
@@ -183,7 +184,9 @@ tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:
 .bar{position:sticky;top:0;z-index:5;background:#0f1d3d;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}.bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
 @media screen{.page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.18)}}@media print{body{background:#fff}.bar{display:none}}`;
 
-const frameStart = `<section class="page"><div class="frame"><div class="inner"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
+// The society's building, faint, behind every letterhead page (as on the printed letterhead). Turn off in the print bar.
+const BG_IMG = `<img class="wm" src="/print/building-bg.jpg" alt="" aria-hidden="true">`;
+const frameStart = `<section class="page"><div class="frame"><div class="inner">${BG_IMG}<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
 const frameEnd = `</div></div></section>`;
 /** A generic framed A4 page with the society header (used for minutes and other documents). */
 export function docPage(kind: string, big: string, small: string, inner: string, footLeft: string, footRight = "") {
@@ -408,10 +411,17 @@ export function openPrint(title: string, pages: string[], win?: Window | null) {
   const w = win || window.open("", "_blank");
   if (!w) { alert("Please allow pop-ups to print."); return; }
   w.document.open();
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
-    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span></div>${pages.join("")}
-    <script>(function(){var done=false;function go(){if(done)return;done=true;document.body.dataset.ready='1';window.print()}
-      setTimeout(function(){(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(go,150)})},500);setTimeout(go,3000)})()</script></body></html>`);
+  // <base> so the building background (/print/building-bg.jpg) loads in this blank window; the tick in the bar turns it
+  // off (remembered on this device), e.g. to save ink when printing many bills.
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${esc(window.location.origin)}/"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
+    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Building background</label></div>${pages.join("")}
+    <script>(function(){var cb=document.getElementById('aakarBg'),on=true;try{on=localStorage.getItem('aakar_print_bg')!=='0'}catch(e){}
+      function set(v){cb.checked=v;document.body.classList.toggle('nobg',!v);try{localStorage.setItem('aakar_print_bg',v?'1':'0')}catch(e){}}
+      set(on);cb.onchange=function(){set(cb.checked)};
+      var done=false;function go(){if(done)return;done=true;document.body.dataset.ready='1';window.print()}
+      function imgs(){return Promise.all([].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r})}))}
+      setTimeout(function(){Promise.all([document.fonts&&document.fonts.ready?document.fonts.ready:0,imgs()]).then(function(){setTimeout(go,150)})},500);setTimeout(go,3500)})()</script></body></html>`);
   w.document.close(); w.focus();
 }
 export function preparingWindow(text = "Preparing…") {
