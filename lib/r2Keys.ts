@@ -88,3 +88,16 @@ export function folderAccess(folder: string, who: Who): FolderAccess {
 export function storedForms(key: string, publicBases: string[]): string[] {
   return Array.from(new Set([key, ...publicBases.filter(Boolean).map((b) => `${b.replace(/\/+$/, "")}/${key}`)]));
 }
+
+/**
+ * The only folder a row's file link may point into (audit L1, Oct 2026). A row the login can see vouches for a
+ * file only inside that folder, so a link copied from another folder (another flat's complaint photo, committee
+ * minutes, another event's papers) is not opened through it.
+ *   meetings: committee / AGM minutes → "minutes"; an event's minutes → "eventdocs/<event>"
+ *   event_money → "eventdocs/<event>";   complaints → "complaints/<flat of the complaint>"
+ */
+export function rowFolder(table: "meetings" | "event_money" | "complaints", row: { event_id?: string | null; flat_id?: string | null }): string | null {
+  if (table === "meetings") return row.event_id ? `eventdocs/${row.event_id}` : "minutes";
+  if (table === "event_money") return row.event_id ? `eventdocs/${row.event_id}` : null;
+  return row.flat_id ? `complaints/${row.flat_id}` : null;
+}

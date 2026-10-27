@@ -9,10 +9,15 @@ type LogRow = { id: number; at: string; actor: string; action: string; target: s
 
 const NAMES: Record<string, string> = { flats: "Flats", billing_settings: "Billing settings", signatories: "Signatories", events: "Events", notices: "Notices",
   maintenance: "Maintenance (old)", businesses: "Businesses", members: "Family members", emergency_contacts: "Emergency contacts", vehicles: "Vehicles",
-  flat_docs: "Document types", bills: "Bills", payments: "Receipts", letters: "Letters" };
+  flat_docs: "Document types", bills: "Bills", payments: "Receipts", letters: "Letters", payment_reports: "\"I have paid\" reports",
+  committee_areas: "Committee areas", amc_contracts: "AMC contracts", amc_visits: "AMC visits", meetings: "Meetings", meeting_actions: "Action points",
+  event_team: "Event teams", event_money: "Event accounts", event_registrations: "Event registrations", help_guide: "HELP guide",
+  complaints: "Complaints", nominees: "Nominees", nomination_status: "Nomination forms", booking_areas: "Booking areas", bookings: "Bookings",
+  letter_requests: "Letter requests" };
 const ACTIONS: Record<string, string> = { backup: "Backup taken", backup_downloaded: "Backup downloaded", restore: "RESTORE done", restore_failed: "Restore failed",
   login_removed: "Committee login removed", login_added: "Committee login added", password_reset: "Password reset",
-  deleted_bill: "Bill deleted", deleted_receipt: "Receipt deleted", deleted_letter: "Letter deleted", test_documents_cleared: "TEST DOCUMENTS CLEARED", go_live: "GO LIVE" };
+  deleted_bill: "Bill deleted", deleted_receipt: "Receipt deleted", deleted_letter: "Letter deleted", test_documents_cleared: "TEST DOCUMENTS CLEARED", go_live: "GO LIVE",
+  refused_add: "REFUSED: add login", refused_reset: "REFUSED: password reset", refused_link: "REFUSED: link flat" };
 const when = (s: string) => new Date(s).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const daysAgo = (s: string) => Math.floor((Date.now() - new Date(s).getTime()) / 864e5);
 

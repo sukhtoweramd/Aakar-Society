@@ -97,7 +97,7 @@ export default function BookingPanel({ mode, flats, flatId, isCommittee, onCount
                 {k === "waiting" ? "WAITING" : k === "upcoming" ? "CONFIRMED" : "PAST / OTHER"} <span className="opacity-70">{lists[k].length}</span></button>))}
             <button onClick={print} className="btn-line px-3 py-2 ml-auto">PRINT LIST</button>
           </div>
-          <div className="mt-2 text-[11px] opacity-70">{canApprove ? "You can approve: the Chairman or the Secretary approves; either one is enough." : "Only the Chairman or the Secretary can approve. You can see and cancel bookings."}</div>
+          <div className="mt-2 text-[11px] opacity-70">{canApprove ? "You can approve: the Chairman or the Secretary approves; either one is enough." : "Only the Chairman or the Secretary approves, from their own committee login. You can see and cancel bookings."}</div>
         </div>
         {err && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[12px]">{err}</div>}
         {shown.length ? <div className="grid gap-3 lg:grid-cols-2">{shown.map((g) => card(g, { approve: canApprove, cancel: (g.status === "pending" || g.status === "approved"), wa: true }))}</div>

@@ -74,6 +74,12 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const tenantReady = "occupancy" in f; // TENANTS.sql has been run
   const rented = isRented(f);
   const lockOwner = !isCommittee && rented; // a tenant can't change the owner's details
+  // Fill once (sql-security/05): a member can fill an empty name; once filled, only the committee changes it.
+  // Owner / tenant is changed by the committee only (it decides whose family is listed).
+  const filledIn = (v: any) => !!String(v ?? "").trim();
+  const lockOcc = !isCommittee;
+  const lockName = !isCommittee && (rented || filledIn(f.owner_name));
+  const lockTenantName = !isCommittee && filledIn(f.tenant_name);
   const agreementOver = rented && !!f.agreement_until && new Date(f.agreement_until) < new Date(new Date().toDateString());
   const vaultDocs = VAULT_SLOTS.map((s) => ({ ...s, file: vault.find((v) => v.key.startsWith(`vault/${s.id}.`)) })).filter((s) => s.file);
 
@@ -92,6 +98,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         agreement_until: t ? form.agreement_until || null : null,
       });
       if (lockOwner) { delete personal.owner_name; delete personal.email; delete personal.owner_mobile; delete personal.owner_address; delete personal.occupancy; }
+      if (lockOcc) delete personal.occupancy;
+      if (lockTenantName) delete personal.tenant_name;
       // Owner-occupied -> rented out: the owner's family no longer lives here.
       if (t && !rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
@@ -109,6 +117,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         if ("directory_consent" in f!) personal.directory_consent = false;
       }
     }
+    if (lockName) delete personal.owner_name;
     if (!isCommittee) {
       const { error } = await supabase.from("flats").update(personal).eq("id", f!.id);
       setBusy(null);
@@ -252,22 +261,23 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                 WHO LIVES IN THIS FLAT?
                 <div className="flex flex-wrap gap-4 mt-1">
                   {(["owner", "tenant"] as const).map((o) => (
-                    <label key={o} className={`flex items-center gap-2 border px-3 py-2 cursor-pointer ${(form.occupancy || "owner") === o ? "border-[var(--navy)] bg-white font-bold" : "border-[var(--border)]"} ${lockOwner ? "opacity-60 cursor-not-allowed" : ""}`}>
-                      <input type="radio" name="occ" disabled={lockOwner} checked={(form.occupancy || "owner") === o} onChange={() => setForm({ ...form, occupancy: o })} />
+                    <label key={o} className={`flex items-center gap-2 border px-3 py-2 cursor-pointer ${(form.occupancy || "owner") === o ? "border-[var(--navy)] bg-white font-bold" : "border-[var(--border)]"} ${lockOwner || lockOcc ? "opacity-60 cursor-not-allowed" : ""}`}>
+                      <input type="radio" name="occ" disabled={lockOwner || lockOcc} checked={(form.occupancy || "owner") === o} onChange={() => setForm({ ...form, occupancy: o })} />
                       {o === "owner" ? "Owner lives here" : "Given on rent (tenant lives here)"}
                     </label>
                   ))}
                 </div>
+                {lockOcc && <div className="mt-1 opacity-70">Only the committee can change this. Tell the committee when the flat is given on rent or the tenant leaves.</div>}
               </div>
             )}
             {form.occupancy === "tenant" && <>
               <div className="sm:col-span-2 lg:col-span-4 text-[10px] tracking-[0.14em] opacity-60 border-t border-[var(--border)] pt-2">TENANT • the family list below will be the tenant&apos;s family</div>
-              <label className="sm:col-span-2">TENANT NAME *<input className="field mt-1" value={form.tenant_name || ""} onChange={(e) => setForm({ ...form, tenant_name: e.target.value })} /></label>
+              <label className="sm:col-span-2">TENANT NAME *{lockTenantName && <span className="opacity-60"> • only the committee can change it</span>}<input className="field mt-1" disabled={lockTenantName} value={form.tenant_name || ""} onChange={(e) => setForm({ ...form, tenant_name: e.target.value })} /></label>
               <label>LIVING HERE FROM<input className="field mt-1" type="date" value={form.tenant_from || ""} onChange={(e) => setForm({ ...form, tenant_from: e.target.value })} /></label>
               <label>RENT AGREEMENT UNTIL<input className="field mt-1" type="date" value={form.agreement_until || ""} onChange={(e) => setForm({ ...form, agreement_until: e.target.value })} /></label>
               <div className="sm:col-span-2 lg:col-span-4 text-[10px] tracking-[0.14em] opacity-60 border-t border-[var(--border)] pt-2">OWNER (does not live here){lockOwner ? " • only the committee can change these" : ""}</div>
             </>}
-            <label className="sm:col-span-2">OWNER NAME<input className="field mt-1" disabled={lockOwner} value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
+            <label className="sm:col-span-2">OWNER NAME{lockName && !lockOwner && <span className="opacity-60"> • only the committee can change it</span>}<input className="field mt-1" disabled={lockName} value={form.owner_name || ""} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
             <label className="sm:col-span-2">OWNER EMAIL<input className="field mt-1" type="email" disabled={lockOwner} value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
             {tenantReady && form.occupancy === "tenant" && <>
               <label>OWNER MOBILE<input className="field mt-1" disabled={lockOwner} value={form.owner_mobile || ""} onChange={(e) => setForm({ ...form, owner_mobile: e.target.value })} /></label>

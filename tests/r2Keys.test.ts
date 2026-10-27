@@ -2,7 +2,7 @@
 // keep flat documents, AMC and committee papers away from other logins. Sample addresses only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { folderAccess, folderOfKey, parseFileRef, storedForms } from "../lib/r2Keys";
+import { folderAccess, folderOfKey, parseFileRef, rowFolder, storedForms } from "../lib/r2Keys";
 
 const BASE = "https://pub-sample.r2.dev";
 const committee = { isCommittee: true, flatId: null };
@@ -49,4 +49,19 @@ test("who may open which folder", () => {
 
 test("stored forms cover key and public address", () => {
   assert.deepEqual(storedForms("minutes/1_x.pdf", [BASE + "/"]), ["minutes/1_x.pdf", `${BASE}/minutes/1_x.pdf`]);
+});
+
+// Audit L1: a row vouches for a file only inside its own folder.
+test("rowFolder ties a row's file link to its own folder", () => {
+  const ev = "11111111-2222-3333-4444-555555555555";
+  assert.equal(rowFolder("meetings", { event_id: null }), "minutes");
+  assert.equal(rowFolder("meetings", { event_id: ev }), `eventdocs/${ev}`);
+  assert.equal(rowFolder("event_money", { event_id: ev }), `eventdocs/${ev}`);
+  assert.equal(rowFolder("event_money", {}), null);
+  assert.equal(rowFolder("complaints", { flat_id: "A503" }), "complaints/A503");
+  assert.equal(rowFolder("complaints", { flat_id: null }), null);
+  // a complaint of A503 holding B201's photo key does not open it
+  assert.notEqual(rowFolder("complaints", { flat_id: "A503" }), folderOfKey("complaints/B201/1729_x.jpg"));
+  // committee minutes are not opened through an event entry
+  assert.notEqual(rowFolder("event_money", { event_id: ev }), folderOfKey("minutes/1729_agm.pdf"));
 });
