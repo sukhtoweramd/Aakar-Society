@@ -14,6 +14,10 @@
 - New committee logins get the role from ADMIN → committee logins (`/api/committee`); never create logins in the
   Supabase dashboard without setting the role. Public sign-up and anonymous sign-in stay OFF.
 - Security changes go in `sql-security/` as numbered scripts, each with a check and an `_UNDO`.
+- Flat row (`flats`) for a flat login is an allow-list (`sql-security/05`, "fill once"): mobile, email, address, tenant dates and
+  directory consent any time; owner / tenant name only while empty; everything else (incl. occupancy and any new column)
+  committee only. A new member-editable column must be added to the guard's list on purpose.
+- Bookings are approved only by a committee login linked to the flat marked exactly "Chairman" or "Secretary".
 
 ## Files in R2 (Oct 2026)
 - Screens never show a file by its public R2 address. They ask `POST /api/file/link` (login checked) for a short-lived

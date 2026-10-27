@@ -39,6 +39,9 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 ## MY FLAT in detail
 - Top of the page: flat number, tower, floor, type, owner, and QUICK ACTIONS: VIEW FLOOR, PRINT MY CARD (a one-page flat profile card), EDIT MY DETAILS, MY LEDGER ↓, MY VEHICLES ↓, MY LETTERS ↓, WHO TO CONTACT ↓, COMPLAINTS ↓, BOOK COMMON PLOT ↓, NOMINEE ↓ (the ↓ buttons jump down the page to that section).
 - **EDIT MY DETAILS**: update your flat's details shown on the page (such as contact details), then SAVE TO LEDGER.
+  - You can change your mobile, email and address any time.
+  - If the owner name (or tenant name) is empty, you can fill it in once. After that only the committee can change it, because it is printed on bills and letters. Ask the committee if it is wrong.
+  - Owner / tenant (who lives in the flat) is changed by the committee. Tell the committee when the flat is given on rent or the tenant leaves.
 - **FAMILY MEMBERS**: the people living in the flat. + ADD MEMBER to add someone, Edit to change, then SAVE MEMBER. Each member can have a Profession / Business (shown in the BUSINESS directory).
 - **VEHICLES**: + ADD VEHICLE with type and number (for example GJ 01 AB 1234).
 - **EMERGENCY CONTACTS**: + ADD CONTACT for people outside the society to call if something happens. Seen only by your flat and the committee. Please add at least one.
@@ -70,10 +73,10 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
   2. TIME: MORNING or EVENING.
   3. AREA: tick one or more. Areas already booked or requested for that date and time are greyed out, with the flat number. SELECT ALL FREE AREAS ticks every free area.
   4. PURPOSE (optional), then SEND REQUEST.
-- The request goes to the **Chairman and the Secretary**; approval by either one is enough. MY BOOKINGS shows WAITING FOR APPROVAL, then **CONFIRMED**, or NOT APPROVED with the reason.
+- The request goes to the **Chairman and the Secretary**; approval by either one is enough (they approve from their own committee login). MY BOOKINGS shows WAITING FOR APPROVAL, then **CONFIRMED**, or NOT APPROVED with the reason.
 - When a booking is confirmed, the app posts a notice and a login banner for everyone: "<area> is booked by Flat … on … (morning/evening). Please remove vehicles parked in <area>." If all three areas are booked: "All vehicles should be parked outside the premises."
 - **Cancel**: MY BOOKINGS → CANCEL BOOKING, up to the day before. On the day itself, ask the committee. The notice then shows CANCELLED and the banner goes off.
-- Chairman / Secretary: requests appear in your MY FLAT under REQUESTS TO APPROVE, and in COMMITTEE → **BOOKINGS** (WAITING, CONFIRMED, PAST). APPROVE ✓, or NOT APPROVE with a reason. 📲 SHARE NOTICE sends the notice text to the society WhatsApp group; PRINT LIST prints confirmed bookings (for the security guard).
+- Chairman / Secretary: log in with your committee (email) login. Requests appear in your MY FLAT under REQUESTS TO APPROVE, and in COMMITTEE → **BOOKINGS** (WAITING, CONFIRMED, PAST). APPROVE ✓, or NOT APPROVE with a reason. 📲 SHARE NOTICE sends the notice text to the society WhatsApp group; PRINT LIST prints confirmed bookings (for the security guard).
 
 ## Nominee
 - MY FLAT → **NOMINEE ↓** → **+ ADD NOMINEE**: the person(s) the flat's share and interest go to. The nominee need not live in the society.

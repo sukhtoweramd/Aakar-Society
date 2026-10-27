@@ -5,7 +5,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Authed } from "./serverAuth";
 import { getR2Signer } from "./r2Client";
-import { folderAccess, parseFileRef, storedForms } from "./r2Keys";
+import { folderAccess, parseFileRef, rowFolder, storedForms } from "./r2Keys";
 
 /** How long a link works. Pictures and file lists: 10 minutes. A file opened with a click: 2 minutes. */
 export const SHOW_SECONDS = 600;
@@ -36,15 +36,23 @@ async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<bo
   return memo.get(eventId)!;
 }
 
+/** stored link → the folders it may open (a link counts only inside the folder of the row that holds it). */
+type Seen = Map<string, Set<string>>;
+const addSeen = (seen: Seen, link: any, folder: string | null) => {
+  if (!link || !folder) return;
+  const k = String(link);
+  if (!seen.has(k)) seen.set(k, new Set());
+  seen.get(k)!.add(folder);
+};
+
 /** Rows this login can see (through its own database rules) that carry one of these stored links. */
-async function visibleLinks(me: Me, table: string, forms: string[], column = "file_url"): Promise<Set<string>> {
-  const seen = new Set<string>();
+async function visibleLinks(me: Me, table: "meetings" | "event_money" | "complaints", forms: string[], seen: Seen, column = "file_url") {
+  const extra = table === "complaints" ? "flat_id" : "event_id";
   for (let i = 0; i < forms.length; i += 30) {
-    const { data, error } = await me.db.from(table).select(column).in(column, forms.slice(i, i + 30));
+    const { data, error } = await me.db.from(table).select(`${column}, ${extra}`).in(column, forms.slice(i, i + 30));
     if (error) continue;   // table not set up yet: nothing visible through it
-    for (const r of (data as any[]) || []) if (r[column]) seen.add(String(r[column]));
+    for (const r of (data as any[]) || []) addSeen(seen, r[column], rowFolder(table, r));
   }
-  return seen;
 }
 
 /** Of these keys, the ones this login may open. */
@@ -63,17 +71,18 @@ export async function allowedKeys(me: Me, items: { key: string; folder: string }
     const formsOf = (k: string) => storedForms(k, bases);
     const minutesForms = needRecord.flatMap((it) => formsOf(it.key));
     const eventForms = needRecord.filter((it) => it.folder.startsWith("eventdocs/")).flatMap((it) => formsOf(it.key));
-    const seen = await visibleLinks(me, "meetings", minutesForms);          // signed minutes (final AGM / SGM, own event's minutes…)
+    const seen: Seen = new Map();
+    await visibleLinks(me, "meetings", minutesForms, seen);                 // signed minutes (final AGM / SGM, own event's minutes…)
     // committee meeting minutes listed to a committee member's own flat login (NOTICES → Committee meeting minutes):
     // that list comes from my_committee_meetings(), so its signed copies must open too
     if (needRecord.some((it) => it.folder === "minutes") && !me.isCommittee) {
       const { data, error } = await me.db.rpc("my_committee_meetings");
-      if (!error) for (const m of (data as any[]) || []) if (m?.file_url) seen.add(String(m.file_url));
+      if (!error) for (const m of (data as any[]) || []) addSeen(seen, m?.file_url, rowFolder("meetings", m || {}));
     }
-    if (eventForms.length) (await visibleLinks(me, "event_money", eventForms)).forEach((f) => seen.add(f));   // event bills, when shown to members
+    if (eventForms.length) await visibleLinks(me, "event_money", eventForms, seen);   // event bills, when shown to members
     const complaintForms = needRecord.filter((it) => it.folder.startsWith("complaints/")).flatMap((it) => formsOf(it.key));
-    if (complaintForms.length) (await visibleLinks(me, "complaints", complaintForms, "photo_key")).forEach((f) => seen.add(f));   // photo of a complaint assigned to this flat
-    for (const it of needRecord) if (formsOf(it.key).some((f) => seen.has(f))) ok.add(it.key);
+    if (complaintForms.length) await visibleLinks(me, "complaints", complaintForms, seen, "photo_key");   // photo of a complaint assigned to this flat
+    for (const it of needRecord) if (formsOf(it.key).some((f) => seen.get(f)?.has(it.folder))) ok.add(it.key);
   }
   return ok;
 }
