@@ -1,7 +1,7 @@
 // Gate scanning: ATTENDED adds up the people let in per meal and per pass (sample data only).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { attended } from "../lib/eventReg";
+import { attended } from "../lib/gateCount";
 
 test("attended sums entries per session and per registration", () => {
   const k = (reg_id: string, session_id: string, people: number) => ({ id: `${reg_id}${session_id}${people}`, event_id: "e", reg_id, flat_id: "A101", session_id, people, scanned_by: null, created_at: "" });

@@ -108,7 +108,8 @@ function wrap(g: CanvasRenderingContext2D, text: string, x: number, y: number, m
 }
 
 // ---------- gate scanning (EVENT_CHECKINS.sql) ----------
-export type Checkin = { id: string; event_id: string; reg_id: string; flat_id: string; session_id: string; people: number; scanned_by: string | null; created_at: string };
+import { attended, type Checkin } from "./gateCount";
+export { attended, type Checkin };
 export type GateResult = { reg_id: string; flat_id: string; session_id: string; session: string; allowed: number; used: number; left: number; paid: boolean; last_at: string | null; entered: number };
 /** null = gate scanning not set up yet (run EVENT_CHECKINS.sql) */
 export async function loadCheckins(eventId: string): Promise<Checkin[] | null> {
@@ -119,12 +120,6 @@ export async function loadCheckins(eventId: string): Promise<Checkin[] | null> {
 /** Look at a pass (people omitted) or let people in. Errors come back as readable messages from the database. */
 export const gatePass = (code: string, people?: number) => rpc("gate_pass", { p_code: code, p_people: people ?? null }) as Promise<GateResult>;
 export const gateUndo = (id: string) => rpc("gate_undo", { p_id: id });
-/** How many have come in: per session, and per registration + session. */
-export function attended(checkins: Checkin[] | null | undefined) {
-  const bySession: Record<string, number> = {}, byReg: Record<string, number> = {};
-  (checkins || []).forEach((k) => { bySession[k.session_id] = (bySession[k.session_id] || 0) + k.people; byReg[`${k.reg_id}|${k.session_id}`] = (byReg[`${k.reg_id}|${k.session_id}`] || 0) + k.people; });
-  return { bySession, byReg };
-}
 
 // ---------- printout for the caterer / team ----------
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
