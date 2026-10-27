@@ -1,9 +1,10 @@
 -- 04 · Restore brings back every table in the backup   (Aakar security fixes, audit M3, Oct 2026)
 -- Backups (lib/backup.ts) already contain complaints, nominees, nomination_status, booking_areas and bookings,
 -- but restore_society_backup() did not restore them: after a restore those tables kept today's rows instead of
--- the backup's. This adds them to the end of the restore list (booking_areas before bookings) and switches off
--- two triggers while restoring, so complaint numbers / status and the nomination status come back as in the
--- backup. No data is changed by running this script. Safe to re-run.
+-- the backup's. This adds them to the end of the restore list (booking_areas before bookings), plus
+-- letter_requests (LETTER_REQUESTS.sql; skipped if that table does not exist yet), and switches off three
+-- triggers while restoring, so complaint numbers / status, the nomination status and letter request status come
+-- back as in the backup. No data is changed by running this script. Safe to re-run.
 -- Run only after the matching app update is live. Test a restore on test data first.
 -- Undo: 04_UNDO.sql (the function exactly as after script 03).
 
@@ -13,7 +14,7 @@ declare
   ins text[] := array['flats','billing_settings','signatories','events','notices','maintenance','businesses',
                       'members','emergency_contacts','vehicles','flat_docs','bills','payments','letters','payment_reports','committee_areas','amc_contracts','amc_visits','meetings','meeting_actions',
                       'event_team','event_money','event_registrations','help_guide',
-                      'complaints','nominees','nomination_status','booking_areas','bookings'];
+                      'complaints','nominees','nomination_status','booking_areas','bookings','letter_requests'];
   t text; i int; cols text; n int; seq text; col record; result jsonb := '{}'::jsonb;
 begin
   if p is null or p->>'app' is distinct from 'aakar-society' or jsonb_typeof(p->'tables') <> 'object' then
@@ -22,13 +23,14 @@ begin
   if not (p->'tables' ? 'flats') or jsonb_array_length(p->'tables'->'flats') = 0 then
     raise exception 'The backup has no flats; restore stopped.';
   end if;
-  -- Two triggers would change restored rows: complaint_before_insert gives every complaint a new number, status
+  -- Three triggers would change restored rows: complaint_before_insert gives every complaint a new number, status
   -- and dates; nominees_changed writes nomination_status rows (on delete and on insert), which would clash with the
-  -- backup's own nomination_status rows. Switch them off for this restore only. ALTER TABLE is part of this
+  -- backup's own nomination_status rows; letter_request_before_insert resets every request to "requested". Switch them off for this restore only. ALTER TABLE is part of this
   -- transaction, so if the restore fails everything, including the switch-off, is rolled back.
   begin
   if to_regclass('public.complaints') is not null then alter table public.complaints disable trigger complaint_before_insert; end if;
   if to_regclass('public.nominees') is not null then alter table public.nominees disable trigger nominees_changed; end if;
+  if to_regclass('public.letter_requests') is not null then alter table public.letter_requests disable trigger letter_request_before_insert; end if;
   for i in reverse array_length(ins, 1)..1 loop
     t := ins[i];
     if to_regclass('public.' || t) is not null and (p->'tables') ? t then
@@ -56,10 +58,12 @@ begin
   end loop;
   if to_regclass('public.complaints') is not null then alter table public.complaints enable trigger complaint_before_insert; end if;
   if to_regclass('public.nominees') is not null then alter table public.nominees enable trigger nominees_changed; end if;
+  if to_regclass('public.letter_requests') is not null then alter table public.letter_requests enable trigger letter_request_before_insert; end if;
   exception when others then
     -- never leave the triggers off (the rollback already undoes the switch-off; this is belt and braces)
     if to_regclass('public.complaints') is not null then alter table public.complaints enable trigger complaint_before_insert; end if;
     if to_regclass('public.nominees') is not null then alter table public.nominees enable trigger nominees_changed; end if;
+    if to_regclass('public.letter_requests') is not null then alter table public.letter_requests enable trigger letter_request_before_insert; end if;
     raise;
   end;
   return result;
@@ -69,10 +73,10 @@ grant execute on function public.restore_society_backup(jsonb) to service_role;
 
 -- Check: every row should be true
 select t as item, (pg_get_functiondef('public.restore_society_backup(jsonb)'::regprocedure) like '%''' || t || '''%')::text as value
-from unnest(array['help_guide','complaints','nominees','nomination_status','booking_areas','bookings']) t
+from unnest(array['help_guide','complaints','nominees','nomination_status','booking_areas','bookings','letter_requests']) t
 union all
 select 'only the server can run it', (not has_function_privilege('authenticated', 'public.restore_society_backup(jsonb)', 'execute')
   and not has_function_privilege('anon', 'public.restore_society_backup(jsonb)', 'execute'))::text
 union all
 select 'triggers switched on', (select bool_and(tgenabled <> 'D') from pg_trigger
-  where tgname in ('complaint_before_insert', 'nominees_changed') and not tgisinternal)::text;
+  where tgname in ('complaint_before_insert', 'nominees_changed', 'letter_request_before_insert') and not tgisinternal)::text;
