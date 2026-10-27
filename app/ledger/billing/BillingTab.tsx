@@ -13,8 +13,9 @@ import BillingSettings from "./BillingSettings";
 import { backBar } from "@/lib/printBack";
 import VerifyPayments from "./VerifyPayments";
 import { loadReports, type PayReport } from "@/lib/payReports";
+import LettersRegister from "./LettersRegister";
 
-const VIEWS = ["LEDGER", "VERIFY PAYMENTS", "NEW BILLS", "OTHER BILL", "DUES", "SETTINGS"] as const;
+const VIEWS = ["LEDGER", "VERIFY PAYMENTS", "NEW BILLS", "OTHER BILL", "DUES", "LETTERS", "SETTINGS"] as const;
 type View = (typeof VIEWS)[number];
 
 export default function BillingTab({ ctx }: { ctx: Ctx }) {
@@ -26,11 +27,13 @@ export default function BillingTab({ ctx }: { ctx: Ctx }) {
   const [pays, setPays] = useState<Payment[]>([]);
   const [members, setMembers] = useState<MemberLite[]>([]);
   const [reports, setReports] = useState<PayReport[] | null>(null);
+  const [letterReqs, setLetterReqs] = useState(0);   // letters members asked for, waiting to be issued
   const [ready, setReady] = useState<boolean | null>(null);
   const [flatId, setFlatId] = useState<string>(ctx.selectedId || flats[0]?.id || "");
 
   async function load() {
     loadReports().then(setReports);
+    supabase.from("letter_requests").select("id", { count: "exact", head: true }).eq("status", "requested").then(({ count, error }) => setLetterReqs(error ? 0 : count || 0));
     const [s, sg, b, p, m] = await Promise.all([
       loadSettings(), loadSignatories(),
       supabase.from("bills").select("*").order("bill_date"), supabase.from("payments").select("*").order("paid_on"),
@@ -61,7 +64,7 @@ export default function BillingTab({ ctx }: { ctx: Ctx }) {
           <div className="mono text-[11px] opacity-60">Billed ₹{inr(totals.billed)} • Received ₹{inr(totals.received)} • Outstanding <b className="text-amber-700">₹{inr(totals.due)}</b> in {dueFlats} flats</div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {VIEWS.filter((v) => v !== "VERIFY PAYMENTS" || reports !== null).map((v) => { const n = v === "VERIFY PAYMENTS" ? (reports || []).filter((r) => r.status === "pending").length : 0; return (
+          {VIEWS.filter((v) => v !== "VERIFY PAYMENTS" || reports !== null).map((v) => { const n = v === "VERIFY PAYMENTS" ? (reports || []).filter((r) => r.status === "pending").length : v === "LETTERS" ? letterReqs : 0; return (
             <button key={v} onClick={() => setView(v)} className={`mono text-[11px] font-bold tracking-[0.06em] px-3 py-2 border rounded-[3px] ${view === v ? "bg-[var(--navy)] text-white border-[var(--navy)]" : n ? "bg-[#fffbea] border-[var(--gold)]" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)]"}`}>
               {v}{n > 0 && <span className="ml-1.5 inline-block min-w-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">{n}</span>}</button>); })}
         </div>
@@ -81,6 +84,7 @@ export default function BillingTab({ ctx }: { ctx: Ctx }) {
       {view === "NEW BILLS" && <BillRun ctx={ctx} flats={flats} bills={bills} settings={settings} signatories={signatories} pc={pc} pays={pays} onDone={load} />}
       {view === "OTHER BILL" && <OtherBill ctx={ctx} flats={flats} settings={settings} signatories={signatories} pc={pc} pays={pays} bills={bills} onDone={load} />}
       {view === "DUES" && <Dues flats={flats} bills={bills} pays={pays} mobileOf={mobileOf} open={openLedger} pc={pc} />}
+      {view === "LETTERS" && <LettersRegister flats={flats} pc={pc} email={ctx.email} onCount={setLetterReqs} openFlat={(id) => { ctx.selectFlat(id); ctx.go("DETAIL"); setTimeout(() => document.getElementById("sec-letters")?.scrollIntoView({ behavior: "smooth" }), 600); }} />}
       {view === "SETTINGS" && <BillingSettings settings={settings} signatories={signatories} email={ctx.email} onChanged={load} />}
     </div>
   );

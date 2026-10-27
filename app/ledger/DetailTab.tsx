@@ -10,6 +10,7 @@ import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
 import { printFlatCards } from "@/lib/flatCard";
 import MyBills from "./billing/MyBills";
 import LettersPanel from "./billing/LettersPanel";
+import LetterRequestPanel from "./billing/LetterRequestPanel";
 import WhoToContact, { useContacts } from "./WhoToContact";
 import MyActionPoints from "./MyActionPoints";
 import ComplaintsPanel from "./ComplaintsPanel";
@@ -222,13 +223,14 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           <div className="flex gap-2 flex-wrap items-start">
             {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
             {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
+            {isCommittee && <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">LETTERS / ISSUE LETTER ↓</button>}
             <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
             <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] px-3 py-2">{isCommittee && f.id !== ctx.homeFlat ? "PRINT CARD" : "PRINT MY CARD"}</button>
             <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
             {!isCommittee && <>
               <button onClick={() => jump("sec-ledger", "No bills have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LEDGER ↓</button>
               <button onClick={() => jump("sec-vehicles", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY VEHICLES ↓</button>
-              <button onClick={() => jump("sec-letters", "No letters have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS ↓</button>
+              <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS / REQUEST ↓</button>
               <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
               <button onClick={() => jump("sec-complaints", "Complaints are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">COMPLAINTS ↓</button>
               <button onClick={() => jump("sec-booking", "Bookings are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">BOOK COMMON PLOT ↓</button>
@@ -487,7 +489,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
         {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
-        <div id="sec-letters" className="mt-6 scroll-mt-28"><LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
+        <div id="sec-letters" className="mt-6 scroll-mt-28">{!isCommittee && <LetterRequestPanel flatId={f.id} />}<LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
         {!isCommittee && <div id="sec-contacts" className="scroll-mt-28">{contacts.length > 0 && <WhoToContact flats={flats} isCommittee={false} areas={contacts} className="mt-6 bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5" />}</div>}
       </div>
     </div>
