@@ -249,10 +249,6 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         </div>
         {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
         {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
-        {(!isCommittee || f.id === ctx.homeFlat) && <MyActionPoints key={f.id} flats={flats} />}
-        {(!isCommittee || f.id === ctx.homeFlat) && <ComplaintsPanel key={`c-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
-        {(!isCommittee || f.id === ctx.homeFlat) && <BookingPanel key={`b-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
-        {(isCommittee || !rented) && <NomineePanel key={`n-${f.id}`} flat={f} isCommittee={isCommittee} email={ctx.email} />}
 
         {editing && (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
@@ -501,6 +497,11 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
         {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
         <div id="sec-letters" className="mt-6 scroll-mt-28">{!isCommittee && <LetterRequestPanel flatId={f.id} />}<LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
         {!isCommittee && <div id="sec-contacts" className="scroll-mt-28">{contacts.length > 0 && <WhoToContact flats={flats} isCommittee={false} areas={contacts} className="mt-6 bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5" />}</div>}
+        {/* Below the flat's own details, in the order of the quick buttons (27 Oct 2026): owner and family come first. */}
+        {(!isCommittee || f.id === ctx.homeFlat) && <ComplaintsPanel key={`c-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
+        {(!isCommittee || f.id === ctx.homeFlat) && <BookingPanel key={`b-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
+        {(isCommittee || !rented) && <NomineePanel key={`n-${f.id}`} flat={f} isCommittee={isCommittee} email={ctx.email} />}
+        {(!isCommittee || f.id === ctx.homeFlat) && <MyActionPoints key={f.id} flats={flats} />}
       </div>
     </div>
   );
