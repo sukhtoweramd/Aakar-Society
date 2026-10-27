@@ -33,7 +33,8 @@ Installable on phones (PWA). Built for phones first: most members use it on mobi
 
 ## Setup
 1. Run the SQL scripts in the Supabase SQL Editor, in the order they were added (each is safe to re-run and ends with a
-   check). The old `SUPABASE_SETUP.sql` was removed (security audit, Oct 2026): it gave every login full access. Added 25 Oct 2026: `MEMBER_SCREENS.sql`, `COMPLAINTS.sql`, `NOMINEES.sql`, `BOOKINGS.sql`.
+   check). The old `SUPABASE_SETUP.sql` was removed (security audit, Oct 2026): it gave every login full access.
+   Added 25 Oct 2026: `MEMBER_SCREENS.sql`, `COMPLAINTS.sql`, `NOMINEES.sql`, `BOOKINGS.sql`.
    Security scripts are in `sql-security/` (numbered, each with an `_UNDO`).
 2. Vercel → Settings → Environment Variables: the list (names only) is in `CLAUDE.md` → Handover document.
 3. Never commit real keys or residents' data to this repo – it is public.
