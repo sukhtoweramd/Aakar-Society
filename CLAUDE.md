@@ -17,6 +17,7 @@
 - Flat row (`flats`) for a flat login is an allow-list (`sql-security/05`, "fill once"): mobile, email, address, tenant dates and
   directory consent any time; owner / tenant name only while empty; everything else (incl. occupancy and any new column)
   committee only. A new member-editable column must be added to the guard's list on purpose.
+- Head of family (`members.is_head`) is fill-once for flat logins too (`sql-security/06`): name, head flag and removal by committee only.
 - Bookings are approved only by a committee login linked to the flat marked exactly "Chairman" or "Secretary".
 
 ## Files in R2 (Oct 2026)

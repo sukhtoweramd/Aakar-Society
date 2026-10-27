@@ -23,7 +23,7 @@ const toRow = (f: Form) => ({
   office_address: f.office_address.trim() || null, office_phone: f.office_phone.trim() || null,
 });
 
-export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false }: { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean }) {
+export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false, lockHead = false }: { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean; lockHead?: boolean }) {
   const who = tenant ? "Tenant" : "Owner";
   const [members, setMembers] = useState<Member[]>([]);
   const [editId, setEditId] = useState<string | "new" | null>(null);
@@ -64,6 +64,12 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   }
 
   const set = (k: keyof Form, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  // Head of family (sql-security/06, 27 Oct 2026): for a flat login, once the head's name is filled in only the
+  // committee can change it, remove the head or make someone else head. Other family members stay editable.
+  const head = members.find((m) => m.is_head);
+  const headLocked = (m?: Member | null) => lockHead && !!m?.is_head && !!(m.name || "").trim();
+  const editingHead = editId !== "new" && headLocked(members.find((m) => m.id === editId));
+  const headBoxLocked = lockHead && (editingHead || (!!head && head.id !== editId));
   // "BHUPESH D MEHTA & HINA B MEHTA" -> first owner "BHUPESH D MEHTA"
   const firstOwner = (ownerName || "").split(/\s*(?:&|,|\band\b)\s*/i)[0].trim();
   const ownerMissing = !!firstOwner && !members.some((m) => m.is_head || (m.name || "").trim().toLowerCase() === firstOwner.toLowerCase());
@@ -72,12 +78,13 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
       <div>
         <div className="text-[10px] tracking-[0.14em] opacity-60 mb-1">PERSONAL</div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          <input className="field" placeholder="Full name *" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          <input className="field" placeholder="Full name *" disabled={editingHead} title={editingHead ? "Only the committee can change the head of family's name" : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} />
           <input className="field" placeholder="Relation (Self, Wife, Son…)" value={form.relation} onChange={(e) => set("relation", e.target.value)} />
           <input className="field" type="number" placeholder="Age" value={form.age} onChange={(e) => set("age", e.target.value)} />
           <input className="field" placeholder="Mobile" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
           <input className="field" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          <label className="flex items-center gap-2 px-1"><input type="checkbox" checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / {who}</label>
+          <label className="flex items-center gap-2 px-1"><input type="checkbox" disabled={headBoxLocked} checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / {who}</label>
+          {headBoxLocked && <div className="sm:col-span-2 lg:col-span-3 px-1 opacity-70">The head of family{editingHead ? "'s name" : ""} can be changed only by the committee.</div>}
         </div>
       </div>
       <div>
@@ -132,7 +139,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
               </div>
               <div className="flex gap-3 shrink-0 mono text-[10px]">
                 <button onClick={() => { setForm(toForm(m)); setEditId(m.id); }} className="underline">Edit</button>
-                <button onClick={() => remove(m)} className="text-red-600">✕</button>
+                {!headLocked(m) && <button onClick={() => remove(m)} className="text-red-600">✕</button>}
               </div>
             </div>
           </div>
