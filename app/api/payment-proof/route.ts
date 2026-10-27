@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!TYPES[ext]) return NextResponse.json({ error: "Please attach a photo (JPG, PNG) or a PDF." }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is larger than 4 MB." }, { status: 400 });
     const key = `${PROOF_FOLDER}/${flat}/${Date.now()}_${randomBytes(16).toString("hex")}.${ext}`;
-    await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || TYPES[ext] }));
+    await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: TYPES[ext] })); // type from the extension, never from the browser (audit H3)
     return NextResponse.json({ key });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Upload failed" }, { status: 500 });
@@ -90,8 +90,14 @@ export async function GET(req: NextRequest) {
   try {
     const obj = await r2.client.send(new GetObjectCommand({ Bucket: r2.bucket, Key: data.proof_key }));
     const bytes = await (obj.Body as any).transformToByteArray();
-    const ext = String(data.proof_key).split(".").pop() || "";
-    return new NextResponse(Buffer.from(bytes), { headers: { "Content-Type": obj.ContentType || TYPES[ext] || "application/octet-stream", "Cache-Control": "private, no-store" } });
+    const ext = (String(data.proof_key).split(".").pop() || "").toLowerCase();
+    // Audit H3: ignore the stored type (old uploads kept the browser's), never let the browser guess, and run
+    // pictures in a sandbox so a disguised file cannot act as the app. (Chrome will not show a PDF that is
+    // sandboxed, so PDFs get the fixed type + nosniff only; they open in the browser's own PDF viewer.)
+    const type = TYPES[ext] || "application/octet-stream";
+    const headers: Record<string, string> = { "Content-Type": type, "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store" };
+    if (type !== "application/pdf") headers["Content-Security-Policy"] = "sandbox";
+    return new NextResponse(Buffer.from(bytes), { headers });
   } catch (e: any) {
     return NextResponse.json({ error: "Could not open the screenshot." }, { status: 500 });
   }

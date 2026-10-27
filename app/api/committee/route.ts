@@ -1,5 +1,5 @@
 // Committee (admin) logins: list, add by email, reset password, remove.
-// Only committee members can call this. Uses the Supabase secret key on the server.
+// Only committee members can call this; add / reset / link only the main admin login (audit H2). Uses the Supabase secret key on the server.
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   try {
     const members = await committeeUsers(admin);
+    // Audit H2: adding logins, resetting passwords and linking flats is for the main admin login only,
+    // otherwise any committee login could reset the main admin's password and take it over.
+    const isMain = mainAdminId(members) === me.userId;
+    if (["add", "reset", "link"].includes(body.action) && !isMain) {
+      await logAccess(admin, me.email, "refused_" + body.action, String(body.email || body.id || ""));
+      return NextResponse.json({ error: "Only the main admin login can do this." }, { status: 403 });
+    }
     // Optional link to the committee member's own flat ("A301"); "" / null = not linked
     const rawFlat = String(body.flat_id ?? "").trim();
     const flatId = rawFlat ? normaliseFlat(rawFlat) : null;

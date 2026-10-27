@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 60) || "file";
     // Vault slots use a fixed name so a new upload replaces the old document.
     const key = folder === "vault" && slot ? `vault/${slot}.${ext}` : `${folder}/${Date.now()}_${safeName}.${ext}`;
-    await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || ALLOWED_EXT[ext] }));
+    await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: ALLOWED_EXT[ext] })); // type from the extension, never from the browser (audit H3)
     // url = what screens save in their rows: same form as before (public address) while one is set, so rows stay
     // uniform; the address is only read back as a name for the key. view = a signed link to show it now.
     return NextResponse.json({ ok: true, key, url: r2.publicUrl ? `${r2.publicUrl}/${key}` : key, view: await signKey(key, SHOW_SECONDS) });

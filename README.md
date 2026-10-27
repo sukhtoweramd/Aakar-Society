@@ -23,7 +23,8 @@ Installable on phones (PWA). Built for phones first: most members use it on mobi
 
 ## Login
 - Committee logins (email) and flat logins (flat number). Roles are in `app_metadata` (see `CLAUDE.md`).
-- Create committee logins only from ADMIN → committee logins, never in the Supabase dashboard without the role.
+- Committee logins are added only from ADMIN → committee logins in the app (this sets role = committee), and only the
+  main admin login can add them. Never create logins in the Supabase dashboard.
 - Keep **Authentication → Sign In / Providers → "Allow new users to sign up" OFF** and anonymous sign-in OFF.
 
 ## Files
@@ -31,8 +32,9 @@ Installable on phones (PWA). Built for phones first: most members use it on mobi
   (`/api/file/link`, `/api/payment-proof`); see `CLAUDE.md`.
 
 ## Setup
-1. Run the SQL scripts in the Supabase SQL Editor (each is safe to re-run and ends with a check). Base: `SUPABASE_SETUP.sql`,
-   then the feature scripts. Added 25 Oct 2026: `MEMBER_SCREENS.sql`, `COMPLAINTS.sql`, `NOMINEES.sql`, `BOOKINGS.sql`.
+1. Run the SQL scripts in the Supabase SQL Editor, in the order they were added (each is safe to re-run and ends with a
+   check). The old `SUPABASE_SETUP.sql` was removed (security audit, Oct 2026): it gave every login full access.
+   Added 25 Oct 2026: `MEMBER_SCREENS.sql`, `COMPLAINTS.sql`, `NOMINEES.sql`, `BOOKINGS.sql`.
    Security scripts are in `sql-security/` (numbered, each with an `_UNDO`).
 2. Vercel → Settings → Environment Variables: the list (names only) is in `CLAUDE.md` → Handover document.
 3. Never commit real keys or residents' data to this repo – it is public.
