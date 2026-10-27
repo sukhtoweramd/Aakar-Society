@@ -14,8 +14,6 @@ import { backBar } from "@/lib/printBack";
 import VerifyPayments from "./VerifyPayments";
 import { loadReports, type PayReport } from "@/lib/payReports";
 
-const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-
 const VIEWS = ["LEDGER", "VERIFY PAYMENTS", "NEW BILLS", "OTHER BILL", "DUES", "SETTINGS"] as const;
 type View = (typeof VIEWS)[number];
 
@@ -319,3 +317,6 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
     </div>
   );
 }
+
+// Escapes values from the database printed into HTML (Dues list print; audit H1).
+const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
