@@ -129,6 +129,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       status: form.status || null,
       is_committee: !!form.is_committee,
       ...("committee_role" in f! ? { committee_role: form.is_committee ? form.committee_role?.trim() || "Committee Member" : null } : {}),
+      ...("committee_person" in f! ? { committee_person: form.is_committee ? (form as any).committee_person?.trim() || null : null } : {}),
       bhk: form.bhk?.trim() || null,
       maintenance: form.maintenance === null || form.maintenance === undefined || (form.maintenance as any) === "" ? null : Number(form.maintenance),
     };
@@ -305,6 +306,10 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                   </select>
                 </label>
                 {other && <label>OTHER DESIGNATION<input className="field mt-1" placeholder="e.g. Joint Secretary" value={form.committee_role || ""} onChange={(e) => setForm({ ...form, committee_role: e.target.value })} /></label>}
+                {"committee_person" in f && <label className="sm:col-span-2">WHO IS ON THE COMMITTEE (if not the owner)
+                  <input className="field mt-1" list={`fam-${f.id}`} placeholder={`Owner: ${f.owner_name || "—"}`} value={(form as any).committee_person || ""} onChange={(e) => setForm({ ...form, committee_person: e.target.value } as any)} />
+                  <FamilyNames id={`fam-${f.id}`} flatId={f.id} />
+                  <span className="opacity-60 text-[10px]">Choose a family member or leave empty for the owner. Also set from FAMILY MEMBERS → Edit.</span></label>}
               </>;
             })()}
             </>}
@@ -371,7 +376,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} lockHead={!isCommittee} />
+            <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} lockHead={!isCommittee} committeeFlat={f} canSetCommittee={isCommittee} onFlatChanged={reloadFlats} />
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
 
             {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
@@ -505,4 +510,11 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       </div>
     </div>
   );
+}
+
+/** Family members of a flat as suggestions for "who is on the committee". */
+function FamilyNames({ id, flatId }: { id: string; flatId: string }) {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => { supabase.from("members").select("name").eq("flat_id", flatId).then(({ data }) => setNames(((data as any[]) || []).map((m) => m.name).filter(Boolean))); }, [flatId]);
+  return <datalist id={id}>{names.map((n) => <option key={n} value={n} />)}</datalist>;
 }

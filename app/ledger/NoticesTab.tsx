@@ -31,9 +31,10 @@ async function printNotice(x: N, signer: NoticeSigner | null) {
 function signerOptions(flats: Ctx["flats"], sigs: Signatory[]): (NoticeSigner & { key: string })[] {
   const out: (NoticeSigner & { key: string })[] = [];
   const same = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
-  for (const f of flats.filter((f) => f.is_committee && f.owner_name?.trim()).sort(byCommitteeRole)) {
-    const g = sigs.find((g) => same(g.name, f.owner_name));
-    out.push({ key: `flat:${f.id}`, name: f.owner_name!.trim(), designation: g?.designation || f.committee_role?.trim() || "Committee Member", signature_image: g?.signature_image || null });
+  for (const f of flats.filter((f) => f.is_committee && (f.committee_person?.trim() || f.owner_name?.trim())).sort(byCommitteeRole)) {
+    const nm = (f.committee_person?.trim() || f.owner_name!.trim());
+    const g = sigs.find((g) => same(g.name, nm));
+    out.push({ key: `flat:${f.id}`, name: nm, designation: g?.designation || f.committee_role?.trim() || "Committee Member", signature_image: g?.signature_image || null });
   }
   for (const g of sigs) if (!out.some((o) => same(o.name, g.name))) out.push({ key: `sig:${g.id}`, name: g.name, designation: g.designation, signature_image: g.signature_image });
   return out;
