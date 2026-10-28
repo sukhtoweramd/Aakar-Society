@@ -228,7 +228,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           <div>
             <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
             <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)] text-[16px] align-middle ml-2 mono">{committeeBadge(f)}</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
-            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
+            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{f.is_committee && f.committee_person?.trim() && f.committee_person.trim().toLowerCase() !== (f.owner_name || "").trim().toLowerCase() ? ` • Committee: ${f.committee_person.trim()}` : ""}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
             {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}

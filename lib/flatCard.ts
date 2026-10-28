@@ -53,7 +53,11 @@ function card(c: CardData, printed: string): string {
   const rented = f.occupancy === "tenant";
   const head = c.members.find((m) => m.is_head) || c.members[0];
   const sec = (title: string, body: string) => `<div class="sec"><div class="sh"><span>${title}</span><i></i></div>${body}</div>`;
-  const badge = f.is_committee ? `<span class="tag g">${esc(committeeBadge(f).toUpperCase())}</span>` : "";
+  const badgeHtml = f.is_committee ? `<span class="tag g">${esc(committeeBadge(f).toUpperCase())}</span>` : "";
+  // The committee member may be a family member, not the owner (flats.committee_person): put the badge on that person.
+  const cp = (f.committee_person || "").trim().toLowerCase();
+  const ownerIsCp = !cp || cp === (f.owner_name || "").trim().toLowerCase();
+  const badge = ownerIsCp ? badgeHtml : "";
 
   const ownerBox = `<div class="box"><div class="lbl">${rented ? "OWNER • DOES NOT LIVE HERE" : "OWNER / HEAD OF FAMILY"}</div>
     <div class="nm">${esc(f.owner_name || "Owner not recorded")} ${badge}</div>
@@ -73,7 +77,7 @@ function card(c: CardData, printed: string): string {
     <tr><th style="width:27%">NAME</th><th style="width:12%">RELATION</th><th style="width:7%">AGE</th><th style="width:16%">MOBILE</th><th>PROFESSION / BUSINESS</th></tr>
     ${c.members.map((m) => {
       const sub = [m.business_name, m.office_address, m.office_phone].filter(Boolean).join(" • ");
-      return `<tr><td class="n">${esc(m.name)}</td><td>${esc(m.relation || "—")}</td><td>${m.age ?? "—"}</td><td>${esc(m.mobile || "—")}</td><td>${esc(m.occupation || (sub ? "" : "—"))}${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</td></tr>`;
+      return `<tr><td class="n">${esc(m.name)}${!ownerIsCp && (m.name || "").trim().toLowerCase() === cp ? ` ${badgeHtml}` : ""}</td><td>${esc(m.relation || "—")}</td><td>${m.age ?? "—"}</td><td>${esc(m.mobile || "—")}</td><td>${esc(m.occupation || (sub ? "" : "—"))}${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</td></tr>`;
     }).join("")}</table>`) : "";
   const veh = c.vehicles.length ? sec("VEHICLES", `<table><tr><th style="width:30%">TYPE</th><th style="width:33%">MODEL</th><th>NUMBER</th></tr>
     ${c.vehicles.map((v) => `<tr><td style="white-space:nowrap">${esc(v.vtype.replace("4-wheeler", "4W").replace("2-wheeler", "2W"))}</td><td>${esc(v.model || "—")}</td><td>${v.plate ? `<span class="plate">${esc(v.plate)}</span>` : "—"}</td></tr>`).join("")}</table>`) : "";
