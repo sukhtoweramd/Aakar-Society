@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { SOCIETY, label, ownerText, byCommitteeRole, committeeName } from "@/lib/society";
+import { SOCIETY, label, ownerText, byCommitteeRole, committeeText } from "@/lib/society";
 import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
@@ -72,7 +72,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
                   {committee.map((f) => (
                     <button key={f.id} onClick={() => { if (ctx.isCommittee) { selectFlat(f.id); go("DETAIL"); } }} className="w-full flex justify-between hover:underline text-left">
-                      <span className="truncate pr-2">{committeeName(f)}{f.committee_role && <span className="opacity-60"> • {f.committee_role}</span>}</span><span>{label(f)}</span>
+                      <span className="truncate pr-2">{committeeText(f)}</span><span>{label(f)}</span>
                     </button>
                   ))}
                 </div>

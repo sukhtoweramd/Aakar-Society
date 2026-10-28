@@ -18,7 +18,7 @@
   directory consent any time; owner / tenant name only while empty; everything else (incl. occupancy and any new column)
   committee only. A new member-editable column must be added to the guard's list on purpose.
 - Head of family (`members.is_head`) is fill-once for flat logins too (`sql-security/06`): name, head flag and removal by committee only.
-- Committee flag + designation are on the flat; `flats.committee_person` names the family member who holds it (empty = owner). Show committee names with `committeeName(f)`; members get it via `committee_people()` (COMMITTEE_PERSON.sql).
+- Committee flag + top designation are on the flat; `flats.committee_members` lists every person of the flat on the committee with their own designation (COMMITTEE_PEOPLE.sql; empty = `committee_person` or the owner). Use `committeePeople(f)` / `committeeText(f)`; members get the list via `committee_people()`.
 - Bookings are approved only by a committee login linked to the flat marked exactly "Chairman" or "Secretary".
 
 ## Files in R2 (Oct 2026)

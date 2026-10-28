@@ -6,7 +6,7 @@ import { deleteFile, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MeetingMinutesList from "./MeetingMinutesList";
 import { loadSettings, loadSignatories, noticeHtml, openPrint, preparingWindow, type NoticeSigner, type Signatory } from "@/lib/billing";
-import { byCommitteeRole } from "@/lib/society";
+import { byCommitteeRole, committeePeople } from "@/lib/society";
 import { FileLink, SecureImg } from "./SecureFile";
 import { fileLink } from "@/lib/fileLinks";
 
@@ -31,10 +31,11 @@ async function printNotice(x: N, signer: NoticeSigner | null) {
 function signerOptions(flats: Ctx["flats"], sigs: Signatory[]): (NoticeSigner & { key: string })[] {
   const out: (NoticeSigner & { key: string })[] = [];
   const same = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
-  for (const f of flats.filter((f) => f.is_committee && (f.committee_person?.trim() || f.owner_name?.trim())).sort(byCommitteeRole)) {
-    const nm = (f.committee_person?.trim() || f.owner_name!.trim());
-    const g = sigs.find((g) => same(g.name, nm));
-    out.push({ key: `flat:${f.id}`, name: nm, designation: g?.designation || f.committee_role?.trim() || "Committee Member", signature_image: g?.signature_image || null });
+  for (const f of flats.filter((f) => f.is_committee).sort(byCommitteeRole)) {
+    committeePeople(f).filter((p) => p.name !== "Owner not recorded").forEach((p, i) => {
+      const g = sigs.find((g) => same(g.name, p.name));
+      out.push({ key: `flat:${f.id}:${i}`, name: p.name, designation: g?.designation || p.role, signature_image: g?.signature_image || null });
+    });
   }
   for (const g of sigs) if (!out.some((o) => same(o.name, g.name))) out.push({ key: `sig:${g.id}`, name: g.name, designation: g.designation, signature_image: g.signature_image });
   return out;

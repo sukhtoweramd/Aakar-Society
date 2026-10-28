@@ -63,7 +63,7 @@ export default function Home() {
       list = ((dir.data || []) as Flat[]).map((d) => own.get(d.id) || ({ ...d, bhk: null, maintenance: null, email: null } as Flat));
       // who of the family is on the committee (COMMITTEE_PERSON.sql; ignored until it is run)
       const cp = await supabase.rpc("committee_people");
-      if (!cp.error) { const m = new Map(((cp.data as any[]) || []).map((r) => [r.flat_id, r.person])); list = list.map((f) => (m.has(f.id) ? { ...f, committee_person: m.get(f.id) } : f)); }
+      if (!cp.error) { const m = new Map(((cp.data as any[]) || []).map((r) => [r.flat_id, r])); list = list.map((f) => { const r: any = m.get(f.id); return r ? { ...f, committee_person: r.person, committee_members: Array.isArray(r.people) ? r.people : f.committee_members } : f; }); }
     }
     setLoadError("");
     list.sort(sortFlats);
