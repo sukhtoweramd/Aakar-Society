@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { COMMITTEE_ROLES, committeeBadge, floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
+import { COMMITTEE_ROLES, committeeBadge, committeePeople, committeeText, floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
 import { api, deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
@@ -85,6 +85,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
 
   async function save() {
     setBusy("save"); setError("");
+    const hasPeopleList = Array.isArray(f!.committee_members) && f!.committee_members.length > 0;
     const personal: any = { owner_name: form.owner_name?.trim() || null, email: form.email?.trim() || null };
     if (tenantReady) {
       const t = form.occupancy === "tenant";
@@ -128,8 +129,10 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
       ...personal,
       status: form.status || null,
       is_committee: !!form.is_committee,
-      ...("committee_role" in f! ? { committee_role: form.is_committee ? form.committee_role?.trim() || "Committee Member" : null } : {}),
+      // with a list of people (FAMILY MEMBERS → Edit) the flat's designation comes from that list and is kept as it is
+      ...("committee_role" in f! ? { committee_role: form.is_committee ? (hasPeopleList ? f!.committee_role : form.committee_role?.trim() || "Committee Member") : null } : {}),
       ...("committee_person" in f! ? { committee_person: form.is_committee ? (form as any).committee_person?.trim() || null : null } : {}),
+      ...("committee_members" in f! && !form.is_committee ? { committee_members: [] } : {}),
       bhk: form.bhk?.trim() || null,
       maintenance: form.maintenance === null || form.maintenance === undefined || (form.maintenance as any) === "" ? null : Number(form.maintenance),
     };
@@ -228,7 +231,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
           <div>
             <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
             <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)] text-[16px] align-middle ml-2 mono">{committeeBadge(f)}</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
-            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{f.is_committee && f.committee_person?.trim() && f.committee_person.trim().toLowerCase() !== (f.owner_name || "").trim().toLowerCase() ? ` • Committee: ${f.committee_person.trim()}` : ""}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
+            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{f.is_committee && committeePeople(f).some((p) => p.name.trim().toLowerCase() !== (f.owner_name || "").trim().toLowerCase()) ? ` • Committee: ${committeeText(f)}` : ""}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
           </div>
           <div className="flex gap-2 flex-wrap items-start">
             {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
@@ -297,6 +300,11 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             {form.is_committee && "committee_role" in f && (() => {
               const preset = COMMITTEE_ROLES.includes(form.committee_role || "");
               const other = !preset && form.committee_role !== undefined && form.committee_role !== null;
+              const list = Array.isArray(f.committee_members) ? f.committee_members : [];
+              if (list.length) return <div className="sm:col-span-2 border border-[var(--gold)] bg-white p-2">
+                <div className="text-[10px] tracking-[0.12em] opacity-70">ON THE COMMITTEE</div>
+                <div className="font-bold">{committeeText(f)}</div>
+                <div className="opacity-60 text-[10px]">Change in FAMILY MEMBERS → Edit (★ On the society committee). Untick COMMITTEE MEMBER above to take the whole flat off the committee.</div></div>;
               return <>
                 <label>DESIGNATION
                   <select className="field mt-1" value={preset ? form.committee_role! : other ? "__other" : "Committee Member"}
@@ -306,10 +314,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                   </select>
                 </label>
                 {other && <label>OTHER DESIGNATION<input className="field mt-1" placeholder="e.g. Joint Secretary" value={form.committee_role || ""} onChange={(e) => setForm({ ...form, committee_role: e.target.value })} /></label>}
-                {"committee_person" in f && <label className="sm:col-span-2">WHO IS ON THE COMMITTEE (if not the owner)
-                  <input className="field mt-1" list={`fam-${f.id}`} placeholder={`Owner: ${f.owner_name || "—"}`} value={(form as any).committee_person || ""} onChange={(e) => setForm({ ...form, committee_person: e.target.value } as any)} />
-                  <FamilyNames id={`fam-${f.id}`} flatId={f.id} />
-                  <span className="opacity-60 text-[10px]">Choose a family member or leave empty for the owner. Also set from FAMILY MEMBERS → Edit.</span></label>}
+                {"committee_members" in f && <div className="sm:col-span-2 opacity-70 text-[10px] self-end">This is the owner's designation. If a family member is on the committee (or two of them), mark each one in FAMILY MEMBERS → Edit.</div>}
               </>;
             })()}
             </>}
@@ -512,9 +517,3 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
   );
 }
 
-/** Family members of a flat as suggestions for "who is on the committee". */
-function FamilyNames({ id, flatId }: { id: string; flatId: string }) {
-  const [names, setNames] = useState<string[]>([]);
-  useEffect(() => { supabase.from("members").select("name").eq("flat_id", flatId).then(({ data }) => setNames(((data as any[]) || []).map((m) => m.name).filter(Boolean))); }, [flatId]);
-  return <datalist id={id}>{names.map((n) => <option key={n} value={n} />)}</datalist>;
-}

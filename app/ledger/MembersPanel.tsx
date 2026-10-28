@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { byFamilyOrder, committeeName, COMMITTEE_ROLES, type Flat } from "@/lib/society";
+import { byFamilyOrder, committeePeople, COMMITTEE_ROLES, topRole, type CommitteePerson, type Flat } from "@/lib/society";
 
 export type Member = {
   id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
@@ -28,8 +28,10 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   // Committee member of the society (COMMITTEE_PERSON.sql): the flag and designation are the flat's; this marks which
   // family member holds it. Only committee logins can change it.
   const cf = committeeFlat;
-  const cpName = cf?.is_committee ? committeeName(cf) : "";
-  const isCp = (name?: string | null) => !!cpName && (name || "").trim().toLowerCase() === cpName.trim().toLowerCase();
+  const people: CommitteePerson[] = cf ? committeePeople(cf) : [];
+  const key = (n?: string | null) => (n || "").trim().toLowerCase();
+  const roleOf = (name?: string | null) => people.find((p) => key(p.name) === key(name))?.role || "";
+  const isCp = (name?: string | null) => !!roleOf(name);
   const [com, setCom] = useState<{ on: boolean; role: string }>({ on: false, role: "Committee Member" });
   const who = tenant ? "Tenant" : "Owner";
   const [members, setMembers] = useState<Member[]>([]);
@@ -45,17 +47,19 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   }
   useEffect(() => { load(); setEditId(null); }, [flatId]);
 
-  async function saveCommittee(name: string, wasCp: boolean) {
-    if (!cf || !canSetCommittee || !("committee_person" in cf)) return null;
-    if (com.on) {
-      const { error } = await supabase.from("flats").update({ is_committee: true, committee_role: com.role.trim() || "Committee Member", committee_person: name.trim() }).eq("id", cf.id);
-      return error;
+  // Several family members may be on the committee, each with a designation (COMMITTEE_PEOPLE.sql).
+  async function saveCommittee(name: string, oldName: string | null) {
+    if (!cf || !canSetCommittee) return null;
+    if (!("committee_members" in cf)) {   // older database (only COMMITTEE_PERSON.sql run): one person per flat
+      if (!("committee_person" in cf)) return null;
+      const upd = com.on ? { is_committee: true, committee_role: com.role.trim() || "Committee Member", committee_person: name.trim() } : { committee_person: null };
+      return (await supabase.from("flats").update(upd).eq("id", cf.id)).error;
     }
-    if (wasCp) {   // no longer this person: the owner counts again; the flat stays on the committee (remove it with EDIT FLAT)
-      const { error } = await supabase.from("flats").update({ committee_person: null }).eq("id", cf.id);
-      return error;
-    }
-    return null;
+    let list = people.filter((p) => key(p.name) !== key(name) && key(p.name) !== key(oldName) && p.name !== "Owner not recorded");
+    if (com.on) list = [...list, { name: name.trim(), role: com.role.trim() || "Committee Member" }];
+    const upd: any = { committee_members: list, committee_person: list[0]?.name || null };
+    if (list.length) { upd.is_committee = true; upd.committee_role = topRole(list); }
+    return (await supabase.from("flats").update(upd).eq("id", cf.id)).error;
   }
   async function save() {
     if (!form.name.trim()) { setError("Enter the member's name"); return; }
@@ -74,9 +78,10 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
       setError(/column/i.test(res.error.message) ? `${res.error.message} — the database step for member professions hasn't been run yet.` : res.error.message);
       return;
     }
-    const wasCp = editId !== "new" && isCp(members.find((m) => m.id === editId)?.name);
+    const oldName = editId !== "new" ? members.find((m) => m.id === editId)?.name || null : null;
+    const wasCp = isCp(oldName);
     if (canSetCommittee && (com.on || wasCp)) {
-      const e = await saveCommittee(form.name, wasCp);
+      const e = await saveCommittee(form.name, oldName);
       if (e) { setError(e.message); return; }
       onFlatChanged?.();
     }
@@ -109,11 +114,11 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
           <input className="field" placeholder="Mobile" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
           <input className="field" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
           <label className="flex items-center gap-2 px-1"><input type="checkbox" disabled={headBoxLocked} checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / {who}</label>
-          {canSetCommittee && cf && "committee_person" in cf && <div className="sm:col-span-2 lg:col-span-3 border border-[var(--gold)] bg-white p-2 flex flex-wrap items-center gap-2">
+          {canSetCommittee && cf && ("committee_members" in cf || "committee_person" in cf) && <div className="sm:col-span-2 lg:col-span-3 border border-[var(--gold)] bg-white p-2 flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2"><input type="checkbox" checked={com.on} onChange={(e) => setCom({ ...com, on: e.target.checked })} /> ★ On the society committee</label>
             {com.on && <select className="field !w-auto" value={COMMITTEE_ROLES.includes(com.role) ? com.role : "Committee Member"} onChange={(e) => setCom({ ...com, role: e.target.value })}>
               {COMMITTEE_ROLES.map((r) => <option key={r}>{r}</option>)}</select>}
-            <span className="opacity-60 text-[10px] w-full">Marks this flat as committee with this person and designation. To take the flat off the committee, use EDIT FLAT.</span>
+            <span className="opacity-60 text-[10px] w-full">Each family member on the committee gets their own designation (two in one family is fine). To take the whole flat off the committee, use EDIT FLAT.</span>
           </div>}
           {headBoxLocked && <div className="sm:col-span-2 lg:col-span-3 px-1 opacity-70">The head of family{editingHead ? "'s name" : ""} can be changed only by the committee.</div>}
         </div>
@@ -158,7 +163,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
           <div key={m.id} className="border border-[var(--border)] bg-[var(--bg)] p-3">
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0">
-                <div className="serif text-[14px] font-bold">{m.name}{m.is_head && <span className="mono text-[9px] ml-2 bg-[var(--navy)] text-white px-1.5 py-0.5 align-middle">HEAD</span>}{isCp(m.name) && <span className="mono text-[9px] ml-2 bg-[var(--gold)] text-black px-1.5 py-0.5 align-middle">★ {cf?.committee_role || "COMMITTEE"}</span>}</div>
+                <div className="serif text-[14px] font-bold">{m.name}{m.is_head && <span className="mono text-[9px] ml-2 bg-[var(--navy)] text-white px-1.5 py-0.5 align-middle">HEAD</span>}{isCp(m.name) && <span className="mono text-[9px] ml-2 bg-[var(--gold)] text-black px-1.5 py-0.5 align-middle">★ {roleOf(m.name)}</span>}</div>
                 <div className="mono text-[10px] opacity-70">{[m.relation, m.age ? `${m.age} yrs` : null, m.mobile, m.email].filter(Boolean).join(" • ") || "—"}</div>
                 {(m.occupation || m.business_name) && (
                   <div className="mono text-[10px] mt-1.5 border-l-2 border-[var(--gold)] pl-2">
@@ -169,7 +174,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
                 )}
               </div>
               <div className="flex gap-3 shrink-0 mono text-[10px]">
-                <button onClick={() => { setForm(toForm(m)); setEditId(m.id); setCom({ on: isCp(m.name), role: (isCp(m.name) && cf?.committee_role) || "Committee Member" }); }} className="underline">Edit</button>
+                <button onClick={() => { setForm(toForm(m)); setEditId(m.id); setCom({ on: isCp(m.name), role: roleOf(m.name) || "Committee Member" }); }} className="underline">Edit</button>
                 {!headLocked(m) && <button onClick={() => remove(m)} className="text-red-600">✕</button>}
               </div>
             </div>

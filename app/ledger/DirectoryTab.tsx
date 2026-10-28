@@ -25,8 +25,15 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
 
   // who of the family is on the committee (COMMITTEE_PERSON.sql), shown next to the designation when not the owner
   const [cp, setCp] = useState<Record<string, string>>({});
-  useEffect(() => { supabase.rpc("committee_people").then(({ data, error }) => { if (!error) setCp(Object.fromEntries(((data as any[]) || []).map((r) => [r.flat_id, r.person || ""]))); }); }, []);
-  const cpOf = (e: Entry) => { const p = (cp[e.flat_id] || "").trim(); return p && p.toLowerCase() !== (e.owner_name || "").trim().toLowerCase() ? p : ""; };
+  const [cpl, setCpl] = useState<Record<string, { name: string; role: string }[]>>({});
+  useEffect(() => { supabase.rpc("committee_people").then(({ data, error }) => { if (!error) { setCp(Object.fromEntries(((data as any[]) || []).map((r) => [r.flat_id, (r.people || []).map((p: any) => p.name).join(" ") || r.person || ""]))); setCpl(Object.fromEntries(((data as any[]) || []).filter((r) => Array.isArray(r.people)).map((r) => [r.flat_id, r.people]))); } }); }, []);
+  // "★ Committee Member" when it is the owner; otherwise "★ Committee Member: NAME • Co-opted Member: NAME"
+  const badgeOf = (e: Entry) => {
+    const ps = cpl[e.flat_id] || [];
+    const own = (e.owner_name || "").trim().toLowerCase();
+    if (!ps.length || (ps.length === 1 && ps[0].name.trim().toLowerCase() === own)) return `★ ${e.role || "Committee"}`;
+    return "★ " + ps.map((p) => `${p.role}: ${p.name}`).join(" • ");
+  };
   useEffect(() => {
     supabase.from("member_directory").select("*").then(({ data, error }) => {
       if (error) setError(/member_directory/.test(error.message) ? "The member directory needs a one-time database step (DIRECTORY_CONSENT.sql) to be run by the committee." : error.message);
@@ -66,7 +73,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       const name = e.tenant
         ? `<b>${esc(cut(e.tenant))}</b> <span class="muted">(tenant)</span><div class="muted small">Owner: ${esc(cut(e.owner_name) || "not recorded")}</div>`
         : e.owner_name ? `<b>${esc(cut(e.owner_name))}</b>` : `<span class="muted">Owner not recorded</span>`;
-      const role = e.is_committee ? ` <span class="gold">★ ${esc(e.role || "Committee")}${cpOf(e) ? `: ${esc(cpOf(e))}` : ""}</span>` : "";
+      const role = e.is_committee ? ` <span class="gold">${esc(badgeOf(e))}</span>` : "";
       const note = e.consent ? (e.members.length ? "" : ' <span class="muted">· no family members added yet</span>') : ' <span class="muted">· details not shared</span>';
       const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(cut(m.member_name))}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
       // one <tbody> per flat so a family is never split across two pages
@@ -142,7 +149,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
           <div key={e.flat_id} className={`border rounded-[4px] p-4 bg-[var(--surface)] ${e.consent ? "border-[var(--border)]" : "border-dashed border-[var(--border)]"}`}>
             <div className="flex justify-between items-start gap-2">
               <div>
-                <div className="mono text-[11px] font-bold tracking-[0.08em]">{flatLabel(e.flat_id)}{e.is_committee && <span className="text-[var(--gold)] ml-1">★ {e.role || "Committee"}{cpOf(e) ? `: ${cpOf(e)}` : ""}</span>}</div>
+                <div className="mono text-[11px] font-bold tracking-[0.08em]">{flatLabel(e.flat_id)}{e.is_committee && <span className="text-[var(--gold)] ml-1">{badgeOf(e)}</span>}</div>
                 {e.tenant ? <>
                   <div className="serif text-[15px] font-bold mt-0.5">{e.tenant} <span className="mono text-[9px] bg-[var(--navy)] text-white px-1 align-middle">TENANT</span></div>
                   <div className="mono text-[10px] opacity-60">Owner: {e.owner_name || "not recorded"}</div>

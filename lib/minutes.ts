@@ -2,7 +2,7 @@
 // Minutes of meetings (AGM / SGM / committee) and their action items.
 import { supabase } from "./supabaseClient";
 import { dmy, docPage, today } from "./billing";
-import { committeeName, label, ownerText, type Flat } from "./society";
+import { committeeText, label, ownerText, type Flat } from "./society";
 
 export type Meeting = {
   id: string; kind: "AGM" | "SGM" | "Committee" | "Event"; event_id?: string | null; event_title?: string | null; meeting_date: string; venue: string | null; chaired_by: string | null;
@@ -30,7 +30,7 @@ export const isOverdue = (a: Action) => a.status === "open" && !!a.due_date && a
 export function minutesHtml(m: Meeting, actions: Action[], flats: Flat[], eventTitle?: string | null): string {
   const name = meetingName(m, eventTitle);
   const ev = m.kind === "Event";
-  const who = (id: string | null) => { const f = flats.find((x) => x.id === id); return f ? `${f.is_committee ? committeeName(f) : ownerText(f)}${f.committee_role ? ` (${f.committee_role})` : ""}` : "—"; };
+  const who = (id: string | null) => { const f = flats.find((x) => x.id === id); return f ? (f.is_committee ? committeeText(f) : ownerText(f)) : "—"; };
   const H = (t: string) => `<div style="margin-top:5mm;font-size:9pt;font-weight:800;letter-spacing:.14em;color:var(--gold)">${t}</div>`;
   const agenda = lines(m.agenda);
   const att = lines(m.attendees);

@@ -3,7 +3,7 @@
 // Members see only FINAL minutes of general meetings (AGM / SGM), in NOTICES.
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { committeeName, label, ownerText, type Flat } from "@/lib/society";
+import { committeeText, label, ownerText, type Flat } from "@/lib/society";
 import { dmy, openPrint, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { isOverdue, KIND_LABEL, minutesHtml, type Action, type Meeting } from "@/lib/minutes";
@@ -21,7 +21,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged,
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const [kindF, setKindF] = useState<"ALL" | Meeting["kind"]>("ALL");
   const open = data.actions.filter((a) => a.status === "open");
-  const who = (id: string | null) => { const f = flats.find((x) => x.id === id); return f ? `${f.is_committee ? committeeName(f) : ownerText(f)}${f.committee_role ? ` • ${f.committee_role}` : ""}` : "—"; };
+  const who = (id: string | null) => { const f = flats.find((x) => x.id === id); return f ? (f.is_committee ? committeeText(f) : ownerText(f)) : "—"; };
   const meetingOf = (id: string) => data.meetings.find((m) => m.id === id);
   const list = data.meetings.filter((m) => kindF === "ALL" || m.kind === kindF);
 
@@ -115,7 +115,7 @@ export default function MinutesPanel({ data, flats, committee, email, onChanged,
               <div key={i} className="flex flex-wrap gap-2 items-center mt-1.5">
                 <input className="field !w-auto flex-1 min-w-[240px]" placeholder="What is to be done" value={a.task} onChange={(e) => setA(i, "task", e.target.value)} />
                 <select className="field !w-[240px]" value={a.owner_flat} onChange={(e) => setA(i, "owner_flat", e.target.value)}><option value="">{event ? "— team member —" : "— responsible —"}</option>
-                  {committee.map((f) => <option key={f.id} value={f.id}>{committeeName(f)}{f.committee_role ? ` – ${f.committee_role}` : ""} ({label(f)})</option>)}</select>
+                  {committee.map((f) => <option key={f.id} value={f.id}>{committeeText(f)} ({label(f)})</option>)}</select>
                 <input type="date" className="field !w-[150px]" value={a.due_date} onChange={(e) => setA(i, "due_date", e.target.value)} title="By when" />
                 {a.status === "done" && <span className="tag bg-emerald-50 text-emerald-700">DONE</span>}
                 <button onClick={() => setForm({ ...form, actions: form.actions.filter((_, j) => j !== i) })} className="text-red-600 underline">remove</button>
