@@ -1,7 +1,7 @@
 "use client";
 // Committee areas of responsibility and the AMC register.
 import { supabase } from "./supabaseClient";
-import { label, ownerText, type Flat } from "./society";
+import { committeeName, label, type Flat } from "./society";
 
 export type Area = { id: string; name: string; description: string | null; holder_flat: string | null; backup_flat: string | null; contact_phone: string | null; sort: number; active: boolean };
 export type Amc = {
@@ -31,7 +31,7 @@ export async function loadAmc(): Promise<{ amc: Amc[]; visits: Visit[] } | null>
 export function personOf(flats: Flat[], id: string | null) {
   const f = flats.find((x) => x.id === id);
   if (!f) return null;
-  return { name: ownerText(f), role: f.committee_role || "", flat: label(f) };
+  return { name: committeeName(f), role: f.committee_role || "", flat: label(f) };
 }
 
 export const daysLeft = (end: string) => Math.ceil((new Date(end + "T23:59:59").getTime() - Date.now()) / 864e5);

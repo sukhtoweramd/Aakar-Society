@@ -61,6 +61,9 @@ export default function Home() {
       if (dir.error) { setLoadError(`Could not load directory: ${dir.error.message}`); return; }
       const own = new Map(list.map((f) => [f.id, f]));
       list = ((dir.data || []) as Flat[]).map((d) => own.get(d.id) || ({ ...d, bhk: null, maintenance: null, email: null } as Flat));
+      // who of the family is on the committee (COMMITTEE_PERSON.sql; ignored until it is run)
+      const cp = await supabase.rpc("committee_people");
+      if (!cp.error) { const m = new Map(((cp.data as any[]) || []).map((r) => [r.flat_id, r.person])); list = list.map((f) => (m.has(f.id) ? { ...f, committee_person: m.get(f.id) } : f)); }
     }
     setLoadError("");
     list.sort(sortFlats);

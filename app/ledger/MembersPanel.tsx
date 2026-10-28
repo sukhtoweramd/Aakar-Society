@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { byFamilyOrder } from "@/lib/society";
+import { byFamilyOrder, committeeName, COMMITTEE_ROLES, type Flat } from "@/lib/society";
 
 export type Member = {
   id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
@@ -23,7 +23,14 @@ const toRow = (f: Form) => ({
   office_address: f.office_address.trim() || null, office_phone: f.office_phone.trim() || null,
 });
 
-export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false, lockHead = false }: { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean; lockHead?: boolean }) {
+export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false, lockHead = false, committeeFlat, canSetCommittee = false, onFlatChanged }:
+  { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean; lockHead?: boolean; committeeFlat?: Flat; canSetCommittee?: boolean; onFlatChanged?: () => void }) {
+  // Committee member of the society (COMMITTEE_PERSON.sql): the flag and designation are the flat's; this marks which
+  // family member holds it. Only committee logins can change it.
+  const cf = committeeFlat;
+  const cpName = cf?.is_committee ? committeeName(cf) : "";
+  const isCp = (name?: string | null) => !!cpName && (name || "").trim().toLowerCase() === cpName.trim().toLowerCase();
+  const [com, setCom] = useState<{ on: boolean; role: string }>({ on: false, role: "Committee Member" });
   const who = tenant ? "Tenant" : "Owner";
   const [members, setMembers] = useState<Member[]>([]);
   const [editId, setEditId] = useState<string | "new" | null>(null);
@@ -38,6 +45,18 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   }
   useEffect(() => { load(); setEditId(null); }, [flatId]);
 
+  async function saveCommittee(name: string, wasCp: boolean) {
+    if (!cf || !canSetCommittee || !("committee_person" in cf)) return null;
+    if (com.on) {
+      const { error } = await supabase.from("flats").update({ is_committee: true, committee_role: com.role.trim() || "Committee Member", committee_person: name.trim() }).eq("id", cf.id);
+      return error;
+    }
+    if (wasCp) {   // no longer this person: the owner counts again; the flat stays on the committee (remove it with EDIT FLAT)
+      const { error } = await supabase.from("flats").update({ committee_person: null }).eq("id", cf.id);
+      return error;
+    }
+    return null;
+  }
   async function save() {
     if (!form.name.trim()) { setError("Enter the member's name"); return; }
     setBusy(true); setError("");
@@ -54,6 +73,12 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
     if (res.error) {
       setError(/column/i.test(res.error.message) ? `${res.error.message} — the database step for member professions hasn't been run yet.` : res.error.message);
       return;
+    }
+    const wasCp = editId !== "new" && isCp(members.find((m) => m.id === editId)?.name);
+    if (canSetCommittee && (com.on || wasCp)) {
+      const e = await saveCommittee(form.name, wasCp);
+      if (e) { setError(e.message); return; }
+      onFlatChanged?.();
     }
     setEditId(null); load();
   }
@@ -84,6 +109,12 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
           <input className="field" placeholder="Mobile" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
           <input className="field" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
           <label className="flex items-center gap-2 px-1"><input type="checkbox" disabled={headBoxLocked} checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / {who}</label>
+          {canSetCommittee && cf && "committee_person" in cf && <div className="sm:col-span-2 lg:col-span-3 border border-[var(--gold)] bg-white p-2 flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={com.on} onChange={(e) => setCom({ ...com, on: e.target.checked })} /> ★ On the society committee</label>
+            {com.on && <select className="field !w-auto" value={COMMITTEE_ROLES.includes(com.role) ? com.role : "Committee Member"} onChange={(e) => setCom({ ...com, role: e.target.value })}>
+              {COMMITTEE_ROLES.map((r) => <option key={r}>{r}</option>)}</select>}
+            <span className="opacity-60 text-[10px] w-full">Marks this flat as committee with this person and designation. To take the flat off the committee, use EDIT FLAT.</span>
+          </div>}
           {headBoxLocked && <div className="sm:col-span-2 lg:col-span-3 px-1 opacity-70">The head of family{editingHead ? "'s name" : ""} can be changed only by the committee.</div>}
         </div>
       </div>
@@ -111,13 +142,13 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
     <div className="border border-[var(--border)] p-4 bg-[var(--surface)]">
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="mono text-[10px] font-bold tracking-[0.14em]">{tenant ? "TENANT'S FAMILY" : "FAMILY MEMBERS"} • {members.length}</div>
-        {editId === null && <button onClick={() => { setForm(BLANK); setEditId("new"); }} className="btn-navy mono text-[11px] px-3 py-1.5">+ ADD MEMBER</button>}
+        {editId === null && <button onClick={() => { setForm(BLANK); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy mono text-[11px] px-3 py-1.5">+ ADD MEMBER</button>}
       </div>
       {error && <div className="mt-2 border border-red-200 bg-red-50 text-red-700 p-2 mono text-[11px]">{error}</div>}
       {ownerMissing && editId === null && (
         <div className="mt-3 border border-amber-300 bg-[#fff8d6] p-3 mono text-[11px] flex flex-wrap gap-3 items-center justify-between">
           <span>{who} <b>{firstOwner}</b> is not in the family list yet. Add them so their profession and mobile show in reports and the directories.</span>
-          <button onClick={() => { setForm({ ...BLANK, name: firstOwner, relation: "Self", is_head: true, email: ownerEmail || "" }); setEditId("new"); }} className="btn-navy px-3 py-1.5 shrink-0">+ ADD {who.toUpperCase()} AS FAMILY MEMBER</button>
+          <button onClick={() => { setForm({ ...BLANK, name: firstOwner, relation: "Self", is_head: true, email: ownerEmail || "" }); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy px-3 py-1.5 shrink-0">+ ADD {who.toUpperCase()} AS FAMILY MEMBER</button>
         </div>
       )}
       {editId === "new" && <div className="mt-3">{editor}</div>}
@@ -127,7 +158,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
           <div key={m.id} className="border border-[var(--border)] bg-[var(--bg)] p-3">
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0">
-                <div className="serif text-[14px] font-bold">{m.name}{m.is_head && <span className="mono text-[9px] ml-2 bg-[var(--navy)] text-white px-1.5 py-0.5 align-middle">HEAD</span>}</div>
+                <div className="serif text-[14px] font-bold">{m.name}{m.is_head && <span className="mono text-[9px] ml-2 bg-[var(--navy)] text-white px-1.5 py-0.5 align-middle">HEAD</span>}{isCp(m.name) && <span className="mono text-[9px] ml-2 bg-[var(--gold)] text-black px-1.5 py-0.5 align-middle">★ {cf?.committee_role || "COMMITTEE"}</span>}</div>
                 <div className="mono text-[10px] opacity-70">{[m.relation, m.age ? `${m.age} yrs` : null, m.mobile, m.email].filter(Boolean).join(" • ") || "—"}</div>
                 {(m.occupation || m.business_name) && (
                   <div className="mono text-[10px] mt-1.5 border-l-2 border-[var(--gold)] pl-2">
@@ -138,7 +169,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
                 )}
               </div>
               <div className="flex gap-3 shrink-0 mono text-[10px]">
-                <button onClick={() => { setForm(toForm(m)); setEditId(m.id); }} className="underline">Edit</button>
+                <button onClick={() => { setForm(toForm(m)); setEditId(m.id); setCom({ on: isCp(m.name), role: (isCp(m.name) && cf?.committee_role) || "Committee Member" }); }} className="underline">Edit</button>
                 {!headLocked(m) && <button onClick={() => remove(m)} className="text-red-600">✕</button>}
               </div>
             </div>

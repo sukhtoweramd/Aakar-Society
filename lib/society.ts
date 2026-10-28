@@ -23,6 +23,7 @@ export type Flat = {
   committee_role?: string | null; // COMMITTEE_ROLES.sql
   member_since?: string | null; // PRE_PHASE2_A.sql
   share_cert_no?: string | null;
+  committee_person?: string | null; // COMMITTEE_PERSON.sql: the family member on the committee (empty = owner)
 };
 
 export type Notice = { id: string; title: string | null; content: string | null; tower: string | null; file_url?: string | null; created_by?: string | null; created_at: string };
@@ -62,6 +63,8 @@ export const COMMITTEE_ROLES = ["Chairman", "Secretary", "Treasurer", "Committee
 const roleRank = (r?: string | null) => { const i = COMMITTEE_ROLES.findIndex((x) => x.toLowerCase() === (r || "").toLowerCase()); return i < 0 ? (r ? COMMITTEE_ROLES.length : 99) : i; };
 /** Sort committee flats: Chairman, Secretary, Treasurer … then others. */
 export const byCommitteeRole = (a: Pick<Flat, "committee_role">, b: Pick<Flat, "committee_role">) => roleRank(a.committee_role) - roleRank(b.committee_role);
+/** Name of the person on the committee for this flat: the chosen family member, else the owner. */
+export const committeeName = (f: Pick<Flat, "committee_person" | "owner_name">) => f.committee_person?.trim() || f.owner_name?.trim() || "Owner not recorded";
 /** "★ Secretary" or "★ Committee" */
 export const committeeBadge = (f: Pick<Flat, "is_committee" | "committee_role">) => (f.is_committee ? `★ ${f.committee_role?.trim() || "Committee"}` : "");
 /** Family order everywhere: head first, then self, spouse, children, parents, others; oldest first within a group. */

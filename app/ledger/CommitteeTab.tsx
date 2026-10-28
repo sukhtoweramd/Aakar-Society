@@ -2,7 +2,7 @@
 // COMMITTEE tab (committee only): areas of responsibility (one accountable person per area) and the AMC register.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { byCommitteeRole, label, ownerText, type Flat } from "@/lib/society";
+import { byCommitteeRole, committeeName, label, ownerText, type Flat } from "@/lib/society";
 import { dmy, inr, num, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { amcAlerts, amcState, daysLeft, loadAmc, loadAreas, personOf, type Amc, type Area, type Visit } from "@/lib/committee";
@@ -69,7 +69,7 @@ function Responsibilities({ areas, committee, flats, email, amc, onChanged }: { 
   const val = (a: Area, k: keyof Area) => (edit[a.id] && k in edit[a.id] ? (edit[a.id] as any)[k] : (a as any)[k]) ?? "";
   const set = (a: Area, k: keyof Area, v: any) => setEdit((e) => ({ ...e, [a.id]: { ...e[a.id], [k]: v } }));
   const dirty = Object.keys(edit).length > 0;
-  const opt = (f: Flat) => <option key={f.id} value={f.id}>{ownerText(f)}{f.committee_role ? ` – ${f.committee_role}` : ""} ({label(f)})</option>;
+  const opt = (f: Flat) => <option key={f.id} value={f.id}>{f.is_committee ? committeeName(f) : ownerText(f)}{f.committee_role ? ` – ${f.committee_role}` : ""} ({label(f)})</option>;
 
   async function saveAll() {
     setBusy(true); setError("");
