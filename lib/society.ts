@@ -41,16 +41,18 @@ export const SOCIETY = {
 };
 
 /** Number part of a flat id: "A1001" -> 1001 */
-export const flatNumber = (f: Flat) => parseInt((f.flat_no || f.id).replace(/\D/g, ""), 10) || 0;
+// The 4 BHK homes of the B building are two numbers joined (flat_no "B101/102", id "B101"; shown under Tower C).
+// The first number decides floor and order.
+export const flatNumber = (f: Flat) => parseInt(((f.flat_no || f.id).match(/\d+/) || ["0"])[0], 10) || 0;
 /** Floor from the DB, or worked out from the number (A1001 -> 10, A204 -> 2) */
 export const floorOf = (f: Flat) => f.floor ?? Math.floor(flatNumber(f) / 100);
 /** Position on the floor (A1003 -> 3) */
 export const unitOf = (f: Flat) => flatNumber(f) % 100;
-/** Display label: "A1001" -> "A-1001" */
+/** Display label: "A1001" -> "A-1001"; joined home "B101/102" -> "B-101/102" */
 export const label = (f: Flat) => {
   const no = (f.flat_no || f.id || "").toUpperCase();
-  const m = no.match(/^([A-Z])-?(\d+)$/);
-  return m ? `${m[1]}-${m[2]}` : no;
+  const m = no.match(/^([A-Z])-?(\d+)(?:\/(\d+))?$/);
+  return m ? `${m[1]}-${m[2]}${m[3] ? `/${m[3]}` : ""}` : no;
 };
 export const isOccupied = (f: Flat) => ["filled", "occupied", "sold", "approved"].includes((f.status || "").toLowerCase());
 export const statusText = (f: Flat) => (isOccupied(f) ? "Occupied" : f.status ? f.status[0].toUpperCase() + f.status.slice(1) : "Pending");
@@ -94,8 +96,8 @@ export const DEFAULT_RATES: Record<string, { maint: number; sqft: number; bhk: s
   A_TERRACE: { maint: 5000, sqft: 1850, bhk: "3BHK+T" },
   B_STD: { maint: 2500, sqft: 1100, bhk: "2BHK" },
   B_TERRACE: { maint: 4000, sqft: 1300, bhk: "2BHK+T" },
-  C_STD: { maint: 2000, sqft: 950, bhk: "2BHK" },
-  C_TERRACE: { maint: 3200, sqft: 1150, bhk: "2BHK+T" },
+  C_STD: { maint: 2000, sqft: 950, bhk: "4BHK" },   // placeholder amounts: 4 BHK homes B?01+B?02 (set real ones in ADMIN)
+  C_TERRACE: { maint: 3200, sqft: 1150, bhk: "4BHK+T" },
 };
 
 const mostCommon = <T,>(vals: T[]): T | null => {

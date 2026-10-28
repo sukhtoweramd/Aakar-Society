@@ -19,3 +19,21 @@ test("flat emails are recognised, other emails are not", () => {
   assert.ok(!isFlatEmail("committee@gmail.com"));
   assert.ok(!isFlatEmail(null));
 });
+
+test("4 BHK homes of the B building log in under the first number", () => {
+  assert.equal(normaliseFlat("B102"), "B101");
+  assert.equal(normaliseFlat("b-1002"), "B1001");
+  assert.equal(normaliseFlat("B-101/102"), "B101");
+  assert.equal(normaliseFlat("B101"), "B101");
+  assert.equal(normaliseFlat("B103"), "B103");
+  assert.equal(normaliseFlat("A102"), "A102");   // only the B building
+});
+
+test("joined home shows as B-101/102 and sorts on its first number", async () => {
+  const { label, flatNumber, floorOf } = await import("../lib/society");
+  const f: any = { id: "B101", flat_no: "B101/102", tower: "C", floor: null };
+  assert.equal(label(f), "B-101/102");
+  assert.equal(flatNumber(f), 101);
+  assert.equal(floorOf(f), 1);
+  assert.equal(label({ id: "A1001" } as any), "A-1001");
+});

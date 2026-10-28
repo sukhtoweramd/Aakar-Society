@@ -26,7 +26,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 
 ## What each tab shows
 - **COVER**: the society's record page: name, registration number and date, address, the SOCIETY SEAL box (90 flats: Tower A 40, Tower B 40, Tower C 10), ledger status, the committee members with their flats, short notes (terrace logic, vault), quick links to the other tabs, and WHO TO CONTACT (the committee member responsible for each area, like lift or water).
-- **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT.
+- **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT. Tower C homes are the 4 BHK homes of the B building and carry two numbers, for example B-101/102; log in with either number (B101 or B102).
 - **FLOOR**: floor plans tower-wise. Shows PLAN READY or NO PLAN UPLOADED. Committee can upload a plan with UPLOAD FLOOR PLAN PDF/DWG. Top-floor flats own the terrace (TERRACE LOGIC).
 - **MY FLAT**: everything about your own flat (details below).
 - **BUSINESS**: the society business directory: members' professions and businesses with flat, office address and phone. HOW TO GET LISTED: open MY FLAT → FAMILY MEMBERS → Edit (or + ADD MEMBER) and fill in Profession / Business, office address and office phone; it appears in BUSINESS automatically.
