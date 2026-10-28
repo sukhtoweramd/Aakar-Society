@@ -107,6 +107,20 @@ function wrap(g: CanvasRenderingContext2D, text: string, x: number, y: number, m
   g.fillText(line, x, y + lines * lh);
 }
 
+// ---------- gate scanning (EVENT_CHECKINS.sql) ----------
+import { attended, type Checkin } from "./gateCount";
+export { attended, type Checkin };
+export type GateResult = { reg_id: string; flat_id: string; session_id: string; session: string; allowed: number; used: number; left: number; paid: boolean; last_at: string | null; entered: number };
+/** null = gate scanning not set up yet (run EVENT_CHECKINS.sql) */
+export async function loadCheckins(eventId: string): Promise<Checkin[] | null> {
+  const { data, error } = await supabase.from("event_checkins").select("*").eq("event_id", eventId).order("created_at", { ascending: false });
+  if (error) return /event_checkins|schema cache|does not exist/i.test(error.message) ? null : [];
+  return (data as Checkin[]) || [];
+}
+/** Look at a pass (people omitted) or let people in. Errors come back as readable messages from the database. */
+export const gatePass = (code: string, people?: number) => rpc("gate_pass", { p_code: code, p_people: people ?? null }) as Promise<GateResult>;
+export const gateUndo = (id: string) => rpc("gate_undo", { p_id: id });
+
 // ---------- printout for the caterer / team ----------
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 export function sessionTotals(sessions: Session[], regs: Reg[]) {
@@ -116,18 +130,20 @@ export function sessionTotals(sessions: Session[], regs: Reg[]) {
     return { s, t, flats };
   });
 }
-export function countsPages(title: string, sessions: Session[], regs: Reg[], flats: Flat[]): string[] {
+export function countsPages(title: string, sessions: Session[], regs: Reg[], flats: Flat[], checkins?: Checkin[] | null): string[] {
   const tot = sessionTotals(sessions, regs);
+  const scanned = !!checkins?.length;   // ATTENDED shows once the gate has started scanning
+  const att = attended(checkins);
   const cell = (t: string, r = false, b = false) => `<td style="padding:1.6mm 2mm;border-bottom:.25mm solid var(--line);${r ? "text-align:right;" : ""}${b ? "font-weight:800;" : ""}">${t}</td>`;
   const head = (cols: string[]) => `<tr style="background:var(--navy);color:#fff">${cols.map((c, i) => `<th style="padding:1.6mm 2mm;text-align:${i ? "right" : "left"};font-size:8pt">${c}</th>`).join("")}</tr>`;
-  const summary = `<table style="width:100%;border-collapse:collapse;font-size:10.5pt;margin-top:5mm">${head(["MEAL / SESSION", "REGULAR", "JAIN", "TOTAL"])}
-    ${tot.map(({ s, t }) => `<tr>${cell(`<b>${esc(s.name)}</b>${s.date ? ` • ${esc(sessionWhen(s))}` : ""}<div style="font-size:8pt;color:var(--mute)">members ${t.mr + t.mj} • guests ${t.gr + t.gj}</div>`)}${cell(String(t.mr + t.gr), true)}${cell(String(t.mj + t.gj), true)}${cell(String(people(t)), true, true)}</tr>`).join("")}</table>`;
+  const summary = `<table style="width:100%;border-collapse:collapse;font-size:10.5pt;margin-top:5mm">${head(["MEAL / SESSION", "REGULAR", "JAIN", "TOTAL", ...(scanned ? ["ATTENDED"] : [])])}
+    ${tot.map(({ s, t }) => `<tr>${cell(`<b>${esc(s.name)}</b>${s.date ? ` • ${esc(sessionWhen(s))}` : ""}<div style="font-size:8pt;color:var(--mute)">members ${t.mr + t.mj} • guests ${t.gr + t.gj}</div>`)}${cell(String(t.mr + t.gr), true)}${cell(String(t.mj + t.gj), true)}${cell(String(people(t)), true, true)}${scanned ? cell(String(att.bySession[s.id] || 0), true, true) : ""}</tr>`).join("")}</table>`;
   const rows = [...regs].sort((a, b) => a.flat_id.localeCompare(b.flat_id)).map((r) => {
     const f = flats.find((x) => x.id === r.flat_id);
-    return `<tr>${cell(`<b>${esc(f ? label(f) : r.flat_id)}</b> <span style="color:var(--mute)">${esc(f ? ownerText(f) : "")}</span>`)}${sessions.map((s) => cell(people(r.counts?.[s.id]) ? `${people(r.counts[s.id])}${r.counts[s.id].mj + r.counts[s.id].gj ? ` (${r.counts[s.id].mj + r.counts[s.id].gj} J)` : ""}` : "—", true)).join("")}${cell(passReady(r) ? "Paid" : r.pay_status === "submitted" ? "To check" : "Unpaid", true)}</tr>`;
+    return `<tr>${cell(`<b>${esc(f ? label(f) : r.flat_id)}</b> <span style="color:var(--mute)">${esc(f ? ownerText(f) : "")}</span>`)}${sessions.map((s) => cell(people(r.counts?.[s.id]) ? `${people(r.counts[s.id])}${r.counts[s.id].mj + r.counts[s.id].gj ? ` (${r.counts[s.id].mj + r.counts[s.id].gj} J)` : ""}${scanned ? `<div style="font-size:8pt;color:var(--mute)">came ${att.byReg[`${r.id}|${s.id}`] || 0}</div>` : ""}` : "—", true)).join("")}${cell(passReady(r) ? "Paid" : r.pay_status === "submitted" ? "To check" : "Unpaid", true)}</tr>`;
   });
   const ths = ["FLAT", ...sessions.map((s) => esc(s.name.toUpperCase())), "PAYMENT"].map((c, i) => `<th style="padding:1.6mm 2mm;text-align:${i ? "right" : "left"};font-size:8pt">${c}</th>`).join("");
-  const top = `<div style="margin-top:5mm;font-size:13pt;font-weight:800;color:var(--navy)">${esc(title)}</div><div style="font-size:9.5pt;color:var(--mute)">${regs.length} flats registered</div>${summary}
+  const top = `<div style="margin-top:5mm;font-size:13pt;font-weight:800;color:var(--navy)">${esc(title)}</div><div style="font-size:9.5pt;color:var(--mute)">${regs.length} flats registered${scanned ? " • ATTENDED = people let in at the gate (scanned passes)" : ""}</div>${summary}
     <div style="margin-top:6mm;font-size:9pt;font-weight:800;letter-spacing:.14em;color:var(--gold)">FLAT-WISE (J = Jain)</div>`;
   const firstCap = Math.max(8, 30 - tot.length * 2);
   return paged("EVENT", "COUNTS", `Printed <b>${dmy(today())}</b>`, top, ths, rows, firstCap, 40, `${title} • registrations`, "", `<tr><td style="padding:2mm">No registrations yet.</td></tr>`);

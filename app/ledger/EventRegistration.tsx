@@ -3,6 +3,7 @@
 //   Convenor / committee: meals (sessions), prices, last date, open or close registration.
 //   Every flat: register the numbers (regular / Jain, members / guests), pay by UPI screenshot or cash, then see the passes.
 //   Event team: totals for the caterer, payments to confirm, flat-wise list; convenor / treasurer can enter for a flat.
+//   At the event: SCAN PASSES at the gate (GateScanner.tsx); the caterer count then shows ATTENDED.
 import { useEffect, useMemo, useState } from "react";
 import { label, ownerText, sortFlats, isOccupied, type Flat } from "@/lib/society";
 import { inr, openPrint } from "@/lib/billing";
@@ -10,10 +11,11 @@ import type { EventRole, TeamRow } from "@/lib/events";
 import { pictureText, readPaymentScreenshot, toJpeg } from "@/lib/readPayment";
 import { openProof, uploadProof } from "@/lib/payReports";
 import {
-  ZERO, amountFor, countText, countsPages, deadlineText, isOpen, loadRegs, newSessionId, passCode, passImage, passReady, people, peopleInFlat,
+  ZERO, amountFor, attended, countText, countsPages, loadCheckins, deadlineText, isOpen, loadRegs, newSessionId, passCode, passImage, passReady, people, peopleInFlat,
   priceText, qrPath, register, saveSettings, sessionTotals, sessionWhen, sessionsOf, submitPayment, verifyPayment,
-  type Count, type Counts, type Reg, type RegSettings, type Session,
+  type Checkin, type Count, type Counts, type Reg, type RegSettings, type Session,
 } from "@/lib/eventReg";
+import GateScanner from "./GateScanner";
 import { teamName } from "./EventTeam";
 
 type Ev = { id: string; title: string | null } & RegSettings;
@@ -31,7 +33,8 @@ export default function EventRegistration(p: Props) {
   const teamView = isCommittee || !!myRole;
   const [regs, setRegs] = useState<Reg[] | null | undefined>(undefined);
   const [forFlat, setForFlat] = useState("");
-  const reload = () => loadRegs(ev.id).then(setRegs);
+  const [checkins, setCheckins] = useState<Checkin[] | null>(null);   // null = gate scanning not set up yet
+  const reload = () => { loadRegs(ev.id).then(setRegs); if (teamView) loadCheckins(ev.id).then(setCheckins); };
   // keep it fresh: payments sent from other phones show up without reloading the page
   useEffect(() => {
     reload();
@@ -50,7 +53,7 @@ export default function EventRegistration(p: Props) {
       {canSetup && <Setup ev={ev} onSaved={p.onSettings} />}
       {!sessions.length && !canSetup && <div className="mono text-[11px] opacity-60">The event team has not opened registration yet.</div>}
       {sessions.length > 0 && homeFlat && <FlatRegistration ev={ev} flat={homeFlat} reg={mine} flats={flats} team={team} keeperMode={false} keeper={keeper} onChanged={reload} />}
-      {sessions.length > 0 && teamView && <TeamView ev={ev} regs={regs} flats={flats} team={team} keeper={keeper} homeFlat={homeFlat} onChanged={reload} />}
+      {sessions.length > 0 && teamView && <TeamView ev={ev} regs={regs} checkins={checkins} flats={flats} team={team} keeper={keeper} homeFlat={homeFlat} onChanged={reload} />}
       {sessions.length > 0 && keeper && (
         <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
           <label className="block mono text-[10px] tracking-[0.12em] opacity-80">ENTER OR CHANGE FOR A FLAT (e.g. collected at the door)
@@ -339,8 +342,11 @@ function Passes({ ev, reg, flats }: { ev: Ev; reg: Reg; flats: Flat[] }) {
 }
 
 // ---------------- event team: totals, payments to confirm, flats ----------------
-function TeamView({ ev, regs, flats, team, keeper, homeFlat, onChanged }: { ev: Ev; regs: Reg[]; flats: Flat[]; team: TeamRow[]; keeper: boolean; homeFlat: string | null; onChanged: () => void }) {
+function TeamView({ ev, regs, checkins, flats, team, keeper, homeFlat, onChanged }: { ev: Ev; regs: Reg[]; checkins: Checkin[] | null; flats: Flat[]; team: TeamRow[]; keeper: boolean; homeFlat: string | null; onChanged: () => void }) {
   const sessions = sessionsOf(ev);
+  const [gate, setGate] = useState(false);
+  const att = useMemo(() => attended(checkins), [checkins]);
+  const scanned = !!checkins?.length;
   const tot = useMemo(() => sessionTotals(sessions, regs), [regs, ev.pass_sessions]);
   const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
   const toCheck = regs.filter((r) => r.pay_status === "submitted" && (keeper || (r.pay_mode === "Cash" && !!homeFlat && r.cash_to === homeFlat)));
@@ -364,12 +370,17 @@ function TeamView({ ev, regs, flats, team, keeper, homeFlat, onChanged }: { ev: 
     <div className="space-y-3">
       <div className="flex flex-wrap justify-between items-center gap-2">
         <div className="mono text-[10px] tracking-[0.16em] font-bold">EVENT TEAM • {regs.length} OF {occupied} FLATS REGISTERED</div>
-        <button onClick={() => openPrint(`${ev.title} – counts`, countsPages(ev.title || "Event", sessions, regs, flats))} className="btn-navy mono text-[11px] px-3 py-2">CATERER COUNT (PDF)</button>
+        <div className="flex flex-wrap gap-2">
+          {checkins !== null && <button onClick={() => setGate(true)} className="bg-emerald-700 text-white mono text-[11px] font-bold px-3 py-2.5">📷 SCAN PASSES AT GATE</button>}
+          <button onClick={() => openPrint(`${ev.title} – counts`, countsPages(ev.title || "Event", sessions, regs, flats, checkins))} className="btn-navy mono text-[11px] px-3 py-2">CATERER COUNT (PDF)</button>
+        </div>
       </div>
+      {checkins === null && <div className="mono text-[11px] border border-dashed border-[var(--border)] p-2.5 opacity-80">Gate scanning is not set up yet: the main admin runs <b>EVENT_CHECKINS.sql</b> once in Supabase.</div>}
+      {gate && checkins && <GateScanner ev={ev} regs={regs} flats={flats} checkins={checkins} onChanged={onChanged} onClose={() => { setGate(false); onChanged(); }} />}
       <div className="overflow-x-auto border border-[var(--border)] bg-white">
         <table className="w-full mono text-[11px]">
-          <thead><tr className="bg-[var(--navy)] text-white"><th className="text-left px-3 py-2">MEAL</th><th className="text-right px-2">REGULAR</th><th className="text-right px-2">JAIN</th><th className="text-right px-3">TOTAL</th></tr></thead>
-          <tbody>{tot.map(({ s, t }) => <tr key={s.id} className="border-t border-[var(--border)]"><td className="px-3 py-2"><b>{s.name}</b><div className="opacity-60">members {t.mr + t.mj} • guests {t.gr + t.gj}</div></td><td className="text-right px-2">{t.mr + t.gr}</td><td className="text-right px-2">{t.mj + t.gj}</td><td className="text-right px-3 font-bold">{people(t)}</td></tr>)}</tbody>
+          <thead><tr className="bg-[var(--navy)] text-white"><th className="text-left px-3 py-2">MEAL</th><th className="text-right px-2">REGULAR</th><th className="text-right px-2">JAIN</th><th className="text-right px-3">TOTAL</th>{scanned && <th className="text-right px-3">ATTENDED</th>}</tr></thead>
+          <tbody>{tot.map(({ s, t }) => <tr key={s.id} className="border-t border-[var(--border)]"><td className="px-3 py-2"><b>{s.name}</b><div className="opacity-60">members {t.mr + t.mj} • guests {t.gr + t.gj}</div></td><td className="text-right px-2">{t.mr + t.gr}</td><td className="text-right px-2">{t.mj + t.gj}</td><td className="text-right px-3 font-bold">{people(t)}</td>{scanned && <td className="text-right px-3 font-bold text-emerald-800">{att.bySession[s.id] || 0}</td>}</tr>)}</tbody>
         </table>
       </div>
       <div className="grid grid-cols-2 gap-2 mono text-[11px]">
