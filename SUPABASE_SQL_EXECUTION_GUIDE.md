@@ -12,11 +12,11 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
 | 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas (PR #28) | **run 30 Oct 2026, check OK** |
 | 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login (PR #29) | **run 30 Oct 2026, tested live** |
-| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | run 30 Oct 2026 (result not kept; script 10's check confirms it) |
+| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | **run; confirmed by 00c (30 Oct 2026)** |
 | 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) (PR #31) | **run 30 Oct 2026, check OK** |
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
-| 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
-| — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
+| 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | **run; confirmed by 00c (30 Oct 2026)** |
+| — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | **run 30 Oct 2026: all 11 rows ok** |
 
 ---
 
