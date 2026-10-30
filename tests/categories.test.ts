@@ -30,3 +30,13 @@ test("towers without joined homes keep two categories", () => {
   assert.deepEqual(buildCategories(flats).map((c) => c.key), ["A_STD", "A_TERRACE"]);
   assert.equal(buildCategories(flats)[0].label, "TOWER A FLOORS 1-2");
 });
+
+test("Tower B has no terrace: all 40 B flats are one category (30 Oct 2026)", () => {
+  const flats: any[] = [];
+  for (let fl = 1; fl <= 10; fl++) for (let u = 3; u <= 6; u++) flats.push(flat(`B${fl}0${u}`, "B", fl));
+  const cats = buildCategories(flats);
+  assert.deepEqual(cats.map((c) => c.key), ["B_STD"]);
+  assert.equal(cats[0].ids.length, 40);
+  assert.equal(cats[0].terrace, false);
+  assert.equal(cats[0].label, "TOWER B FLOORS 1-10");
+});

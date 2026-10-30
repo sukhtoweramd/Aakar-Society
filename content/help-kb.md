@@ -27,7 +27,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 ## What each tab shows
 - **COVER**: the society's record page: name, registration number and date, address, the SOCIETY SEAL box (91 flats: Tower A 40, Tower B 40, Tower C 11), ledger status, the committee members with their flats (Chairman, Secretary, Treasurer, then Committee Members, then Co-opted Members; within each, by flat number), short notes (terrace logic, vault), quick links to the other tabs, and WHO TO CONTACT (the committee member responsible for each area, like lift or water).
 - **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT. Tower C homes are the 4 BHK homes of the B building and carry two numbers, for example B-201/202; log in with either number (B201 or B202). Exception: B-101 and B-102 are two separate flats (each with its own owner, maintenance bill and login), also listed under Tower C.
-- **FLOOR**: floor plans tower-wise. Shows PLAN READY or NO PLAN UPLOADED. Committee can upload a plan with UPLOAD FLOOR PLAN PDF/DWG. Top-floor flats own the terrace (TERRACE LOGIC).
+- **FLOOR**: floor plans tower-wise. Shows PLAN READY or NO PLAN UPLOADED. Committee can upload a plan with UPLOAD FLOOR PLAN PDF/DWG. Top-floor flats of Tower A (A-1001 to A-1004) and the Tower C home B-1001/1002 own the terrace (TERRACE LOGIC). Tower B's top floor (B-1003 to B-1006) has no terrace and pays the same as the other Tower B flats.
 - **MY FLAT**: everything about your own flat (details below).
 - **BUSINESS**: the society business directory: members' professions and businesses with flat, office address and phone. HOW TO GET LISTED: open MY FLAT → FAMILY MEMBERS → Edit (or + ADD MEMBER) and fill in Profession / Business, office address and office phone; it appears in BUSINESS automatically.
 - **DIRECTORY**: MEMBER DIRECTORY of families and mobile numbers, only for flats that gave consent (others show only flat number and owner or tenant name). Also a COMMITTEE DIRECTORY. PRINT / SAVE AS PDF prints it.
@@ -88,6 +88,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Seen only by the flat's owner and the committee. In a rented flat the tenant's login does not show the owner's nominee; the owner gives the details to the committee.
 
 ## Bills, receipts and paying maintenance
+- Maintenance rates are set per year and billed every half-year (April and October): each bill is half of the yearly rate. A flat given on rent pays 1.5 times the standard maintenance; the bill is still in the owner's name and shows the extra amount on its own line.
 - Your bills and receipts are in MY FLAT → MY BILLS & RECEIPTS, with the balance due and a MEMBER LEDGER CARD. PRINT MY LEDGER and STATEMENT PDF give printable copies.
 - Pay by UPI / bank transfer or cheque using the details printed on the bill. Write your flat number in the payment remark.
 - After paying, tell the committee: **I HAVE PAID** in MY BILLS & RECEIPTS.

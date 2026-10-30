@@ -112,6 +112,9 @@ export const rupees = (n: number | null | undefined) => (n == null ? "—" : `�
 
 export const sortFlats = (a: Flat, b: Flat) => (a.tower || "").localeCompare(b.tower || "") || flatNumber(a) - flatNumber(b);
 
+/** Towers whose top-floor flats own a terrace (higher maintenance). Tower B's top floor (B1003–B1006) has no terrace:
+ *  same charges as the other B flats (confirmed 30 Oct 2026). The joined home B1001/1002 is in Tower C, which has one. */
+export const TERRACE_TOWERS = ["A", "C"];
 /** A charges category: the standard floors or the top (terrace) floor of one tower. */
 export type Category = {
   key: string; // e.g. "A_STD" / "A_TERRACE"
@@ -154,7 +157,7 @@ export function buildCategories(flats: Flat[]): Category[] {
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   for (const t of towers) {
     const inTower = flats.filter((f) => f.tower === t).sort(sortFlats);
-    const top = Math.max(...inTower.map(floorOf));
+    const top = TERRACE_TOWERS.includes(t) ? Math.max(...inTower.map(floorOf)) : Infinity; // no terrace: one standard group
     // A tower with joined homes (flat_no "B201/202") and single flats (B101, B102) gets the single flats as their own
     // category, so a joined home's rate is never applied to a single flat (and charged twice for one pair).
     const mixed = inTower.some(isJoined) && inTower.some((f) => !isJoined(f));

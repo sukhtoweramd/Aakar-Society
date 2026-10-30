@@ -106,7 +106,7 @@ function card(c: CardData, printed: string): string {
   <div class="strip">
     <div><small>TYPE</small><b>${esc(f.bhk || "—")}</b></div>
     <div><small>BUILT-UP</small><b>${f.sqft ? `${Number(f.sqft).toLocaleString("en-IN")} sq ft` : "—"}</b></div>
-    <div><small>MAINTENANCE</small><b>${f.maintenance != null ? `${rupee(f.maintenance)} / mo` : "—"}</b></div>
+    <div><small>MAINTENANCE</small><b>${f.maintenance != null ? `${rupee(f.maintenance)} / year` : "—"}</b></div>
     <div><small>OCCUPANCY</small><b>${occupancy}</b></div>
     <div><small>STATUS</small><b style="color:${occupied ? "#1f8a4c" : "#b26a00"}">${occupied ? "Occupied" : esc(f.status || "Pending")}</b></div>
   </div>
