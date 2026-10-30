@@ -55,24 +55,8 @@ export function periodOptions(): string[] {
 export function currentPeriodKey() { const d = new Date(); const m = d.getMonth() + 1; return m >= 4 && m <= 9 ? `${d.getFullYear()}-H1` : m >= 10 ? `${d.getFullYear()}-H2` : `${d.getFullYear() - 1}-H2`; }
 export const monthsIn = (from: string, to: string) => { const a = new Date(from), b = new Date(to); return (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() + 1; };
 
-/** Decided 30 Oct 2026: rented flats pay 1.5 × standard maintenance (changeable in BILLING → SETTINGS). */
-export const DEFAULT_RENT_MULTIPLIER = 1.5;
-export const rentMultiplier = (s?: Pick<Settings, "rent_multiplier"> | null) => { const m = Number(s?.rent_multiplier); return m >= 1 && m <= 5 ? m : DEFAULT_RENT_MULTIPLIER; };
-/** Maintenance is an ANNUAL rate (flats.maintenance, set in ADMIN → charges). A bill for a period charges the share of the
- *  year it covers: a half-year (6 months) = annual ÷ 2. A rented flat adds (multiplier − 1) × that standard amount as a
- *  separate line, only on standard maintenance (never on arrears, penalties or interest). Rupees, rounded. */
-export function maintenanceCharge(annual: number | null | undefined, months: number, rented: boolean, multiplier = DEFAULT_RENT_MULTIPLIER): { lines: Line[]; amount: number } {
-  const a = num(annual);
-  if (a <= 0 || months <= 0) return { lines: [], amount: 0 };
-  const share = months / 12;
-  const base = Math.round(a * share);
-  const lines: Line[] = [{ description: `Maintenance charges (annual ₹${inr(a)})`, rate: a, qty: share, amount: base }];
-  if (rented && multiplier > 1) {
-    const extra = Math.round(base * (multiplier - 1));
-    lines.push({ description: `Additional maintenance for rented flat (${multiplier} × standard)`, rate: base, qty: Math.round((multiplier - 1) * 100) / 100, amount: extra });
-  }
-  return { lines, amount: lines.reduce((n, l) => n + l.amount, 0) };
-}
+// Annual maintenance / rented-flat maths live in ./maintenance (no database code, so tests can load it).
+export { DEFAULT_RENT_MULTIPLIER, rentMultiplier, maintenanceCharge } from "./maintenance";
 
 /** Indian-style amount in words: 21000 -> "Rupees Twenty-One Thousand Only" */
 export function inWords(amount: number): string {

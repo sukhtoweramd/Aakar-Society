@@ -1,7 +1,7 @@
 // Annual maintenance, half-yearly bills, rented flats at 1.5× (decided 30 Oct 2026). Sample amounts only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { maintenanceCharge, rentMultiplier } from "../lib/billing";
+import { maintenanceCharge, rentMultiplier } from "../lib/maintenance";
 
 test("half-year bill = annual ÷ 2", () => {
   const c = maintenanceCharge(24000, 6, false);
