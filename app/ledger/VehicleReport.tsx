@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, residentName, sortFlats, SOCIETY, type Flat, type MemberLite } from "@/lib/society";
 import { VEHICLE_TYPES } from "./FlatListPanel";
-import { backButton } from "@/lib/printBack";
+import { backButton, pdfButton } from "@/lib/printBack";
 
 type Vehicle = { id: string; flat_id: string; vtype: string; model: string | null; plate: string | null };
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -83,7 +83,7 @@ export default function VehicleReport({ list, members, scope }: { list: Flat[]; 
       .bar button{background:#c9a227;color:#000;border:0;padding:8px 16px;font-weight:700;cursor:pointer}
       @media screen{body{padding:24px;max-width:794px;margin:auto} table{margin-bottom:24px}} @media print{.bar{display:none}}
     </style></head><body>
-      <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${total} vehicle${total === 1 ? "" : "s"} in ${groups.length} flat${groups.length === 1 ? "" : "s"}</span></div>
+      <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button><span>${total} vehicle${total === 1 ? "" : "s"} in ${groups.length} flat${groups.length === 1 ? "" : "s"}</span></div>
       ${sections || "<p>No vehicles match.</p>"}${totals}</body></html>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
   }
