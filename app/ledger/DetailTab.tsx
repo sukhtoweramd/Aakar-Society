@@ -6,7 +6,8 @@ import { api, deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
 import ConsentCard from "./ConsentCard";
-import FlatListPanel, { VEHICLE_TYPES } from "./FlatListPanel";
+import { EmergencyPanel, VehiclesPanel } from "./flatLists";
+import TenantLoginCard from "./TenantLoginCard";
 import { printFlatCards } from "@/lib/flatCard";
 import MyBills from "./billing/MyBills";
 import LettersPanel from "./billing/LettersPanel";
@@ -24,6 +25,13 @@ import { compressForUpload, sizeNote } from "@/lib/compressFile";
 export default function DetailTab({ ctx }: { ctx: Ctx }) {
   const { flats, categories, selectedId, selectFlat, go, reloadFlats, isCommittee, myFlat } = ctx;
   const f = flats.find((x) => x.id === (isCommittee ? selectedId : myFlat)) || null;
+  // Rented flat with its own tenant login (TENANT_LOGINS.sql): the owner's login only views the tenant's family, vehicles
+  // and emergency contacts (the database refuses changes). Committee logins are not limited.
+  const [tenantManaged, setTenantManaged] = useState(false);
+  useEffect(() => {
+    if (!f || isCommittee || f.occupancy !== "tenant") { setTenantManaged(false); return; }
+    supabase.rpc("flat_has_tenant_login", { p_flat: f.id }).then(({ data, error }) => setTenantManaged(!error && !!data));
+  }, [f?.id, f?.occupancy, isCommittee]);
   const [docs, setDocs] = useState<StoredFile[]>([]);
   const [vault, setVault] = useState<StoredFile[]>([]);
   const [editing, setEditing] = useState(false);
@@ -180,9 +188,11 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     const upd: any = { occupancy: "owner", tenant_name: null, tenant_from: null, agreement_until: null, owner_address: null };
     if ("directory_consent" in f!) upd.directory_consent = false;
     const { error } = await supabase.from("flats").update(upd).eq("id", f!.id);
+    // the tenant login (if any) is switched off by the database when the flat stops being rented; also block the login itself
+    if (!error) { try { await api("/api/residents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "tenant_revoke", flat: f!.id, reason: "tenant moved out" }) }); } catch { /* no tenant login */ } }
     setBusy(null);
     if (error) { setError(error.message); return; }
-    alert(`Done. The tenant and family have been removed. Now reset the ${label(f!)} flat login password (ADMIN → Flat logins → Reset) so the old tenant can no longer log in.`);
+    alert(`Done. The tenant and family have been removed, and the tenant login (if any) is switched off. If the tenant used the flat login, reset the ${label(f!)} flat login password (ADMIN → Flat logins → Reset) so the old tenant can no longer log in.`);
     setFamilyVersion((v) => v + 1);
     reloadFlats();
   }
@@ -381,42 +391,16 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </div>
             </div>
 
-            <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} lockHead={!isCommittee} committeeFlat={f} canSetCommittee={isCommittee} onFlatChanged={reloadFlats} />
+            {isCommittee && rented && <TenantLoginCard key={`tl-${f.id}`} flat={f} />}
+            <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} lockHead={!isCommittee} committeeFlat={f} canSetCommittee={isCommittee} onFlatChanged={reloadFlats} readOnly={tenantManaged} />
+            {tenantManaged && <div className="mono text-[11px] border border-[var(--border)] bg-[var(--bg)] p-2.5 -mt-2">The tenant keeps the family, vehicles and emergency contacts up to date from their own login. You can see them here.</div>}
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
 
             {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
 
-            <div id="sec-vehicles" className="scroll-mt-28"><FlatListPanel key={`veh-${f.id}-${familyVersion}`} table="vehicles" flatId={f.id} title="VEHICLES" addLabel="+ ADD VEHICLE"
-              note={rented ? "Vehicles of the tenant's family living here." : "Vehicles of the family living here."}
-              empty="No vehicles added yet."
-              fields={[
-                { key: "vtype", label: "Vehicle type", options: VEHICLE_TYPES, required: true },
-                { key: "model", label: "Model", placeholder: "e.g. Honda Activa, Maruti Swift" },
-                { key: "plate", label: "Number plate", placeholder: "GJ 01 AB 1234" },
-              ]}
-              render={(r) => (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="mono text-[10px] bg-[var(--navy)] text-white px-1.5 py-0.5">{r.vtype}</span>
-                  <span className="serif text-[14px] font-bold">{r.model || "Model not given"}</span>
-                  {r.plate && <span className="mono text-[12px] font-bold border border-[var(--navy)] bg-white px-2 py-0.5 tracking-[0.06em]">{r.plate}</span>}
-                </div>
-              )} /></div>
+            <div id="sec-vehicles" className="scroll-mt-28"><VehiclesPanel key={`veh-${f.id}-${familyVersion}`} flatId={f.id} rented={rented} readOnly={tenantManaged} /></div>
 
-            <FlatListPanel key={`emg-${f.id}-${familyVersion}`} table="emergency_contacts" flatId={f.id} title="EMERGENCY CONTACTS" addLabel="+ ADD CONTACT"
-              note="People outside the society to call if something happens. Seen only by this flat and the committee."
-              empty="No emergency contact added yet. Please add at least one."
-              fields={[
-                { key: "name", label: "Name", required: true },
-                { key: "relation", label: "Relation", placeholder: "Brother, Son, Friend…" },
-                { key: "phone", label: "Phone", required: true },
-                { key: "location", label: "Location", placeholder: "City or area" },
-              ]}
-              render={(r) => (
-                <div>
-                  <div className="serif text-[14px] font-bold">{r.name}{r.relation && <span className="mono text-[10px] opacity-60 font-normal"> • {r.relation}</span>}</div>
-                  <div className="mono text-[11px] mt-0.5"><a href={`tel:${String(r.phone).replace(/\s/g, "")}`} className="underline">{r.phone}</a>{r.location && <span className="opacity-60"> • {r.location}</span>}</div>
-                </div>
-              )} />
+            <EmergencyPanel key={`emg-${f.id}-${familyVersion}`} flatId={f.id} readOnly={tenantManaged} />
 
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">

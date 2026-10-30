@@ -9,7 +9,9 @@ export type Ctx = {
   email: string;
   isCommittee: boolean;
   myFlat: string | null; // resident's flat id, e.g. "A101"
-  homeFlat: string | null; // the logged-in person's own flat: resident's flat, or a committee login's linked flat
+  homeFlat: string | null; // the logged-in person's own flat: resident's flat, or a committee login's linked flat (never a tenant's)
+  isTenant?: boolean; // tenant login of a rented flat (TENANT_LOGINS.sql)
+  tenantFlat?: string | null; // the rented flat of a tenant login
   flats: Flat[];
   categories: Category[];
   towerFilter: string; // "ALL" or tower letter

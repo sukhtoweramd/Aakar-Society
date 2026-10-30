@@ -10,7 +10,9 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 2 | `BILLING_ANNUAL.sql` | Step 3: annual rates, half-yearly bills, rented 1.5× (PR #25) | **run 30 Oct 2026, check OK** |
 | 3 | `CONTACTS.sql` | Step 4: CONTACTS tab (PR #27) | **run 30 Oct 2026, check OK** |
 | 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
-| 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas | to run after the areas PR is merged and live |
+| 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas (PR #28) | **run 30 Oct 2026, check OK** |
+| 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login | to run after the tenant PR is merged and live |
+| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | right after 6 |
 
 ---
 
@@ -134,4 +136,38 @@ active contacts and cannot add; a committee login sees all and can change. **Run
 **Tested:** local PostgreSQL 16 with sample tables and simulated logins: run, second run, undo; a plain committee login is
 refused for both assigning and renaming; the Chairman can assign 3 backups but not rename; refused: holder as backup, a
 non-committee flat, 5 backups; main admin can rename and add; nothing can be deleted; a member who left the committee
-stays; a complaint goes to the holder and both backups and a backup's flat login can see it. **Not yet run on live.**
+stays; a complaint goes to the holder and both backups and a backup's flat login can see it. **Run on live 30 Oct 2026: check as expected (0 of 10 areas had a backup).**
+
+---
+
+## 6. `TENANT_LOGINS.sql` — separate login for the tenant
+
+**What it changes:**
+- Table `flat_tenant_logins` (one row per tenant login; written only by the server and the move-out trigger; committee can read).
+- `my_tenant_flat()` / `my_home_flat()` / `flat_has_tenant_login()`. A tenant login works only while its row is active and
+  the flat is marked rented. Tenant logins carry `tenant_flat`, never `flat_id`, so **no existing owner rule applies to them**.
+- Trigger: TENANT MOVED OUT (occupancy back to owner) switches the tenant login off at once.
+- Family / vehicles / emergency contacts: owner reads; owner changes only while the flat has **no** active tenant login;
+  tenant manages its own flat's rows. Head of family stays fill-once for tenants too.
+- Complaints: tenant raises and sees its flat's complaints. Bookings: tenant books for its flat and cancels its own
+  (`request_booking` / `cancel_booking` now use `my_home_flat()`; otherwise unchanged).
+- Nothing opens bills, receipts, payments, nominees, letters, letter requests, flat documents or the flat row to a tenant.
+
+**Prerequisites:** the tenant PR merged and live (the app must know the tenant role first). BOOKINGS.sql, COMPLAINTS.sql,
+sql-security/05 and 06 run earlier.
+
+**Expected check result:** `table 1` • `rules on table 1` • `moved-out trigger on true` • `members rules 6` • `vehicles rules 6` •
+`emergency rules 6` • `complaints tenant rules 2` • `booking tenant rule 1` • `head guard uses my_home_flat true` • `tenant logins active 0`.
+(If members / vehicles / emergency show another number, send the result: it means the live table had extra rules.)
+
+**Undo:** `TENANT_LOGINS_UNDO.sql` (back to one login per flat; data kept).
+
+## 7. `sql-security/09_RESTORE_tenant_logins.sql` — restore includes tenant logins
+
+Adds `flat_tenant_logins` to the end of the restore list (backups already include it). **Expected:** every row `true`.
+**Undo:** `sql-security/09_UNDO.sql`.
+
+**Tested (6, 7):** local PostgreSQL 16 with simulated owner, tenant and committee logins: run, second run, undo, re-run; the
+tenant sees only its flat's family, cannot change the head's name, cannot add for another flat, can raise a complaint and
+book for its own flat but not another; the owner of the rented flat sees the family but cannot add or change; after
+"moved out" the tenant login is off, the tenant sees nothing and the owner can edit again. **Not yet run on live.**

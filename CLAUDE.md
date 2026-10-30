@@ -17,6 +17,10 @@
 - Flat row (`flats`) for a flat login is an allow-list (`sql-security/05`, "fill once"): mobile, email, address, tenant dates and
   directory consent any time; owner / tenant name only while empty; everything else (incl. occupancy and any new column)
   committee only. A new member-editable column must be added to the guard's list on purpose.
+- Tenant logins (TENANT_LOGINS.sql, 30 Oct 2026): `role = 'tenant'` + `app_metadata.tenant_flat` (never `flat_id`, so `my_flat()`
+  and every owner rule ignore them). Database: `my_tenant_flat()` (only while `flat_tenant_logins` row active AND flat rented),
+  `my_home_flat()` = owner or tenant flat. Server: `Authed.isTenant` / `tenantFlatId` (flatId stays null). A tenant may use only
+  what is opened on purpose: family / vehicles / emergency contacts, complaints, common plot booking, notices, events, contacts.
 - Head of family (`members.is_head`) is fill-once for flat logins too (`sql-security/06`): name, head flag and removal by committee only.
 - Committee flag + top designation are on the flat; `flats.committee_members` lists every person of the flat on the committee with their own designation (COMMITTEE_PEOPLE.sql; empty = `committee_person` or the owner). Use `committeePeople(f)` / `committeeText(f)`; members get the list via `committee_people()`.
 - Bookings are approved only by a committee login linked to the flat marked exactly "Chairman" or "Secretary".

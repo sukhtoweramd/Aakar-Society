@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
 import { TABS, type Ctx, type Tab } from "./ledger/ctx";
-import { residentTabs } from "@/lib/memberTabs";
+import { residentTabs, tenantTabs } from "@/lib/memberTabs";
 import ChangePassword from "./ledger/ChangePassword";
 import HelpChat from "./ledger/HelpChat";
 import { InstallApp } from "./ledger/PwaRegister";
@@ -24,6 +24,7 @@ import VaultTab from "./ledger/VaultTab";
 import NoticesTab from "./ledger/NoticesTab";
 import EventsTab from "./ledger/EventsTab";
 import ContactsTab from "./ledger/ContactsTab";
+import TenantHome from "./ledger/TenantHome";
 import DirectoryTab from "./ledger/DirectoryTab";
 import AdminTab from "./ledger/AdminTab";
 import ReportsTab from "./ledger/ReportsTab";
@@ -43,8 +44,11 @@ export default function Home() {
   const role = roleOf(meta);
   const isCommittee = role === "committee";
   const myFlat: string | null = role === "resident" ? String(meta.flat_id || "") || null : null;
+  // tenant of a rented flat (TENANT_LOGINS.sql): own screen in MY FLAT; never treated as the flat (owner) login
+  const isTenant = role === "tenant";
+  const tenantFlat: string | null = isTenant ? String(meta.tenant_flat || "") || null : null;
   const [refreshed, setRefreshed] = useState(false);
-  const homeFlat: string | null = String(meta.flat_id || "") || null; // committee logins may be linked to their own flat
+  const homeFlat: string | null = isTenant ? null : String(meta.flat_id || "") || null; // committee logins may be linked to their own flat
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -78,19 +82,19 @@ export default function Home() {
     supabase.auth.refreshSession().then(({ data }) => { if (data.session) setSession(data.session); }).finally(() => setRefreshed(true));
   }, [session?.user.id, role, refreshed]);
   // Members (flat logins) start on MY FLAT; committee logins start on the cover page.
-  useEffect(() => { if (session && (session.user.app_metadata as any)?.role === "resident") setTab("DETAIL"); }, [session?.user.id]);
+  useEffect(() => { if (session && ["resident", "tenant"].includes((session.user.app_metadata as any)?.role)) setTab("DETAIL"); }, [session?.user.id]);
 
   const categories = useMemo(() => buildCategories(flats), [flats]);
 
   // Which tabs flat logins may open (ADMIN → MEMBER SCREENS). null = not set up yet: all member tabs, as before.
   const [memberTabs, setMemberTabs] = useState<string[] | null>(null);
   useEffect(() => {
-    if (!session || role !== "resident") return;
+    if (!session || (role !== "resident" && role !== "tenant")) return;
     supabase.from("app_settings").select("member_tabs").eq("id", 1).maybeSingle()
       .then(({ data, error }) => setMemberTabs(!error && Array.isArray((data as any)?.member_tabs) ? (data as any).member_tabs : null));
   }, [session?.user.id, role]);
-  const residentAllowed = useMemo(() => residentTabs(memberTabs), [memberTabs]);
-  useEffect(() => { if (role === "resident" && !residentAllowed.includes(tab)) setTab("DETAIL"); }, [role, residentAllowed, tab]);
+  const residentAllowed = useMemo(() => (isTenant ? tenantTabs(memberTabs) : residentTabs(memberTabs)), [memberTabs, isTenant]);
+  useEffect(() => { if ((role === "resident" || role === "tenant") && !residentAllowed.includes(tab)) setTab("DETAIL"); }, [role, residentAllowed, tab]);
 
   function go(t: Tab) {
     if (!isCommittee && !residentAllowed.includes(t)) { alert("This screen is not open for members. Please ask the committee."); return; }
@@ -112,11 +116,11 @@ export default function Home() {
   const mustChange = !isCommittee && !(session.user.user_metadata as any)?.password_changed;
   if (mustChange || showPassword) return <ChangePassword forced={mustChange} who={myFlat ? `Flat ${myFlat}` : session.user.email || ""} onDone={() => setShowPassword(false)} />;
   const visibleTabs = isCommittee ? [...TABS] : residentAllowed;
-  const who = myFlat ? `FLAT ${label({ id: myFlat, flat_no: myFlat } as any)}` : session.user.email;
+  const who = myFlat ? `FLAT ${label({ id: myFlat, flat_no: myFlat } as any)}` : tenantFlat ? `TENANT • FLAT ${label({ id: tenantFlat, flat_no: tenantFlat } as any)}` : session.user.email;
 
   const ctx: Ctx = {
     email: session.user.email || "",
-    isCommittee, myFlat, homeFlat,
+    isCommittee, myFlat, homeFlat, isTenant, tenantFlat,
     flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId,
     selectFlat: setSelectedId, go, reloadFlats,
   };
@@ -124,7 +128,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[var(--bg)] text-[var(--ink)] antialiased" style={{ paddingTop: "var(--safe-area-inset-top)" }}>
-      <LoginBanner userId={session.user.id} tower={(myFlat || homeFlat || "")[0] || null} isCommittee={isCommittee} onRead={() => go("NOTICES")} />
+      <LoginBanner userId={session.user.id} tower={(myFlat || homeFlat || tenantFlat || "")[0] || null} isCommittee={isCommittee} onRead={() => go("NOTICES")} />
       {/* Top strip */}
       <div className="w-full bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[38px] py-1.5 flex items-center justify-between gap-2 flex-wrap">
@@ -142,7 +146,7 @@ export default function Home() {
             <div className="hidden md:flex items-center gap-4 opacity-80 mr-2 text-[11px]">
               <span>SUKH TOWER • MIRAMBICA ROAD</span>
               <span className="h-3 w-px bg-white/20" />
-              <span className={myFlat ? "" : "normal-case"}>{who}</span>
+              <span className={myFlat || tenantFlat ? "" : "normal-case"}>{who}</span>
             </div>
             {isCommittee && homeFlat && <button onClick={() => { setSelectedId(homeFlat); setTab("DETAIL"); window.scrollTo({ top: 0 }); }} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">MY FLAT {label({ id: homeFlat, flat_no: homeFlat } as any)}</button>}
             <InstallApp variant="bar" />
@@ -185,7 +189,7 @@ export default function Home() {
           {tab === "COVER" && <CoverTab ctx={ctx} />}
           {tab === "INDEX" && <IndexTab ctx={ctx} />}
           {tab === "FLOOR" && <FloorTab ctx={ctx} />}
-          {tab === "DETAIL" && <DetailTab ctx={ctx} />}
+          {tab === "DETAIL" && (isTenant ? <TenantHome ctx={ctx} /> : <DetailTab ctx={ctx} />)}
           {tab === "BUSINESS" && <BusinessTab ctx={ctx} />}
           {tab === "VAULT" && <VaultTab ctx={ctx} />}
           {tab === "NOTICES" && <NoticesTab ctx={ctx} />}
@@ -202,7 +206,7 @@ export default function Home() {
       <HelpChat flats={flats} isCommittee={isCommittee} />
       <footer className="border-t border-[var(--border)] mt-8 mono text-[10px] px-6 py-4 opacity-60 flex flex-wrap gap-4 justify-between max-w-[1600px] mx-auto">
         <span>AAKAR CO-OP HOUSING SOCIETY {SOCIETY.reg} • Sukh Tower • Mirambica Road Naranpura • Ahmedabad • EST 1994</span>
-        <span>Logged in: {who}{isCommittee ? " • Committee" : " • Resident"}</span>
+        <span>Logged in: {who}{isCommittee ? " • Committee" : isTenant ? " • Tenant" : " • Resident"}</span>
       </footer>
     </div>
   );
