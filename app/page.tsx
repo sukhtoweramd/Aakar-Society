@@ -23,6 +23,7 @@ import BusinessTab from "./ledger/BusinessTab";
 import VaultTab from "./ledger/VaultTab";
 import NoticesTab from "./ledger/NoticesTab";
 import EventsTab from "./ledger/EventsTab";
+import ContactsTab from "./ledger/ContactsTab";
 import DirectoryTab from "./ledger/DirectoryTab";
 import AdminTab from "./ledger/AdminTab";
 import ReportsTab from "./ledger/ReportsTab";
@@ -189,6 +190,7 @@ export default function Home() {
           {tab === "VAULT" && <VaultTab ctx={ctx} />}
           {tab === "NOTICES" && <NoticesTab ctx={ctx} />}
           {tab === "EVENTS" && <EventsTab ctx={ctx} />}
+          {tab === "CONTACTS" && <ContactsTab ctx={ctx} />}
           {tab === "DIRECTORY" && <DirectoryTab ctx={ctx} />}
           {tab === "ADMIN" && isCommittee && <AdminTab ctx={ctx} />}
           {tab === "REPORTS" && isCommittee && <ReportsTab ctx={ctx} />}

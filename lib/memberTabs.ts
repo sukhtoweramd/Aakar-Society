@@ -13,6 +13,7 @@ export const OPTIONAL_TABS: { tab: Tab; name: string; what: string }[] = [
   { tab: "BUSINESS", name: "BUSINESS", what: "Members' business directory" },
   { tab: "VAULT", name: "VAULT", what: "Society documents" },
   { tab: "EVENTS", name: "EVENTS", what: "Events, photos, registration" },
+  { tab: "CONTACTS", name: "CONTACTS", what: "Important phone numbers (lift, fire, security, plumber …)" },
 ];
 
 /** Tabs a flat login sees. setting = the saved list, or null when nothing is saved yet (then all, as before). */
