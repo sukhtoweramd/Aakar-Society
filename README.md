@@ -1,4 +1,4 @@
-# Aakar Sukh Tower – Society Management (Ahmedabad, 90 flats)
+# Aakar Sukh Tower – Society Management (Ahmedabad, 91 flats)
 
 Next.js 14 (App Router) · Supabase (database + login) · Cloudflare R2 (files) · Cloudflare Workers AI · Vercel (hosting)
 Installable on phones (PWA). Built for phones first: most members use it on mobile.

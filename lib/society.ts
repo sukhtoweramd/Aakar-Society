@@ -43,14 +43,15 @@ export const SOCIETY = {
 };
 
 /** Number part of a flat id: "A1001" -> 1001 */
-// The 4 BHK homes of the B building are two numbers joined (flat_no "B101/102", id "B101"; shown under Tower C).
-// The first number decides floor and order.
+// The 4 BHK homes of the B building are two numbers joined (flat_no "B201/202", id "B201"; shown under Tower C).
+// The first number decides floor and order. Exception (30 Oct 2026): B101 and B102 are two separate flats
+// (own owner, own bill), also shown under Tower C. See SPLIT_B101_B102.sql.
 export const flatNumber = (f: Flat) => parseInt(((f.flat_no || f.id).match(/\d+/) || ["0"])[0], 10) || 0;
 /** Floor from the DB, or worked out from the number (A1001 -> 10, A204 -> 2) */
 export const floorOf = (f: Flat) => f.floor ?? Math.floor(flatNumber(f) / 100);
 /** Position on the floor (A1003 -> 3) */
 export const unitOf = (f: Flat) => flatNumber(f) % 100;
-/** Display label: "A1001" -> "A-1001"; joined home "B101/102" -> "B-101/102" */
+/** Display label: "A1001" -> "A-1001"; joined home "B201/202" -> "B-201/202" */
 export const label = (f: Flat) => {
   const no = (f.flat_no || f.id || "").toUpperCase();
   const m = no.match(/^([A-Z])-?(\d+)(?:\/(\d+))?$/);
@@ -132,6 +133,7 @@ export const DEFAULT_RATES: Record<string, { maint: number; sqft: number; bhk: s
   B_STD: { maint: 2500, sqft: 1100, bhk: "2BHK" },
   B_TERRACE: { maint: 4000, sqft: 1300, bhk: "2BHK+T" },
   C_STD: { maint: 2000, sqft: 950, bhk: "4BHK" },   // placeholder amounts: 4 BHK homes B?01+B?02 (set real ones in ADMIN)
+  // C_STD_SINGLE (B101, B102 as separate flats): no default — the committee sets the rate in ADMIN
   C_TERRACE: { maint: 3200, sqft: 1150, bhk: "4BHK+T" },
 };
 
@@ -143,6 +145,9 @@ const mostCommon = <T,>(vals: T[]): T | null => {
   return best;
 };
 
+/** A joined home carries two numbers in flat_no ("B201/202"). */
+export const isJoined = (f: Pick<Flat, "flat_no">) => (f.flat_no || "").includes("/");
+
 /** Build categories from the real flats: per tower, top floor = terrace, the rest = standard. */
 export function buildCategories(flats: Flat[]): Category[] {
   const out: Category[] = [];
@@ -150,19 +155,25 @@ export function buildCategories(flats: Flat[]): Category[] {
   for (const t of towers) {
     const inTower = flats.filter((f) => f.tower === t).sort(sortFlats);
     const top = Math.max(...inTower.map(floorOf));
-    const groups: [boolean, Flat[]][] = [
-      [false, inTower.filter((f) => floorOf(f) < top)],
-      [true, inTower.filter((f) => floorOf(f) === top)],
-    ];
-    for (const [terrace, list] of groups) {
+    // A tower with joined homes (flat_no "B201/202") and single flats (B101, B102) gets the single flats as their own
+    // category, so a joined home's rate is never applied to a single flat (and charged twice for one pair).
+    const mixed = inTower.some(isJoined) && inTower.some((f) => !isJoined(f));
+    const groups: [boolean, boolean, Flat[]][] = [];
+    for (const terrace of [false, true]) {
+      const list = inTower.filter((f) => (floorOf(f) === top) === terrace);
+      if (mixed) { groups.push([terrace, false, list.filter(isJoined)], [terrace, true, list.filter((f) => !isJoined(f))]); }
+      else groups.push([terrace, false, list]);
+    }
+    for (const [terrace, single, list] of groups) {
       if (!list.length) continue;
       const floors = Array.from(new Set(list.map(floorOf))).sort((a, b) => a - b);
       const floorText = floors.length > 1 ? `${floors[0]}-${floors[floors.length - 1]}` : `${floors[0]}`;
+      const base = terrace ? `TOWER ${t} FLOOR${floors.length > 1 ? "S" : ""} ${floorText} TERRACE` : `TOWER ${t} FLOOR${floors.length > 1 ? "S" : ""} ${floorText}`;
       out.push({
-        key: `${t}_${terrace ? "TERRACE" : "STD"}`,
+        key: `${t}_${terrace ? "TERRACE" : "STD"}${single ? "_SINGLE" : ""}`,
         tower: t,
         terrace,
-        label: terrace ? `TOWER ${t} FLOOR ${floorText} TERRACE` : `TOWER ${t} FLOORS ${floorText}`,
+        label: single ? `${base} • SEPARATE FLATS` : base,
         floors: floorText,
         ids: list.map((f) => f.id),
         range: `${list[0].id}-${list[list.length - 1].id}`,
@@ -195,7 +206,7 @@ export function filterName(filter: string, categories: Category[]): string {
   if (filter === "ALL") return "All towers";
   if (filter === "COMMITTEE") return "Committee members";
   const c = categories.find((x) => x.key === filter);
-  if (c) return c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`;
+  if (c) return `Tower ${c.tower} floor${c.floors.includes("-") ? "s" : ""} ${c.floors}${c.terrace ? " (terrace)" : ""}${c.key.endsWith("_SINGLE") ? " (separate flats)" : ""}`;
   return `Tower ${filter}`;
 }
 

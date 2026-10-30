@@ -21,10 +21,10 @@ test("flat emails are recognised, other emails are not", () => {
 });
 
 test("4 BHK homes of the B building log in under the first number", () => {
-  assert.equal(normaliseFlat("B102"), "B101");
+  assert.equal(normaliseFlat("B202"), "B201");
   assert.equal(normaliseFlat("b-1002"), "B1001");
-  assert.equal(normaliseFlat("B-101/102"), "B101");
-  assert.equal(normaliseFlat("B101"), "B101");
+  assert.equal(normaliseFlat("B-201/202"), "B201");
+  assert.equal(normaliseFlat("B201"), "B201");
   assert.equal(normaliseFlat("B103"), "B103");
   assert.equal(normaliseFlat("A102"), "A102");   // only the B building
 });
@@ -36,4 +36,12 @@ test("joined home shows as B-101/102 and sorts on its first number", async () =>
   assert.equal(flatNumber(f), 101);
   assert.equal(floorOf(f), 1);
   assert.equal(label({ id: "A1001" } as any), "A-1001");
+});
+
+test("B101 and B102 are separate flats with their own logins (30 Oct 2026)", () => {
+  assert.equal(normaliseFlat("B101"), "B101");
+  assert.equal(normaliseFlat("B-102"), "B102");
+  assert.equal(normaliseFlat("b 102"), "B102");
+  assert.equal(normaliseFlat("B-101/102"), null);
+  assert.equal(normaliseFlat("B-302"), "B301");   // other pairs unchanged
 });

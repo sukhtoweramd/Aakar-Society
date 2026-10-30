@@ -5,7 +5,7 @@ If the answer is not here, or something looks broken, say so and point to the ap
 Never ask for or repeat passwords, OTPs, bank details or card numbers.
 
 ## About the app
-- The app of Aakar Co-op Housing Society, Sukh Tower (Mirambica Road, Naranpura, Ahmedabad). 90 flats in Towers A, B and C.
+- The app of Aakar Co-op Housing Society, Sukh Tower (Mirambica Road, Naranpura, Ahmedabad). 91 flats in Towers A, B and C.
 - Open it at aakarsociety.vercel.app on a phone or computer. It can be added to the phone's home screen (INSTALL APP button on Android / Chrome; on iPhone: Safari → Share → Add to Home Screen).
 - Two kinds of login: a **flat login** for each flat (members), and **committee logins** for society committee members.
 
@@ -25,8 +25,8 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - The left panel (on a computer) shows Tower A, B, C and the COMMITTEE with FILTER links, and the SOCIETY NOTICE.
 
 ## What each tab shows
-- **COVER**: the society's record page: name, registration number and date, address, the SOCIETY SEAL box (90 flats: Tower A 40, Tower B 40, Tower C 10), ledger status, the committee members with their flats (Chairman, Secretary, Treasurer, then Committee Members, then Co-opted Members; within each, by flat number), short notes (terrace logic, vault), quick links to the other tabs, and WHO TO CONTACT (the committee member responsible for each area, like lift or water).
-- **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT. Tower C homes are the 4 BHK homes of the B building and carry two numbers, for example B-101/102; log in with either number (B101 or B102).
+- **COVER**: the society's record page: name, registration number and date, address, the SOCIETY SEAL box (91 flats: Tower A 40, Tower B 40, Tower C 11), ledger status, the committee members with their flats (Chairman, Secretary, Treasurer, then Committee Members, then Co-opted Members; within each, by flat number), short notes (terrace logic, vault), quick links to the other tabs, and WHO TO CONTACT (the committee member responsible for each area, like lift or water).
+- **INDEX**: a grid of all flats in Towers A, B and C, with owner names. Use the tower FILTER to see one tower. Members tap their own flat to open MY FLAT; committee logins can open any flat. Flats given on rent show ON RENT. Tower C homes are the 4 BHK homes of the B building and carry two numbers, for example B-201/202; log in with either number (B201 or B202). Exception: B-101 and B-102 are two separate flats (each with its own owner, maintenance bill and login), also listed under Tower C.
 - **FLOOR**: floor plans tower-wise. Shows PLAN READY or NO PLAN UPLOADED. Committee can upload a plan with UPLOAD FLOOR PLAN PDF/DWG. Top-floor flats own the terrace (TERRACE LOGIC).
 - **MY FLAT**: everything about your own flat (details below).
 - **BUSINESS**: the society business directory: members' professions and businesses with flat, office address and phone. HOW TO GET LISTED: open MY FLAT → FAMILY MEMBERS → Edit (or + ADD MEMBER) and fill in Profession / Business, office address and office phone; it appears in BUSINESS automatically.
