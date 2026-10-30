@@ -6,7 +6,7 @@ import { compressForUpload } from "./compressFile";
 
 export type Complaint = {
   id: string; complaint_no: string; flat_id: string; area_id: string | null; area_name: string | null;
-  assigned_flat: string | null; backup_flat: string | null; description: string; photo_key: string | null;
+  assigned_flat: string | null; backup_flat: string | null; backup_flats?: string[] | null; description: string; photo_key: string | null;
   status: "open" | "in_progress" | "closed"; progress_note: string | null; close_note: string | null;
   closed_at: string | null; closed_by: string | null; history: { at: string; by: string; status: string; note: string | null }[];
   created_by: string | null; created_at: string; updated_at: string;
@@ -60,3 +60,5 @@ export const waDoneText = (c: Complaint) =>
   c.status === "closed"
     ? `Aakar society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is CLOSED.\nWhat was done: ${c.close_note || ""}\n\nIf it is not resolved, please raise it again in the app quoting ${c.complaint_no}.`
     : `Aakar society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is IN PROGRESS.${c.progress_note ? `\n${c.progress_note}` : ""}`;
+
+export { isHandler } from "./areaRules";

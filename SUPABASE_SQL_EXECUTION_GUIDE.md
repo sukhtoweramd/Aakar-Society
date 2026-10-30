@@ -8,8 +8,9 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 |---|---|---|---|
 | 1 | `SPLIT_B101_B102.sql` | Step 2: B101 and B102 as separate flats (PR #24) | **run 30 Oct 2026, check OK** |
 | 2 | `BILLING_ANNUAL.sql` | Step 3: annual rates, half-yearly bills, rented 1.5× (PR #25) | **run 30 Oct 2026, check OK** |
-| 3 | `CONTACTS.sql` | Step 4: CONTACTS tab | to run after the contacts PR is merged and live |
-| 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | right after 3 |
+| 3 | `CONTACTS.sql` | Step 4: CONTACTS tab (PR #27) | **run 30 Oct 2026, check OK** |
+| 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
+| 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas | to run after the areas PR is merged and live |
 
 ---
 
@@ -102,4 +103,35 @@ Also adds **CONTACTS** to the member screens (ADMIN → MEMBER SCREENS can hide 
 **Undo:** `sql-security/08_UNDO.sql` (function as after script 07).
 
 **Tested (3 and 4):** local PostgreSQL 16 with sample tables: run, second run, restore script + undo; a member login sees only
-active contacts and cannot add; a committee login sees all and can change. **Not yet run on the live database.**
+active contacts and cannot add; a committee login sees all and can change. **Run on the live database 30 Oct 2026: both checks as expected.**
+
+---
+
+## 5. `AREAS_BACKUPS.sql` — one responsible member + several backups
+
+**What it changes:**
+- `committee_areas.backup_flats` (list); the existing single backup is copied in; `backup_flat` stays = first backup.
+- `app_settings.area_backup_limit` (default 4, 1–10; set in COMMITTEE → RESPONSIBILITIES by the main admin).
+- A guard on every change of an area: areas themselves (add, rename, covers, phone, order, show) = **main admin login only**
+  (the oldest committee login, as in `lib/backup.ts`); responsible member + backups = a committee login linked to the flat
+  marked exactly **Chairman** or **Secretary**, or the main admin. Holder ≠ backup, no repeats, at most the limit, newly chosen
+  flats must be on the committee; someone who leaves the committee stays until replaced. **Areas cannot be deleted.**
+- Complaints: `complaints.backup_flats`; a new or moved complaint goes to the responsible member and **all** backups, who
+  can see and update it.
+- Functions `is_main_admin()`, `can_assign_areas()`, `area_rights()` (the screen asks what this login may do).
+
+**Prerequisites:** COMMITTEE_AMC.sql, COMPLAINTS.sql, MEMBER_SCREENS.sql. The areas PR merged and live.
+
+**Expected check result:** `backup lists column true` • `backup limit 4` • `guard on true` • `area rules 4` •
+`can delete areas false` • `complaints backup list true` • `areas with backups N of 10` (N = areas that had a backup).
+
+**Note:** after this, a committee login that is not the main admin and not linked to the Chairman / Secretary flat can only
+**view** RESPONSIBILITIES. The Chairman and Secretary need their own committee logins linked to their flats
+(ADMIN → committee logins → link flat).
+
+**Undo:** `AREAS_BACKUPS_UNDO.sql` (back to one backup and any committee login; extra backups are removed).
+
+**Tested:** local PostgreSQL 16 with sample tables and simulated logins: run, second run, undo; a plain committee login is
+refused for both assigning and renaming; the Chairman can assign 3 backups but not rename; refused: holder as backup, a
+non-committee flat, 5 backups; main admin can rename and add; nothing can be deleted; a member who left the committee
+stays; a complaint goes to the holder and both backups and a backup's flat login can see it. **Not yet run on live.**

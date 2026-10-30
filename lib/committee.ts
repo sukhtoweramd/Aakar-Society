@@ -3,7 +3,8 @@
 import { supabase } from "./supabaseClient";
 import { committeeName, committeePeople, label, type Flat } from "./society";
 
-export type Area = { id: string; name: string; description: string | null; holder_flat: string | null; backup_flat: string | null; contact_phone: string | null; sort: number; active: boolean };
+export type Area = { id: string; name: string; description: string | null; holder_flat: string | null; backup_flat: string | null; backup_flats?: string[] | null; contact_phone: string | null; sort: number; active: boolean };
+export { backupsOf, assignmentError, type AreaRights } from "./areaRules";
 export type Amc = {
   id: string; area_id: string | null; vendor: string; contact_person: string | null; contact_phone: string | null; covers: string;
   start_date: string; end_date: string; amount: number | null; payment_terms: string | null; visits_per_year: number | null;

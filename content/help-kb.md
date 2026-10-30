@@ -148,4 +148,5 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 
 ## Who to contact
 - App questions not answered here, and anything that looks broken: the **app coordinator** of the society committee (name and WhatsApp number set by the committee).
-- Bills, payments and receipts: the Treasurer. Notices and society matters: the Secretary. The "Who to contact" list on the COVER page shows the committee member responsible for each area.
+- Bills, payments and receipts: the Treasurer. Notices and society matters: the Secretary. The "Who to contact" list on the COVER page shows the committee member responsible for each area, with the backup members below. A complaint goes to the responsible member and all backups of its area.
+- Committee → RESPONSIBILITIES: each area has one responsible member and backups (up to 4 by default). The Chairman or the Secretary, from their own committee login, chooses the members; the main admin login adds, renames, hides or reorders areas and sets the maximum number of backups. The responsible member cannot also be a backup of the same area, and only committee members can be chosen. When someone leaves the committee, their areas show "not on committee — choose someone else" until replaced. Areas are never deleted, only hidden.

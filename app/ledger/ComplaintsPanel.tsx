@@ -9,7 +9,7 @@ import { familySummary } from "@/lib/society";
 import { loadAreas, personOf, type Area } from "@/lib/committee";
 import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
-import { daysOpen, loadComplaints, moveArea, raiseComplaint, setStatus, STATUS, waDoneText, waNewText, when, type Complaint } from "@/lib/complaints";
+import { daysOpen, loadComplaints, moveArea, raiseComplaint, setStatus, STATUS, waDoneText, waNewText, when, type Complaint, isHandler } from "@/lib/complaints";
 import { FileLink, SecureImg } from "./SecureFile";
 
 type Props = { mode: "flat" | "committee"; flats: Flat[]; flatId: string | null; isCommittee: boolean; onCount?: (n: number) => void };
@@ -26,7 +26,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
   async function load() {
     const [c, a] = await Promise.all([loadComplaints(), loadAreas(isCommittee)]);
     setList(c); setAreas(a || []);
-    if (c) onCount?.(c.filter((x) => x.status !== "closed" && (mode === "committee" || x.assigned_flat === flatId || x.backup_flat === flatId)).length);
+    if (c) onCount?.(c.filter((x) => x.status !== "closed" && (mode === "committee" || isHandler(x, flatId))).length);
   }
   useEffect(() => { load(); }, [flatId]);
   useEffect(() => { if (mode === "committee") supabase.from("members").select("*").then(({ data }) => setMembers((data as MemberLite[]) || [])); }, [mode]);
@@ -36,7 +36,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
   if (list === null) return mode === "committee" ? <div className="border border-dashed border-[var(--border)] p-6 text-center mono text-[12px]">Run <b>COMPLAINTS.sql</b> in Supabase to turn on complaints.</div> : null;
 
   const mine = list.filter((c) => c.flat_id === flatId);
-  const assigned = list.filter((c) => c.flat_id !== flatId && (c.assigned_flat === flatId || c.backup_flat === flatId));
+  const assigned = list.filter((c) => c.flat_id !== flatId && isHandler(c, flatId));
   const shown = list.filter((c) => (filter === "all" || (filter === "closed" ? c.status === "closed" : c.status !== "closed")) && (!areaFilter || c.area_id === areaFilter));
 
   function print() {
@@ -90,7 +90,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
       </>}
       {mine.length > 0 && <>
         <div className="mt-4 mono text-[11px] font-bold tracking-[0.12em]">MY COMPLAINTS</div>
-        <div className="mt-2 grid gap-3">{mine.slice(0, 20).map((c) => card(c, isCommittee || (!!flatId && (c.assigned_flat === flatId || c.backup_flat === flatId))))}</div>
+        <div className="mt-2 grid gap-3">{mine.slice(0, 20).map((c) => card(c, isCommittee || isHandler(c, flatId)))}</div>
       </>}
     </div>
   );
