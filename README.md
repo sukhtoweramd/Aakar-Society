@@ -2,6 +2,8 @@
 
 Next.js 14 (App Router) · Supabase (database + login) · Cloudflare R2 (files) · Cloudflare Workers AI · Vercel (hosting)
 Installable on phones (PWA). Built for phones first: most members use it on mobile.
+On phones (under 768 px) every login gets a home screen of buttons (`app/ledger/PhoneHome.tsx`, buttons in `lib/phoneMenu.ts`); each
+button opens one function with a HOME bar, and the phone's back button returns to the buttons. Computers keep the tabs.
 
 ## Features
 - **Flats** – grid of all flats by tower, MY FLAT page (family, vehicles, emergency contacts, directory consent),
