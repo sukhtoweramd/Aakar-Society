@@ -1,4 +1,5 @@
 "use client";
+import { seesEventAccounts } from "@/lib/eventTeamRules";
 // EVENTS → event → ACCOUNTS: the event's own money book (member fund, sponsorships, passes, expenses).
 // Kept separate from society billing. Convenor / treasurer (or committee) record entries.
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +19,7 @@ const PURPOSE_HINT: Record<string, string> = { Sponsorship: "e.g. Day 3 dinner /
 export default function EventAccounts({ ev, flats, team, isCommittee, myRole, email, onSettings }: { ev: Ev; flats: Flat[]; team: TeamRow[]; isCommittee: boolean; myRole: EventRole | null; email: string; onSettings: () => void }) {
   const canWrite = isCommittee || myRole === "Convenor" || myRole === "Treasurer";
   const canSettings = isCommittee || myRole === "Convenor";
-  const seesAll = isCommittee || !!myRole || !!ev.accounts_public;
+  const seesAll = isCommittee || seesEventAccounts(myRole) || !!ev.accounts_public;   // Assisting: not the money book
   const [list, setList] = useState<Money[] | null>(null);
   const [view, setView] = useState<(typeof VIEWS)[number]>("ENTRIES");
   const [form, setForm] = useState<Form | null>(null);

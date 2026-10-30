@@ -11,8 +11,9 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 3 | `CONTACTS.sql` | Step 4: CONTACTS tab (PR #27) | **run 30 Oct 2026, check OK** |
 | 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
 | 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas (PR #28) | **run 30 Oct 2026, check OK** |
-| 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login | to run after the tenant PR is merged and live |
-| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | right after 6 |
+| 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login (PR #29) | **run 30 Oct 2026, tested live** |
+| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | run? (not confirmed yet) |
+| 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) | to run after the event PR is merged and live |
 
 ---
 
@@ -170,4 +171,25 @@ Adds `flat_tenant_logins` to the end of the restore list (backups already includ
 **Tested (6, 7):** local PostgreSQL 16 with simulated owner, tenant and committee logins: run, second run, undo, re-run; the
 tenant sees only its flat's family, cannot change the head's name, cannot add for another flat, can raise a complaint and
 book for its own flat but not another; the owner of the rented flat sees the family but cannot add or change; after
-"moved out" the tenant login is off, the tenant sees nothing and the owner can edit again. **Not yet run on live.**
+"moved out" the tenant login is off, the tenant sees nothing and the owner can edit again. **Run on live 30 Oct 2026; a tenant login was created and used on a flat without an owner login.**
+
+---
+
+## 8. `EVENT_ASSISTING.sql` — event role Assisting, also for tenants
+
+**What it changes:** `event_team.role` may be **Assisting**; `event_team.member_kind` = `flat` (owner's household, as before) or
+`tenant` (the tenant login of that flat). A tenant can only be Assisting, and only while the flat has an active tenant login
+(trigger). The owner's household and the tenant of the same flat may both be on a team (unique per flat **and** kind).
+`my_event_role()` also answers for a tenant login (its own tenant row only). The event money book is no longer visible
+to Assisting (Convenor / Treasurer / Member, own payments, or public accounts as before).
+
+**Prerequisites:** EVENT_COMMITTEES.sql, EVENT_REGISTRATION.sql, EVENT_CHECKINS.sql, TENANT_LOGINS.sql. The event PR merged and live.
+
+**Expected check result:** `kind column true` • `Assisting allowed true` • `tenant only Assisting true` • `one-per-kind index 1` •
+`guard on true` • `role function knows tenants true` • `money hidden from Assisting true`.
+
+**Undo:** `EVENT_ASSISTING_UNDO.sql` (removes tenant and Assisting rows from teams; everything else as before).
+
+**Tested:** local PostgreSQL 16 with simulated logins: run, second run, undo; the convenor adds a tenant as Assisting and the
+same flat's household as Member; the tenant's role is Assisting and it sees no money rows; the household sees them;
+adding a tenant without an active tenant login is refused. **Not yet run on live.**
