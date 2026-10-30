@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { byCommitteeRole, committeeText, label, ownerText, type Flat } from "@/lib/society";
 import { dmy, inr, num, today } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
-import { amcAlerts, amcState, daysLeft, loadAmc, loadAreas, personOf, type Amc, type Area, type Visit } from "@/lib/committee";
+import { amcAlerts, amcState, assignmentError, backupsOf, daysLeft, loadAmc, loadAreas, personOf, type Amc, type Area, type AreaRights, type Visit } from "@/lib/committee";
 import type { Ctx } from "./ctx";
 import MinutesPanel from "./MinutesPanel";
 import ComplaintsPanel from "./ComplaintsPanel";
@@ -62,23 +62,49 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
 }
 
 /* ---------------- areas of responsibility ---------------- */
+// One responsible member + several backups per area (AREAS_BACKUPS.sql). Who may change what is decided in the
+// database: areas themselves (add, rename, covers, phone, order, show) = main admin; people = Chairman / Secretary
+// (their own committee login) or the main admin. This screen only follows what area_rights() says.
 function Responsibilities({ areas, committee, flats, email, amc, onChanged }: { areas: Area[]; committee: Flat[]; flats: Flat[]; email: string; amc: Amc[]; onChanged: () => void }) {
   const [edit, setEdit] = useState<Record<string, Partial<Area>>>({});
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
   const [nw, setNw] = useState({ name: "", description: "" });
+  const [rights, setRights] = useState<AreaRights | null>(null);
+  const [limitText, setLimitText] = useState("");
+  const hasList = areas.length === 0 || areas.some((a) => Array.isArray(a.backup_flats));   // AREAS_BACKUPS.sql run?
+  useEffect(() => {
+    supabase.rpc("area_rights").then(({ data, error }) => {
+      const r = error ? { manage: true, assign: true, limit: 1 } : (data as AreaRights);   // before the script: as before (any committee login, one backup)
+      setRights(r); setLimitText(String(r.limit));
+    });
+  }, []);
   const val = (a: Area, k: keyof Area) => (edit[a.id] && k in edit[a.id] ? (edit[a.id] as any)[k] : (a as any)[k]) ?? "";
   const set = (a: Area, k: keyof Area, v: any) => setEdit((e) => ({ ...e, [a.id]: { ...e[a.id], [k]: v } }));
+  const backups = (a: Area): string[] => (edit[a.id] && "backup_flats" in edit[a.id] ? (edit[a.id].backup_flats as string[]) : backupsOf(a));
+  const setBackups = (a: Area, list: string[]) => set(a, "backup_flats", list);
   const dirty = Object.keys(edit).length > 0;
+  const onCommittee = (id: string) => !!flats.find((f) => f.id === id)?.is_committee;
   const opt = (f: Flat) => <option key={f.id} value={f.id}>{f.is_committee ? committeeText(f) : ownerText(f)} ({label(f)})</option>;
+  const who = (id: string | null) => { const p = personOf(flats, id); return p ? `${p.name} • ${p.flat}` : "—"; };
+  const limit = rights?.limit ?? 1;
+  const canManage = !!rights?.manage, canAssign = !!rights?.assign;
 
   async function saveAll() {
     setBusy(true); setError("");
     for (const [id, ch] of Object.entries(edit)) {
+      const a = areas.find((x) => x.id === id)!;
       const upd: any = { ...ch, updated_by: email, updated_at: new Date().toISOString() };
       for (const k of ["holder_flat", "backup_flat", "contact_phone", "description"]) if (k in upd && !upd[k]) upd[k] = null;
       if ("name" in upd && !String(upd.name).trim()) { setError("An area needs a name."); setBusy(false); return; }
+      if ("holder_flat" in upd || "backup_flats" in upd) {
+        const holder = "holder_flat" in upd ? upd.holder_flat : a.holder_flat;
+        const list: string[] = "backup_flats" in upd ? upd.backup_flats : backupsOf(a);
+        const err = assignmentError(holder, list, limit, onCommittee, [a.holder_flat, ...backupsOf(a)].filter(Boolean) as string[]);
+        if (err) { setError(`${val(a, "name")}: ${err}`); setBusy(false); return; }
+        if (!hasList) { delete upd.backup_flats; upd.backup_flat = list[0] || null; }
+      }
       const { error } = await supabase.from("committee_areas").update(upd).eq("id", id);
-      if (error) { setError(error.message); setBusy(false); return; }
+      if (error) { setError(`${val(a, "name")}: ${error.message}`); setBusy(false); return; }
     }
     setEdit({}); setBusy(false); onChanged();
   }
@@ -87,39 +113,79 @@ function Responsibilities({ areas, committee, flats, email, amc, onChanged }: { 
     const { error } = await supabase.from("committee_areas").insert([{ name: nw.name.trim(), description: nw.description.trim() || null, sort: (areas.reduce((m, a) => Math.max(m, a.sort), 0) || 0) + 10, updated_by: email }]);
     if (error) setError(error.message); else { setNw({ name: "", description: "" }); onChanged(); }
   }
+  async function saveLimit() {
+    const n = parseInt(limitText, 10);
+    if (!(n >= 1 && n <= 10)) { setError("Backups per area: a number from 1 to 10."); return; }
+    const { error } = await supabase.from("app_settings").update({ area_backup_limit: n, updated_by: email, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) setError(error.message); else { setError(""); setRights((r) => r && { ...r, limit: n }); }
+  }
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] mono text-[11px]">
-      <div className="flex flex-wrap justify-between items-center gap-3 p-5">
-        <div><div className="serif text-[18px] font-bold">Areas of responsibility</div>
-          <div className="opacity-60 mt-0.5 max-w-[760px]">The committee works as a team; each area has one member who is accountable, including for outside parties (vendors, agencies, authorities). Members see this as "Who to contact" on the home page. A phone number is shown to members only if you fill it in.</div></div>
-        {dirty && <div className="flex gap-2"><button onClick={() => setEdit({})} className="btn-line px-3 py-2">DISCARD</button><button onClick={saveAll} disabled={busy} className="btn-navy px-4 py-2 font-bold">{busy ? "SAVING…" : "SAVE CHANGES"}</button></div>}
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] mono text-[11px] min-w-0">
+      <div className="flex flex-wrap justify-between items-start gap-3 p-4 md:p-5">
+        <div className="min-w-0"><div className="serif text-[18px] font-bold">Areas of responsibility</div>
+          <div className="opacity-60 mt-0.5 max-w-[760px]">Each area has one responsible member and backups ({hasList ? `up to ${limit}` : "one"}). Complaints go to all of them. Members see the responsible member as "Who to contact"; a phone number is shown only if filled in.</div>
+          {rights && <div className="mt-1.5 opacity-80">{canManage && canAssign ? "You can change the areas and choose the members." : canAssign ? "You can choose the responsible member and backups. Only the main admin login changes the areas themselves." : canManage ? "You can change the areas." : "View only: the Chairman or Secretary (from their own committee login) chooses the members; the main admin changes the areas."}</div>}
+        </div>
+        {dirty && <div className="flex gap-2"><button onClick={() => setEdit({})} className="btn-line px-3 min-h-[44px]">DISCARD</button><button onClick={saveAll} disabled={busy} className="btn-navy px-4 min-h-[44px] font-bold">{busy ? "SAVING…" : "SAVE CHANGES"}</button></div>}
       </div>
-      {committee.length === 0 && <div className="mx-5 mb-3 border border-amber-200 bg-amber-50 p-2.5">No committee members are marked yet. Tick "Committee member" on their flat (DETAIL) to choose them here.</div>}
-      {error && <div className="mx-5 mb-3 border border-red-200 bg-red-50 text-red-700 p-2.5">{error}</div>}
-      <div className="overflow-x-auto border-t border-[var(--border)]">
-        <table className="w-full text-[12px] min-w-[1050px]">
-          <thead><tr className="bg-[var(--navy)] text-white text-left text-[10px] tracking-[0.08em]">
-            <th className="px-3 py-2">AREA</th><th className="px-3 py-2">COVERS</th><th className="px-3 py-2">RESPONSIBLE MEMBER</th><th className="px-3 py-2">BACKUP</th><th className="px-3 py-2">PHONE FOR MEMBERS</th><th className="px-3 py-2">AMC</th><th className="px-3 py-2">SHOW</th></tr></thead>
-          <tbody>{areas.map((a) => { const n = amc.filter((c) => c.area_id === a.id && c.status === "active").length; return (
-            <tr key={a.id} className={`border-b border-[var(--border)] align-top ${edit[a.id] ? "bg-[#fffbea]" : ""} ${val(a, "active") ? "" : "opacity-50"}`}>
-              <td className="px-3 py-2"><input className="field !py-1 font-bold" value={val(a, "name")} onChange={(e) => set(a, "name", e.target.value)} /></td>
-              <td className="px-3 py-2"><input className="field !py-1" value={val(a, "description")} onChange={(e) => set(a, "description", e.target.value)} /></td>
-              <td className="px-3 py-2"><select className={`field !py-1 ${!val(a, "holder_flat") ? "!border-amber-400" : ""}`} value={val(a, "holder_flat")} onChange={(e) => set(a, "holder_flat", e.target.value)}><option value="">— not assigned —</option>{committee.map(opt)}</select></td>
-              <td className="px-3 py-2"><select className="field !py-1" value={val(a, "backup_flat")} onChange={(e) => set(a, "backup_flat", e.target.value)}><option value="">—</option>{committee.map(opt)}</select></td>
-              <td className="px-3 py-2"><input className="field !py-1 !w-[130px]" inputMode="tel" placeholder="optional" value={val(a, "contact_phone")} onChange={(e) => set(a, "contact_phone", e.target.value)} /></td>
-              <td className="px-3 py-2 whitespace-nowrap">{n ? `${n} contract${n > 1 ? "s" : ""}` : <span className="opacity-40">—</span>}</td>
-              <td className="px-3 py-2"><input type="checkbox" checked={!!val(a, "active")} onChange={(e) => set(a, "active", e.target.checked)} title="Show this area to members" /></td>
-            </tr>); })}
-          </tbody>
-        </table>
+      {!hasList && <div className="mx-4 md:mx-5 mb-3 border border-amber-200 bg-amber-50 p-2.5">Run <b>AREAS_BACKUPS.sql</b> in Supabase to allow several backups per area.</div>}
+      {committee.length === 0 && <div className="mx-4 md:mx-5 mb-3 border border-amber-200 bg-amber-50 p-2.5">No committee members are marked yet. Tick "Committee member" on their flat (DETAIL) to choose them here.</div>}
+      {error && <div className="mx-4 md:mx-5 mb-3 border border-red-200 bg-red-50 text-red-700 p-2.5">{error}</div>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 px-4 md:px-5 pb-4">
+        {areas.map((a) => {
+          const n = amc.filter((c) => c.area_id === a.id && c.status === "active").length;
+          const holder = val(a, "holder_flat") || null; const list = backups(a);
+          const free = committee.filter((f) => f.id !== holder && !list.includes(f.id));
+          return (
+          <div key={a.id} className={`border rounded-[3px] p-3 space-y-2 min-w-0 ${edit[a.id] ? "border-[var(--gold)] bg-[#fffbea]" : "border-[var(--border)] bg-[var(--bg)]"} ${val(a, "active") ? "" : "opacity-60"}`}>
+            {canManage
+              ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="min-w-0 text-[10px] opacity-80">AREA<input className="field mt-1 font-bold" value={val(a, "name")} onChange={(e) => set(a, "name", e.target.value)} /></label>
+                  <label className="min-w-0 text-[10px] opacity-80">COVERS<input className="field mt-1" value={val(a, "description")} onChange={(e) => set(a, "description", e.target.value)} /></label>
+                </div>
+              : <div><div className="serif text-[16px] font-bold">{a.name}</div>{a.description && <div className="opacity-60">{a.description}</div>}</div>}
+            <div>
+              <div className="text-[10px] opacity-70">RESPONSIBLE MEMBER</div>
+              {canAssign
+                ? <select className={`field mt-1 ${!holder ? "!border-amber-400" : ""}`} value={holder || ""} onChange={(e) => set(a, "holder_flat", e.target.value)}><option value="">— not assigned —</option>
+                    {holder && !committee.some((f) => f.id === holder) && <option value={holder}>{who(holder)}</option>}{committee.filter((f) => !list.includes(f.id)).map(opt)}</select>
+                : <div className="font-bold mt-0.5">{holder ? who(holder) : <span className="text-amber-700">not assigned</span>}</div>}
+              {holder && !onCommittee(holder) && <div className="text-red-700 mt-1 font-bold">⚠ {who(holder)} is not on the committee now — choose someone else.</div>}
+            </div>
+            <div>
+              <div className="text-[10px] opacity-70">BACKUPS ({list.length}{hasList ? ` of up to ${limit}` : ""})</div>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {list.length === 0 && <span className="opacity-50">none</span>}
+                {list.map((b) => (
+                  <span key={b} className={`inline-flex items-center gap-1 border px-2 py-1 rounded-[3px] ${onCommittee(b) ? "border-[var(--border)] bg-white" : "border-red-300 bg-red-50 text-red-800"}`}>
+                    {who(b)}{!onCommittee(b) && " • not on committee"}
+                    {canAssign && <button onClick={() => setBackups(a, list.filter((x) => x !== b))} className="ml-1 px-1.5 min-h-[28px] text-red-700 font-bold" title="Remove this backup">✕</button>}
+                  </span>))}
+              </div>
+              {canAssign && list.length < limit && free.length > 0 && (
+                <select className="field mt-1.5" value="" onChange={(e) => e.target.value && setBackups(a, [...list, e.target.value])}>
+                  <option value="">+ add backup…</option>{free.map(opt)}</select>)}
+            </div>
+            <div className="flex flex-wrap gap-3 items-end">
+              {canManage
+                ? <label className="text-[10px] opacity-80">PHONE FOR MEMBERS<input className="field mt-1 !w-[170px]" inputMode="tel" placeholder="optional" value={val(a, "contact_phone")} onChange={(e) => set(a, "contact_phone", e.target.value)} /></label>
+                : a.contact_phone && <div>📞 {a.contact_phone}</div>}
+              <div className="opacity-70 pb-2">AMC: {n ? `${n} contract${n > 1 ? "s" : ""}` : "—"}</div>
+              {canManage && <label className="flex items-center gap-2 pb-2 min-h-[44px]"><input type="checkbox" checked={!!val(a, "active")} onChange={(e) => set(a, "active", e.target.checked)} /> SHOW TO MEMBERS</label>}
+            </div>
+          </div>); })}
       </div>
-      <div className="p-5 flex flex-wrap gap-2 items-end border-t border-[var(--border)]">
-        <label className="text-[10px] opacity-80">NEW AREA<input className="field mt-1 !w-[220px]" placeholder="e.g. Fire safety" value={nw.name} onChange={(e) => setNw({ ...nw, name: e.target.value })} /></label>
-        <label className="text-[10px] opacity-80">COVERS<input className="field mt-1 !w-[320px]" placeholder="e.g. Extinguishers, fire NOC" value={nw.description} onChange={(e) => setNw({ ...nw, description: e.target.value })} /></label>
-        <button onClick={add} className="btn-navy px-4 py-2.5">+ ADD AREA</button>
-        <span className="opacity-60 ml-2">Untick SHOW to hide an area from members without deleting it.</span>
-      </div>
+      {canManage && (
+        <div className="p-4 md:p-5 flex flex-wrap gap-2 items-end border-t border-[var(--border)]">
+          <label className="text-[10px] opacity-80 min-w-0">NEW AREA<input className="field mt-1 sm:!w-[220px]" placeholder="e.g. Fire safety" value={nw.name} onChange={(e) => setNw({ ...nw, name: e.target.value })} /></label>
+          <label className="text-[10px] opacity-80 min-w-0">COVERS<input className="field mt-1 sm:!w-[320px]" placeholder="e.g. Extinguishers, fire NOC" value={nw.description} onChange={(e) => setNw({ ...nw, description: e.target.value })} /></label>
+          <button onClick={add} className="btn-navy px-4 min-h-[44px]">+ ADD AREA</button>
+          {hasList && <><label className="text-[10px] opacity-80 ml-0 sm:ml-4">BACKUPS PER AREA (MAX)<input className="field mt-1 !w-[80px]" inputMode="numeric" value={limitText} onChange={(e) => setLimitText(e.target.value.replace(/\D/g, ""))} /></label>
+            <button onClick={saveLimit} className="btn-line px-3 min-h-[44px]">SAVE MAX</button></>}
+          <span className="opacity-60 w-full">Untick SHOW TO MEMBERS to hide an area. Areas are never deleted; assignments stay until changed.</span>
+        </div>
+      )}
     </div>
   );
 }

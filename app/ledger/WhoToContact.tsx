@@ -2,7 +2,7 @@
 // "Who to contact": the committee member responsible for each area (set in COMMITTEE → RESPONSIBILITIES).
 import { useEffect, useState } from "react";
 import type { Flat } from "@/lib/society";
-import { loadAreas, personOf, type Area } from "@/lib/committee";
+import { backupsOf, loadAreas, personOf, type Area } from "@/lib/committee";
 
 export function useContacts() {
   const [areas, setAreas] = useState<Area[] | null>(null);
@@ -22,6 +22,7 @@ export default function WhoToContact({ flats, isCommittee, areas, id, className 
             <div className="font-bold text-[12px]">{a.name}</div>
             {a.description && <div className="opacity-60 text-[10px]">{a.description}</div>}
             <div className="mt-1.5"><b className="text-[var(--navy)]">{p?.name}</b>{p?.role ? ` • ${p.role}` : ""}{p?.flat ? ` • ${p.flat}` : ""}</div>
+            {backupsOf(a).length > 0 && <div className="opacity-70 text-[10px] mt-0.5">Backup: {backupsOf(a).map((b) => personOf(flats, b)?.name).filter(Boolean).join(", ")}</div>}
             {a.contact_phone && <a href={`tel:${a.contact_phone.replace(/\s+/g, "")}`} className="underline mt-0.5 inline-block">📞 {a.contact_phone}</a>}
           </div>); })}
       </div>

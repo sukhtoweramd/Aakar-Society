@@ -37,6 +37,15 @@
   wide tables, buttons at least ~44 px tall, text boxes use `.field` (16 px on phones so iPhones don't zoom).
   A wide table goes inside its own `overflow-auto` box, and grid children get `min-w-0`, so the page never scrolls sideways.
 
+## Tests (Oct 2026)
+- CI runs `npm test` on Node 20, where creating the Supabase client fails. A test must import only files that do not
+  import `lib/supabaseClient` (put pure helpers in their own file, e.g. `lib/maintenance.ts`, `lib/areaRules.ts`, `lib/contacts.ts`).
+
+## Areas of responsibility (Oct 2026)
+- One responsible member (`holder_flat`) + backups (`backup_flats`, max `app_settings.area_backup_limit`); `backup_flat` = first backup.
+- Database guard `committee_areas_guard` (AREAS_BACKUPS.sql): areas themselves = main admin (`is_main_admin()`, oldest committee
+  login); people = Chairman/Secretary committee login or main admin (`can_assign_areas()`). Complaints go to holder + all backups.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.
