@@ -12,7 +12,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
 | 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas (PR #28) | **run 30 Oct 2026, check OK** |
 | 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login (PR #29) | **run 30 Oct 2026, tested live** |
-| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | **run 30 Oct 2026** |
+| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | run? (not confirmed yet) |
 | 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) | to run after the event PR is merged and live |
 
 ---
