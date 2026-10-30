@@ -1,7 +1,8 @@
 "use client";
 // MY FLAT → NOMINEE (item 22): the owner names one or more nominees with a share %. Phone first: one card per nominee.
-// The committee can do the same for any flat (e.g. rented flats, where the tenant must not see the owner's nominees)
-// and ticks "signed form received" when the paper form reaches the society.
+// The committee can do the same for any flat. Since sql-security/11 (30 Oct 2026) the owner of a rented flat also uses this
+// from the flat login; a tenant's own login never sees nominees. The committee
+// ticks "signed form received" when the paper form reaches the society.
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { dmy, docPage, openPrint } from "@/lib/billing";

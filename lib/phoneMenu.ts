@@ -33,14 +33,14 @@ const SOCIETY_TILES: Tile[] = [
 ];
 const societyFor = (allowed: Tab[]) => SOCIETY_TILES.filter((t) => allowed.includes(t.tab!));
 
-/** Owner (flat login). Nominee only while the flat is not rented (the database shows nominees to the owner's login
- *  only then); Action points only when the member has open ones. */
+/** Owner (flat login). Nominee also for a rented flat (sql-security/11: the flat login is the owner's since tenants
+ *  have their own logins); Action points only when the member has open ones. */
 export function memberMenu(o: { rented: boolean; allowed: Tab[]; openActions: number }): { flat: Tile[]; society: Tile[] } {
   const flat: Tile[] = [
     S("bills", "BILLS & LEDGER", "bill"), S("family", "MY FAMILY", "family"), S("vehicles", "MY VEHICLES", "car"),
     S("documents", "DOCUMENTS", "folder"), S("letters", "MY LETTERS", "mail"), S("complaints", "COMPLAINTS", "alert"),
     S("booking", "BOOK PLOT", "calendar"),
-    ...(o.rented ? [] : [S("nominee", "NOMINEE", "person")]),
+    S("nominee", "NOMINEE", "person"),
     S("emergency", "EMERGENCY", "phone"), S("contacts", "WHO TO CONTACT", "headset"), S("details", "MY DETAILS", "card"),
     ...(o.openActions > 0 ? [S("actions", "ACTION POINTS", "check")] : []),
   ];

@@ -453,7 +453,7 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
       letters: [lettersEl, ""],
       complaints: [complaintsEl, "Complaints are not switched on yet."],
       booking: [bookingEl, "Bookings are not switched on yet."],
-      nominee: [rented ? null : nomineeEl, rented ? "The nominee form is not shown for a flat given on rent. Please ask the committee." : "The nominee form is not switched on yet."],
+      nominee: [nomineeEl, "The nominee form is not switched on yet."],
       contacts: [contacts.length > 0 ? contactsEl : null, "The committee has not set up who to contact yet."],
       actions: [actionsEl, "You have no open action points."],
       details: [<div key="d" className={`${box} space-y-4`}>
@@ -501,7 +501,7 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
               <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
               <button onClick={() => jump("sec-complaints", "Complaints are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">COMPLAINTS ↓</button>
               <button onClick={() => jump("sec-booking", "Bookings are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">BOOK COMMON PLOT ↓</button>
-              {!rented && <button onClick={() => jump("sec-nominee", "The nominee form is not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">NOMINEE ↓</button>}
+              <button onClick={() => jump("sec-nominee", "The nominee form is not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">NOMINEE ↓</button>
             </>}
           </div>
         </div>
@@ -557,7 +557,7 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
         {/* Below the flat's own details, in the order of the quick buttons (27 Oct 2026): owner and family come first. */}
         {(!isCommittee || f.id === ctx.homeFlat) && complaintsEl}
         {(!isCommittee || f.id === ctx.homeFlat) && bookingEl}
-        {(isCommittee || !rented) && nomineeEl}
+        {nomineeEl}
         {(!isCommittee || f.id === ctx.homeFlat) && actionsEl}
       </div>
     </div>

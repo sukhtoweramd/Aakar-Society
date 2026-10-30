@@ -6,12 +6,12 @@ import { ALWAYS_TABS, residentTabs, tenantTabs } from "../lib/memberTabs";
 
 const keys = (l: { key: string }[]) => l.map((x) => x.key);
 
-test("owner: all flat buttons; nominee only when not rented; action points only when open ones exist", () => {
+test("owner: all flat buttons, nominee also for a rented flat; action points only when open ones exist", () => {
   const own = memberMenu({ rented: false, allowed: residentTabs(null), openActions: 0 });
   for (const k of ["bills", "family", "vehicles", "documents", "letters", "complaints", "booking", "nominee", "emergency", "contacts", "details"]) assert.ok(keys(own.flat).includes(k), k);
   assert.ok(!keys(own.flat).includes("actions"));
   assert.ok(keys(memberMenu({ rented: false, allowed: [], openActions: 2 }).flat).includes("actions"));
-  assert.ok(!keys(memberMenu({ rented: true, allowed: [], openActions: 0 }).flat).includes("nominee"));
+  assert.ok(keys(memberMenu({ rented: true, allowed: [], openActions: 0 }).flat).includes("nominee"));
 });
 
 test("owner: society buttons follow ADMIN → MEMBER SCREENS", () => {

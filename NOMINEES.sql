@@ -7,6 +7,8 @@
 --   * committee logins: every flat; can mark "signed form received"
 --   * a flat login: its own nominees — but NOT when the flat is rented out (the tenant must not see the owner's
 --     nominees; the committee enters them for the owner)
+--   (Changed 30 Oct 2026 by sql-security/11_NOMINEE_RENTED_OWNER.sql: the flat login now sees its nominees also when
+--    rented, because tenants have their own logins. Re-running this script puts the old rule back; run 11 again after.)
 
 create table if not exists public.nominees (
   id                uuid primary key default gen_random_uuid(),
