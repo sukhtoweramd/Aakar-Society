@@ -12,7 +12,7 @@ const TO_ALL = "TO WHOMSOEVER IT MAY CONCERN";
 /** prefill: open the form already filled in (from a member's letter request); onIssued: told the new letter after it is issued. */
 export default function LettersPanel({ flat, flats, isCommittee, email, onChanged, prefill, onIssued }: {
   flat: Flat; flats: Flat[]; isCommittee: boolean; email: string; onChanged?: () => void;
-  prefill?: { key: string; subject: string; to: string; body?: string }; onIssued?: (l: Letter) => void }) {
+  prefill?: { key: string; subject: string; to: string; body?: string; unsigned?: boolean; requestId?: string }; onIssued?: (l: Letter) => void }) {
   const [letters, setLetters] = useState<Letter[] | null>(null);
   const [missing, setMissing] = useState(false);
   const [pc, setPc] = useState<PrintCtx>({ settings: null, signatories: [], flats });
@@ -39,14 +39,15 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   useEffect(() => {
     if (!prefill || !isCommittee) return;
     setOpen(true); setError("");
-    setForm((f) => ({ ...f, subject: prefill.subject, kind: prefill.to.trim() ? "third" : "all", to: prefill.to, body: prefill.body ?? f.body }));
+    setForm((f) => ({ ...f, subject: prefill.subject, kind: prefill.to.trim() ? "third" : "all", to: prefill.to, body: prefill.body ?? f.body, signer: prefill.unsigned ? "" : f.signer }));
   }, [prefill?.key]);
 
   const signers = pc.signatories.filter((g) => g.active);
   const draft = (ref: string): Letter => {
     const g = signers.find((x) => x.id === form.signer);
-    return { id: "draft", ref_no: ref, flat_id: flat.id, letter_date: form.letter_date, owner_name: form.owner_name.trim() || null, addressee: form.kind === "third" ? form.to.trim() : TO_ALL,
-      subject: form.subject.trim(), body: form.body, signer_id: g?.id || null, signer_name: g?.name || null, signer_designation: g?.designation || null,
+    const unsigned = !!prefill?.unsigned;
+    return { id: "draft", ref_no: ref, flat_id: flat.id, unsigned, request_id: prefill?.requestId || null, letter_date: form.letter_date, owner_name: form.owner_name.trim() || null, addressee: form.kind === "third" ? form.to.trim() : TO_ALL,
+      subject: form.subject.trim(), body: form.body, signer_id: unsigned ? null : g?.id || null, signer_name: unsigned ? null : g?.name || null, signer_designation: unsigned ? null : g?.designation || null,
       status: "active", cancel_reason: null, created_by: email, created_at: new Date().toISOString() };
   };
   const check = () => (form.kind === "third" && !form.to.trim() ? "Enter who the letter is addressed to (name and address)." : !form.subject.trim() ? "Enter the subject." : !form.body.trim() ? "Type the letter text." : !form.letter_date ? "Choose the date." : "");
@@ -62,7 +63,9 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
     const w = window.open("", "_blank");
     try {
       const [ref] = await reserveNumbers("letter", 1);
-      const { id, ...row } = draft(ref);
+      const { id, ...row } = draft(ref) as any;
+      if (!row.unsigned) { delete row.unsigned; }               // older database (LETTER_TEMPLATES.sql not run): plain letter as before
+      if (!row.request_id) { delete row.request_id; }
       const { data, error } = await supabase.from("letters").insert([row]).select().single();
       if (error) throw error;
       openPrint(`Letter ${ref}`, [letterHtml(data as Letter, pc)], w);
@@ -70,6 +73,11 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
       setOpen(false); setForm(blank()); await load(); onChanged?.();
     } catch (err: any) { w?.close(); setError(/letter/i.test(err.message || "") && /column|function|series/i.test(err.message) ? "Run LETTERS.sql in Supabase first." : err.message); }
     setBusy(false);
+  }
+  async function handedOver(l: Letter) {
+    if (!confirm(`Letter ${l.ref_no}: the Chairman / Secretary has signed it by hand and it has been given to the member?`)) return;
+    const { error } = await supabase.from("letters").update({ handed_over_at: new Date().toISOString(), handed_over_by: email }).eq("id", l.id);
+    if (error) setError(error.message); else { load(); onChanged?.(); }
   }
   async function cancel(l: Letter) {
     const why = prompt(`Cancel letter ${l.ref_no}?\nIt stays on record marked CANCELLED.\n\nReason:`);
@@ -116,9 +124,10 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
           <label className="text-[10px] opacity-80 block">LETTER TEXT * <span className="opacity-60">(leave an empty line between paragraphs)</span>
             <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={9} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
               placeholder={"This is to certify that Shri / Smt. … is the owner of Flat … in Sukh Tower, a member of the society …\n\nThe society has no objection to …"} /></label>
+          {prefill?.unsigned && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Bank letter: it is issued as an <b>UNSIGNED</b> copy (no signature or stamp printed). Print it; the Chairman or Secretary signs and stamps it by hand and hands it over; then tick SIGNED COPY HANDED OVER in the list below.</div>}
           <div className="flex flex-wrap gap-2 items-end">
-            <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[240px]" value={form.signer} onChange={(e) => setForm({ ...form, signer: e.target.value })}>
-              <option value="">— no signature —</option>{signers.map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>
+            {!prefill?.unsigned && <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[240px]" value={form.signer} onChange={(e) => setForm({ ...form, signer: e.target.value })}>
+              <option value="">— no signature —</option>{signers.map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>}
             <button onClick={preview} className="btn-line px-4 py-2">PREVIEW</button>
             <button onClick={issue} disabled={busy} className="btn-navy px-4 py-2 font-bold">{busy ? "ISSUING…" : "ISSUE & PRINT"}</button>
             <button onClick={() => { setOpen(false); setError(""); }} className="underline px-2 py-2">Cancel</button>
@@ -139,7 +148,11 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
                 <td className="px-3 py-2 whitespace-nowrap">{dmy(l.letter_date)}</td>
                 <td className="px-3 py-2 whitespace-nowrap"><button onClick={() => openPrint(`Letter ${l.ref_no}`, [letterHtml(l, pc)])} className={`font-bold underline text-[var(--navy)] ${l.status === "cancelled" ? "line-through" : ""}`} title="View and print">{l.ref_no}</button></td>
                 <td className="px-3 py-2">{l.subject}{l.addressee.trim().toUpperCase() !== TO_ALL && <div className="text-[10px] opacity-60">To: {l.addressee.split("\n")[0]}</div>}{l.status === "cancelled" && l.cancel_reason && <div className="text-[10px] text-red-700">Cancelled: {l.cancel_reason}</div>}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{l.signer_designation || "—"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{l.unsigned
+                  ? (l.handed_over_at ? <span className="text-emerald-700">Signed by hand • {isCommittee ? "handed over" : "collected"} {dmy(l.handed_over_at.slice(0, 10))}</span>
+                    : <span className="text-red-700 font-bold">{isCommittee ? "UNSIGNED • to sign & hand over" : "READY TO COLLECT (signed copy from the Chairman / Secretary)"}</span>)
+                  : l.signer_designation || "—"}
+                  {isCommittee && l.unsigned && !l.handed_over_at && l.status === "active" && <button onClick={() => handedOver(l)} className="block mt-1 btn-line px-2 py-1 text-[10px]">SIGNED COPY HANDED OVER</button>}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-right">
                   {l.status === "active" && <SharePdfButton label="📄 PDF" className="underline mr-3" make={() => letterPdf(l, pc)} text={`Aakar Co-op Housing Society: letter ${l.ref_no} for Flat ${label(flat)} — ${l.subject}.`} />}
                   {isCommittee && l.status === "active" && <button onClick={() => cancel(l)} className="text-red-600 underline">cancel</button>}
