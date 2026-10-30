@@ -9,22 +9,30 @@
 (function (root) {
   "use strict";
 
-  /** Pure: where to cut a flowing report. total / pageH in px; cuts = y positions where a cut is allowed. */
-  function slicePages(total, pageH, cuts) {
-    var out = [], start = 0, sorted = (cuts || []).slice().sort(function (a, b) { return a - b; });
+  /** Pure: where to cut a flowing report. total / pageH in px; cuts = y positions where a cut is allowed.
+      opts.forced = y positions where a new page must start (CSS page breaks, e.g. each tower);
+      opts.headerAt(y) = height of the column headings repeated at the top of a page that starts at y (0 = none). */
+  function slicePages(total, pageH, cuts, opts) {
+    opts = opts || {};
+    var out = [], start = 0, sort = function (a, b) { return a - b; };
+    var sorted = (cuts || []).slice().sort(sort), forced = (opts.forced || []).slice().sort(sort);
     if (!(total > 0) || !(pageH > 0)) return out;
     while (start < total - 0.5) {
-      var limit = start + pageH, end = limit;
-      if (limit >= total) end = total;
+      var head = start > 0 && opts.headerAt ? Math.min(opts.headerAt(start) || 0, pageH / 3) : 0;
+      var room = pageH - head, limit = start + room, end = limit, i;
+      var hard = -1;
+      for (i = 0; i < forced.length; i++) if (forced[i] > start + 0.5 && forced[i] <= Math.min(limit, total)) { hard = forced[i]; break; }
+      if (hard > 0) end = hard;
+      else if (limit >= total) end = total;
       else {
         var best = -1;
-        for (var i = 0; i < sorted.length; i++) {
+        for (i = 0; i < sorted.length; i++) {
           var c = sorted[i];
-          if (c > start + pageH * 0.5 && c <= limit) best = c;
+          if (c > start + room * 0.5 && c <= limit) best = c;
         }
         if (best > 0) end = best;
       }
-      out.push([start, end]);
+      out.push([start, end, head]);
       start = end;
     }
     return out;
@@ -97,7 +105,9 @@
     return p(d.getDate()) + "-" + p(d.getMonth() + 1) + "-" + d.getFullYear();
   }
   function fileName(name) {
-    var base = String(name || document.title || "Aakar report").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+    var base = String(name || document.title || "Aakar report")
+      .replace(/\s*[-–•,]?\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/, "") // the date is added below
+      .replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
     return base + " " + today() + ".pdf";
   }
   function waitReady() {
@@ -140,20 +150,50 @@
         var r = e.getBoundingClientRect();
         if (r.height > 0) cuts.push(r.top + window.scrollY - top);
       });
-      var slices = slicePages(total, chMm * MM, cuts);
+      var forced = [];
+      Array.prototype.forEach.call(body.querySelectorAll("*"), function (e) {
+        var cs = getComputedStyle(e), r;
+        if (cs.breakBefore === "page" || cs.pageBreakBefore === "always" || cs.breakBefore === "always") {
+          r = e.getBoundingClientRect(); if (r.height > 0) forced.push(r.top + window.scrollY - top);
+        }
+      });
+      // column headings of each table: the last heading row (with <th>) of its <thead>, else its first <th> row
+      var heads = [];
+      Array.prototype.forEach.call(body.querySelectorAll("table"), function (t) {
+        var rows = Array.prototype.filter.call(t.querySelectorAll("tr"), function (tr) { return tr.querySelector("th"); });
+        var inHead = rows.filter(function (tr) { return tr.parentNode && tr.parentNode.tagName === "THEAD"; });
+        var hr = inHead.length ? inHead[inHead.length - 1] : rows[0];
+        if (!hr) return;
+        var tb = t.getBoundingClientRect(), rb = hr.getBoundingClientRect();
+        heads.push({ top: tb.top + window.scrollY - top, bottom: tb.bottom + window.scrollY - top,
+          y: rb.top + window.scrollY - top, h: rb.height, after: rb.bottom + window.scrollY - top });
+      });
+      function headAt(y) {
+        for (var k = 0; k < heads.length; k++) { var t = heads[k]; if (y > t.after + 0.5 && y < t.bottom - 0.5) return t; }
+        return null;
+      }
+      var slices = slicePages(total, chMm * MM, cuts, { forced: forced, headerAt: function (y) { var t = headAt(y); return t ? t.h : 0; } });
       var pdf = new jsPDF({ unit: "mm", format: "a4", orientation: land ? "landscape" : "portrait", compress: true });
       var footer = "Aakar Co-op Housing Society Ltd. - " + today();
       for (var i = 0; i < slices.length; i++) {
         box("Preparing PDF… page " + (i + 1) + " of " + slices.length);
         document.documentElement.classList.add("aakar-capturing");
         await frame();
-        var y = slices[i][0], h = slices[i][1] - y;
+        var y = slices[i][0], h = slices[i][1] - y, hh = slices[i][2], th = hh ? headAt(y) : null;
+        if (i > 0) pdf.addPage("a4", land ? "landscape" : "portrait");
+        var offset = 0;
+        if (th) { // repeat the table's column headings at the top of this page
+          var hc = await root.html2canvas(body, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false,
+            x: 0, y: th.y, width: cw * MM, height: th.h, windowWidth: Math.ceil(cw * MM), scrollY: -window.scrollY });
+          pdf.addImage(hc.toDataURL("image/jpeg", 0.88), "JPEG", margin, margin, cw, th.h / MM);
+          hc.width = hc.height = 0;
+          offset = th.h / MM;
+        }
         var canvas = await root.html2canvas(body, {
           scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false,
           x: 0, y: y, width: cw * MM, height: h, windowWidth: Math.ceil(cw * MM), scrollY: -window.scrollY
         });
-        if (i > 0) pdf.addPage("a4", land ? "landscape" : "portrait");
-        pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", margin, margin, cw, h / MM);
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", margin, margin + offset, cw, h / MM);
         canvas.width = canvas.height = 0;
         pdf.setFontSize(8); pdf.setTextColor(122, 117, 104);
         pdf.text(footer, margin, ph - margin + 2);
