@@ -11,6 +11,10 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState(""); const [third, setThird] = useState(false); const [to, setTo] = useState(""); const [purpose, setPurpose] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [done, setDone] = useState("");
+  // the society's standard formats (LETTER_TEMPLATES.sql); before that script, the fixed list
+  const [formats, setFormats] = useState<{ id: string; name: string; kind: string }[] | null>(null);
+  useEffect(() => { supabase.from("letter_templates").select("id, name, kind").eq("active", true).order("sort").order("name").then(({ data, error }) => setFormats(error ? null : (data as any[]) || [])); }, []);
+  const types = formats ? [...formats.map((f) => f.name), "Other"] : LETTER_TYPES;
 
   async function load() {
     const { data, error } = await supabase.from("letter_requests").select("*").eq("flat_id", flatId).order("created_at", { ascending: false });
@@ -24,7 +28,10 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
     if (third && !to.trim()) { setErr("Write who the letter is addressed to (for example the bank and branch)."); return; }
     if (type === "Other" && purpose.trim().length < 5) { setErr("Describe the letter you need."); return; }
     setBusy(true); setErr("");
-    const { error } = await supabase.from("letter_requests").insert({ flat_id: flatId, letter_type: type, addressee: third ? to.trim() : null, purpose: purpose.trim() || null });
+    const fmt = formats?.find((f) => f.name === type);
+    const row: any = { flat_id: flatId, letter_type: type, addressee: third ? to.trim() : null, purpose: purpose.trim() || null };
+    if (fmt) row.template_id = fmt.id;
+    const { error } = await supabase.from("letter_requests").insert(row);
     setBusy(false);
     if (error) { setErr(error.message); return; }
     setDone(`Request sent: ${type}. The committee will issue it; you will see it below under MY LETTERS.`);
@@ -39,13 +46,13 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
   return (
     <div className="border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 mono text-[12px] mb-4">
       <div className="text-[11px] font-bold tracking-[0.16em]">REQUEST A LETTER</div>
-      <div className="text-[11px] opacity-60">NOC, address proof, no-dues certificate… The committee issues it, signed and stamped.</div>
+      <div className="text-[11px] opacity-60">NOC, address proof, no-dues certificate… The committee approves and issues it, signed and stamped (bank letters: signed by hand).</div>
       {done && <div className="mt-3 border border-emerald-300 bg-emerald-50 text-emerald-800 p-3">✓ {done} <button onClick={() => setDone("")} className="underline ml-2">OK</button></div>}
       {!open ? <button onClick={() => { setOpen(true); setErr(""); }} className="btn-gold w-full sm:w-auto mt-3 px-5 py-3 tracking-[0.08em]">+ REQUEST A LETTER</button> : (
         <div className="mt-3 border border-[var(--gold)] bg-[#fffdf5] p-3 space-y-3">
           <label className="block"><span className="text-[11px] font-bold">WHICH LETTER? *</span>
             <select className="field mt-1" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">Choose…</option>{LETTER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              <option value="">Choose…</option>{types.map((t) => <option key={t} value={t}>{t}</option>)}
             </select></label>
           <div><span className="text-[11px] font-bold">ADDRESSED TO</span>
             <div className="mt-1 grid gap-2">
@@ -54,6 +61,7 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
             </div></div>
           {third && <label className="block"><span className="text-[11px] font-bold">TO (NAME AND ADDRESS) *</span>
             <textarea className="field mt-1" rows={3} maxLength={400} placeholder={"The Branch Manager\nSample Bank, Naranpura Branch, Ahmedabad"} value={to} onChange={(e) => setTo(e.target.value)} /></label>}
+          {formats?.find((f) => f.name === type)?.kind === "bank" && <div className="text-[11px] border border-[var(--border)] bg-white p-2">Letters for a bank are signed by hand by the Chairman or Secretary: when it is ready you will be told here, and you collect the signed letter from them.</div>}
           <label className="block"><span className="text-[11px] font-bold">PURPOSE / DETAILS {type === "Other" ? "*" : "(optional)"}</span>
             <textarea className="field mt-1" rows={3} maxLength={1000} placeholder="e.g. Home loan of ₹20 lakh from Sample Bank; needed by 5 November" value={purpose} onChange={(e) => setPurpose(e.target.value)} /></label>
           {err && <div className="text-red-700">{err}</div>}
@@ -69,7 +77,8 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
               <div className="min-w-0"><b>{r.letter_type}</b><div className="text-[11px] opacity-60">asked {dmy(r.created_at.slice(0, 10))}{r.addressee ? ` • to ${r.addressee.split("\n")[0]}` : ""}</div></div>
               <span className={`shrink-0 border px-2 py-0.5 text-[10px] font-bold ${REQ_STATUS[r.status].cls}`}>{REQ_STATUS[r.status].text}</span>
             </div>
-            {r.status === "issued" && <div className="mt-1 text-[11px] text-emerald-800">The letter is in MY LETTERS below: tap its number to view, print or share.</div>}
+            {r.status === "approved" && <div className="mt-1 text-[11px] text-sky-800">Approved by the committee; the letter is being prepared.</div>}
+            {r.status === "issued" && <div className="mt-1 text-[11px] text-emerald-800">The letter is in MY LETTERS below: tap its number to view, print or share. A letter marked READY TO COLLECT is signed by hand: collect it from the Chairman / Secretary.</div>}
             {r.status === "declined" && r.reason && <div className="mt-1 text-[11px] text-red-700">Reason: {r.reason}</div>}
             {r.status === "requested" && <button onClick={() => withdraw(r)} className="mt-2 btn-line px-3 py-2">WITHDRAW</button>}
           </div>))}

@@ -12,8 +12,10 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | **run 30 Oct 2026, check OK** |
 | 5 | `AREAS_BACKUPS.sql` | Step 5: several backups per area, who may change areas (PR #28) | **run 30 Oct 2026, check OK** |
 | 6 | `TENANT_LOGINS.sql` | Step 6: separate tenant login (PR #29) | **run 30 Oct 2026, tested live** |
-| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | run? (not confirmed yet) |
-| 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) | to run after the event PR is merged and live |
+| 7 | `sql-security/09_RESTORE_tenant_logins.sql` | Step 6: restores bring tenant logins back | run 30 Oct 2026 (result not kept; script 10's check confirms it) |
+| 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) (PR #31) | **run 30 Oct 2026, check OK** |
+| 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters | to run after the letters PR is merged and live |
+| 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | right after 9 |
 
 ---
 
@@ -192,4 +194,35 @@ to Assisting (Convenor / Treasurer / Member, own payments, or public accounts as
 
 **Tested:** local PostgreSQL 16 with simulated logins: run, second run, undo; the convenor adds a tenant as Assisting and the
 same flat's household as Member; the tenant's role is Assisting and it sees no money rows; the household sees them;
-adding a tenant without an active tenant login is refused. **Not yet run on live.**
+adding a tenant without an active tenant login is refused. **Run on live 30 Oct 2026: check as expected.**
+
+---
+
+## 9. `LETTER_TEMPLATES.sql` — letter formats, approval, unsigned bank letters
+
+**What it changes:**
+- Table `letter_templates` (the society's standard formats: name, kind general / bank, subject, usual addressee, text with
+  fields like `{{owner_name}}`). Every login reads the **active** formats (members choose one); committee reads all, adds,
+  edits, switches off; **no delete**. Six starter formats are added only if there are none — check their wording against the
+  society's own formats (BILLING → LETTERS → LETTER FORMATS).
+- `letter_requests`: + `template_id`, status **approved**, `approved_by/at`, `history`. A guard: only a committee login linked
+  to the **Chairman / Secretary** flat (or the main admin) approves or declines; a request is issued only after approval;
+  every status change is written to the history.
+- `letters`: + `request_id`, `unsigned`, `handed_over_at/by`. Bank-kind letters print with no signature and no stamp and a
+  red "UNSIGNED COPY" line; the committee ticks SIGNED COPY HANDED OVER; the member sees READY TO COLLECT, then collected.
+
+**Prerequisites:** LETTERS.sql, LETTER_REQUESTS.sql, AREAS_BACKUPS.sql (for `is_main_admin()`). The letters PR merged and live.
+
+**Expected check result:** `formats table true` • `format rules 4` • `starter formats 6` • `bank formats 1` •
+`request status has approved true` • `request guard on true` • `letters unsigned column true`.
+
+**Undo:** `LETTER_TEMPLATES_UNDO.sql` (approved requests go back to waiting; formats removed; letters keep their text).
+
+## 10. `sql-security/10_RESTORE_letter_templates.sql` — restore includes formats (and confirms 09)
+
+Adds `letter_templates` to the restore list just before `letter_requests`. **Expected:** every row `true` — including
+`flat_tenant_logins` (from 09) and `letter_templates`. **Undo:** `sql-security/10_UNDO.sql`.
+
+**Tested (9, 10):** local PostgreSQL 16 with simulated logins: run, second run, undo, re-run; a member sees the 6 formats and
+asks; a plain committee login cannot approve and cannot issue before approval; the Chairman approves, then issuing works;
+history has 3 lines; a tenant login cannot ask. **Not yet run on live.**

@@ -294,6 +294,8 @@ export type Letter = {
   id: string; ref_no: string; flat_id: string; letter_date: string; owner_name: string | null; addressee: string;
   subject: string; body: string; signer_id: string | null; signer_name: string | null; signer_designation: string | null;
   status: "active" | "cancelled"; cancel_reason: string | null; created_by: string | null; created_at: string;
+  // LETTER_TEMPLATES.sql: bank letters are issued unsigned and signed by hand; handed_over_at = signed copy given
+  request_id?: string | null; unsigned?: boolean | null; handed_over_at?: string | null; handed_over_by?: string | null;
 };
 export function letterHtml(l: Letter, c: PrintCtx): string {
   const f = c.flats.find((x) => x.id === l.flat_id);
@@ -317,14 +319,15 @@ export function letterHtml(l: Letter, c: PrintCtx): string {
   ${top}
   <div style="margin-top:${general ? 5 : 4}mm;font-size:11pt;line-height:1.75;color:#1f1d18;text-align:justify">${paras}</div>
   ${l.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
+  ${l.unsigned ? `<div style="margin-top:4mm;border:.4mm dashed #b42318;color:#b42318;padding:2mm 3mm;font-size:9.5pt;font-weight:700">UNSIGNED COPY — valid only when signed by hand by the Chairman / Secretary and stamped by the society.</div>` : ""}
   <div style="margin-top:8mm;font-size:11pt;color:#1f1d18">Yours faithfully,</div>
   <div style="display:flex;align-items:flex-end;gap:8mm;margin-top:2mm">
     <div style="min-width:70mm">
       <div style="font-size:9pt;color:var(--navy);font-weight:700">For ${esc(SOCIETY.full)}</div>
-      ${sigImg(c, l.signer_id) ? `<img src="${sigImg(c, l.signer_id)}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
-      <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt"><b style="color:var(--navy)">${esc(l.signer_name || "")}</b><br><span style="font-size:9.5pt">${esc(l.signer_designation ? `Hon. ${l.signer_designation}` : "Authorised signatory")}</span></div>
+      ${!l.unsigned && sigImg(c, l.signer_id) ? `<img src="${sigImg(c, l.signer_id)}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
+      <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${l.unsigned ? `<span style="font-size:9.5pt">Hon. Chairman / Hon. Secretary</span>` : `<b style="color:var(--navy)">${esc(l.signer_name || "")}</b><br><span style="font-size:9.5pt">${esc(l.signer_designation ? `Hon. ${l.signer_designation}` : "Authorised signatory")}</span>`}</div>
     </div>
-    <img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
+    ${l.unsigned ? `<div style="width:30mm;height:30mm;border:.3mm dashed #999;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#999;text-align:center">society<br>stamp</div>` : `<img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">`}
   </div>
   <div style="margin-top:5mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>Ahmedabad</b></span><span>Date: <b>${dmy(l.letter_date, true)}</b></span></div>
   <div class="grow"></div>

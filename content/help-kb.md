@@ -95,6 +95,12 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - While the flat has a tenant login, the owner's login can see the family, vehicles and emergency contacts but not change them (the tenant keeps them up to date).
 - When the committee marks TENANT MOVED OUT, the tenant login stops working at once. The committee can also RESET the tenant's password or REVOKE the login; the family list, vehicles and complaints are kept.
 
+## Letters from the society (requests)
+- Members (owner's flat login) ask in MY FLAT → REQUEST A LETTER: choose the letter from the society's standard formats (NOC for bank loan, NOC for sale, NOC for renting / police verification, address proof, no-dues certificate, membership letter …) or "Other", who it is addressed to, and the purpose. Tenant logins cannot ask for letters.
+- The request shows WAITING, then APPROVED • BEING PREPARED, then ISSUED (or NOT ISSUED with the reason). The issued letter is in MY LETTERS (view, print, share PDF).
+- Letters for a bank are issued as an UNSIGNED copy: the Chairman or Secretary signs and stamps the paper letter by hand. Until it is handed over MY LETTERS shows READY TO COLLECT; after that, "collected" with the date.
+- Committee: BILLING → LETTERS. The Chairman or the Secretary (from their own committee login) APPROVES or declines a request (NOT ISSUE, with a reason); then ISSUE LETTER opens a draft filled from the format and the flat's records (owner name, flat, share certificate, member since, dues …) to check and edit before ISSUE & PRINT. For an unsigned bank letter, tick SIGNED COPY HANDED OVER on the flat's letters list when it has been given. LETTER FORMATS: add or edit the society's formats (fields such as {{owner_name}}, {{flat_no}}, {{dues}}), switch a format off; formats are never deleted.
+
 ## Bills, receipts and paying maintenance
 - Maintenance rates are set per year and billed every half-year (April and October): each bill is half of the yearly rate. A flat given on rent pays 1.5 times the standard maintenance; the bill is still in the owner's name and shows the extra amount on its own line.
 - Your bills and receipts are in MY FLAT → MY BILLS & RECEIPTS, with the balance due and a MEMBER LEDGER CARD. PRINT MY LEDGER and STATEMENT PDF give printable copies.

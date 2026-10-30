@@ -8,6 +8,10 @@ import { dmy, letterHtml, openPrint, type Letter, type PrintCtx } from "@/lib/bi
 import { backBar } from "@/lib/printBack";
 import LettersPanel from "./LettersPanel";
 import { REQ_STATUS, subjectFor, type LetterRequest } from "@/lib/letterRequests";
+import { fillTemplate, letterData, type LetterTemplate } from "@/lib/letterTemplates";
+import { SOCIETY } from "@/lib/society";
+import { flatTotals } from "@/lib/billing";
+import LetterFormats from "./LetterFormats";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -19,13 +23,35 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
   const [issueFor, setIssueFor] = useState("");          // flat chosen for a new letter
   const [requests, setRequests] = useState<LetterRequest[] | null>(null);   // null = LETTER_REQUESTS.sql not run
   const [forReq, setForReq] = useState<LetterRequest | null>(null);         // request being issued
+  const [templates, setTemplates] = useState<LetterTemplate[] | null>(null);   // null = LETTER_TEMPLATES.sql not run
+  const [canApprove, setCanApprove] = useState(true);                       // Chairman / Secretary / main admin (database decides)
+  const [draftBody, setDraftBody] = useState<{ key: string; subject: string; to: string; body: string; unsigned: boolean; requestId: string } | null>(null);
+  async function loadTemplates() {
+    const { data, error } = await supabase.from("letter_templates").select("*").order("sort").order("name");
+    setTemplates(error ? null : (data as LetterTemplate[]) || []);
+    const r = await supabase.rpc("can_approve_letters"); setCanApprove(r.error ? true : !!r.data);
+  }
+  useEffect(() => { loadTemplates(); }, []);
+  const tplOf = (r: LetterRequest) => (templates || []).find((t) => t.id === r.template_id) || (templates || []).find((t) => t.name === r.letter_type) || null;
   async function loadRequests() {
     const { data, error } = await supabase.from("letter_requests").select("*").order("created_at", { ascending: true });
     const list = error ? null : (data as LetterRequest[]) || [];
-    setRequests(list); onCount?.((list || []).filter((r) => r.status === "requested").length);
+    setRequests(list); onCount?.((list || []).filter((r) => r.status === "requested" || r.status === "approved").length);
   }
   useEffect(() => { loadRequests(); }, []);
-  function startIssue(r: LetterRequest) {
+  async function startIssue(r: LetterRequest) {
+    // draft from the society's format, filled from the flat's records (the committee checks and edits before issuing)
+    const t = tplOf(r); const f = flatOf(r.flat_id);
+    let body = r.purpose ? `\n\n(Member's request: ${r.purpose})` : "";
+    if (t && f) {
+      let dues: number | null = null;
+      if (/\{\{\s*dues\s*\}\}/.test(t.body)) {
+        const [b, p] = await Promise.all([supabase.from("bills").select("*").eq("flat_id", f.id), supabase.from("payments").select("*").eq("flat_id", f.id)]);
+        if (!b.error && !p.error) dues = flatTotals((b.data as any[]) || [], (p.data as any[]) || []).due;
+      }
+      body = fillTemplate(t.body, letterData(f, { addressee: r.addressee || t.addressee, purpose: r.purpose, dues, society: SOCIETY.full, building: SOCIETY.building }));
+    }
+    setDraftBody({ key: `${r.id}-${Date.now()}`, subject: t?.subject || subjectFor(r), to: r.addressee || t?.addressee || "", body, unsigned: t?.kind === "bank", requestId: r.id });
     setForReq(r); setIssueFor(r.flat_id);
     setTimeout(() => document.getElementById("letter-issue-box")?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
   }
@@ -34,6 +60,11 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
     const { error } = await supabase.from("letter_requests").update({ status: "issued", letter_id: l.id, decided_by: email, decided_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", forReq.id);
     if (error) setError(`Letter issued, but the request was not marked: ${error.message}`);
     setForReq(null); loadRequests();
+  }
+  async function approve(r: LetterRequest) {
+    if (!confirm(`Approve "${r.letter_type}" for Flat ${flatOf(r.flat_id) ? label(flatOf(r.flat_id)!) : r.flat_id}? It can then be issued.`)) return;
+    const { error } = await supabase.from("letter_requests").update({ status: "approved", decided_by: email, decided_at: new Date().toISOString() }).eq("id", r.id);
+    if (error) setError(error.message); else loadRequests();
   }
   async function decline(r: LetterRequest) {
     const why = prompt(`Not issuing "${r.letter_type}" for Flat ${flatOf(r.flat_id) ? label(flatOf(r.flat_id)!) : r.flat_id}?\n\nReason (the member sees it):`, "");
@@ -66,10 +97,9 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
   }
 
   const chosen = flatOf(issueFor);
-  const waiting = (requests || []).filter((r) => r.status === "requested");
-  const prefill = forReq && forReq.flat_id === issueFor
-    ? { key: forReq.id, subject: subjectFor(forReq), to: forReq.addressee || "", body: forReq.purpose ? `\n\n(Member's request: ${forReq.purpose})` : undefined }
-    : undefined;
+  const waiting = (requests || []).filter((r) => r.status === "requested" || r.status === "approved");
+  const hasApproval = templates !== null;   // LETTER_TEMPLATES.sql run: requests are approved before they are issued
+  const prefill = forReq && forReq.flat_id === issueFor && draftBody ? draftBody : undefined;
   return (
     <div className="space-y-3">
       {requests !== null && (
@@ -82,9 +112,14 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
                 <div className="mt-0.5"><b className="text-[var(--navy)]">Flat {f ? label(f) : r.flat_id}</b>{f ? ` • ${ownerText(f)}` : ""} <span className="opacity-60">• asked {dmy(r.created_at.slice(0, 10))}</span></div>
                 <div className="text-[11px] opacity-80">To: {r.addressee ? r.addressee.split("\n").join(", ") : "whomsoever it may concern"}</div>
                 {r.purpose && <div className="text-[12px] mt-1 whitespace-pre-wrap">{r.purpose}</div>}
+                {tplOf(r)?.kind === "bank" && <div className="text-[11px] mt-1 text-red-700">Bank letter: issued unsigned; signed by hand by the Chairman / Secretary.</div>}
+                {r.status === "approved" && <div className="text-[11px] mt-1 text-sky-800">Approved{r.approved_by ? ` by ${r.approved_by}` : ""}{r.approved_at ? ` on ${dmy(r.approved_at.slice(0, 10))}` : ""}</div>}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button onClick={() => startIssue(r)} className="btn-navy px-4 py-2.5 font-bold">ISSUE LETTER</button>
-                  <button onClick={() => decline(r)} className="btn-line px-4 py-2.5 text-red-700">NOT ISSUE</button>
+                  {hasApproval && r.status === "requested"
+                    ? (canApprove ? <button onClick={() => approve(r)} className="btn-navy px-4 py-2.5 font-bold">APPROVE</button>
+                        : <span className="opacity-70 text-[11px] self-center">Waiting for the Chairman / Secretary to approve.</span>)
+                    : <button onClick={() => startIssue(r)} className="btn-navy px-4 py-2.5 font-bold">ISSUE LETTER</button>}
+                  {(!hasApproval || canApprove) && <button onClick={() => decline(r)} className="btn-line px-4 py-2.5 text-red-700">NOT ISSUE</button>}
                 </div>
               </div>); })}</div>)}
         </div>)}
@@ -100,6 +135,7 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
         {chosen && <div className="border border-[var(--gold)]"><LettersPanel key={chosen.id} flat={chosen} flats={flats} isCommittee email={email} onChanged={load} prefill={prefill} onIssued={markIssued} /></div>}
       </div>
 
+      {templates !== null && <LetterFormats list={templates} email={email} onChanged={loadTemplates} />}
       <div className="bg-[var(--surface)] border border-[var(--border)] p-3 sm:p-4 mono text-[12px]">
         <div className="font-bold tracking-[0.12em] text-[11px]">LETTERS REGISTER</div>
         <div className="opacity-60 text-[11px]">Every letter issued to every flat. The member sees their own letters in MY FLAT → MY LETTERS.</div>
@@ -126,6 +162,7 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
               </div>
               <div className="mt-1.5 text-[12.5px]"><b>{l.subject}</b></div>
               <div className="text-[11px] opacity-70">To: {l.addressee}{l.signer_name ? ` • signed by ${l.signer_name}` : ""}</div>
+              {l.unsigned && <div className={`text-[11px] font-bold ${l.handed_over_at ? "text-emerald-700" : "text-red-700"}`}>{l.handed_over_at ? `Signed by hand • handed over ${dmy(l.handed_over_at.slice(0, 10))}` : "UNSIGNED COPY • to be signed by hand and handed over (tick it on the flat's page)"}</div>}
               {l.status === "cancelled" && l.cancel_reason && <div className="text-[11px] text-red-700">Reason: {l.cancel_reason}</div>}
               <div className="mt-2 flex flex-wrap gap-2">
                 <button onClick={() => openPrint(`Letter ${l.ref_no}`, [letterHtml(l, pc)])} className="btn-navy px-3 py-2">VIEW / PRINT</button>

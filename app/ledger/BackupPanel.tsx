@@ -13,7 +13,7 @@ const NAMES: Record<string, string> = { flats: "Flats", billing_settings: "Billi
   committee_areas: "Committee areas", amc_contracts: "AMC contracts", amc_visits: "AMC visits", meetings: "Meetings", meeting_actions: "Action points",
   event_team: "Event teams", event_money: "Event accounts", event_registrations: "Event registrations", help_guide: "HELP guide",
   complaints: "Complaints", nominees: "Nominees", nomination_status: "Nomination forms", booking_areas: "Booking areas", bookings: "Bookings",
-  letter_requests: "Letter requests", event_checkins: "Gate entries", society_contacts: "Important contacts", flat_tenant_logins: "Tenant logins" };
+  letter_requests: "Letter requests", event_checkins: "Gate entries", society_contacts: "Important contacts", flat_tenant_logins: "Tenant logins", letter_templates: "Letter formats" };
 const ACTIONS: Record<string, string> = { backup: "Backup taken", backup_downloaded: "Backup downloaded", restore: "RESTORE done", restore_failed: "Restore failed",
   login_removed: "Committee login removed", login_added: "Committee login added", password_reset: "Password reset",
   deleted_bill: "Bill deleted", deleted_receipt: "Receipt deleted", deleted_letter: "Letter deleted", test_documents_cleared: "TEST DOCUMENTS CLEARED", go_live: "GO LIVE",
