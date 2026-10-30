@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
-import { backButton } from "@/lib/printBack";
+import { backButton, pdfButton } from "@/lib/printBack";
 
 type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
 type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; role: string | null; consent: boolean; tenant: string | null; members: Row[] };
@@ -114,7 +114,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
       @media screen{body{padding:24px;max-width:794px;margin:auto} table{margin-bottom:28px}}
       @media print{.bar{display:none}}
     </style></head><body>
-      <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button>
+      <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button>
         <span>${shown.length} flats • ${sharing} sharing family details • Heading repeats and page numbers appear in the print preview (choose "Save as PDF").</span></div>
       ${sections}</body></html>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 500);

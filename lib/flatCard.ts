@@ -3,7 +3,7 @@
 import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
 import { byFamilyOrder, committeePeople, label, SOCIETY, sortFlats, type Flat } from "./society";
-import { backButton } from "./printBack";
+import { backButton, pdfButton } from "./printBack";
 
 type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; office_address?: string | null; office_phone?: string | null };
@@ -129,7 +129,7 @@ body{background:#e9e6dc;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(
 .page:last-child{break-after:auto}
 .frame{height:100%;border:2.2mm solid var(--navy);padding:1.6mm;position:relative}
 .inner{height:100%;border:0.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;overflow:hidden;
-  background:radial-gradient(circle at 100% 0,rgba(184,147,42,.07),transparent 40%),#fff}
+  background:radial-gradient(circle at 100% 0,#faf7f0,#fff 40%)}
 .content{transform-origin:top left}
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}
 .c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
@@ -198,7 +198,7 @@ export function openCards(cards: CardData[], title: string, win?: Window | null)
     <style>${CSS}</style><script>window.AUTO_PRINT=true;
       (function(){var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap';
       window.FONT=new Promise(function(r){l.onload=l.onerror=r;setTimeout(r,3000)});document.head.appendChild(l);})();</script></head><body>
-    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${cards.length} card${cards.length === 1 ? "" : "s"} • one A4 page each</span></div>
+    <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button><span>${cards.length} card${cards.length === 1 ? "" : "s"} • one A4 page each</span></div>
     ${cards.map((c) => card(c, printed)).join("")}${FIT}</body></html>`);
   w.document.close();
   w.focus();

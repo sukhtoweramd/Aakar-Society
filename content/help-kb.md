@@ -146,6 +146,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Event money is kept separate from society maintenance bills.
 
 ## Directory, business and documents
+- The directory report (REPORTS → PDF REPORT and CSV / EXCEL, committee) lists people only: flat, owner / tenant, profession or business, spouse, mobile, email, family count, committee role. It does not show flat sizes, types or maintenance amounts.
 - VAULT holds the society's documents (registration certificate, bye-laws, plans, NOC, AMCs). Flat documents (sale deed, share certificate) are in MY FLAT and are visible only to your flat and the committee.
 - Maximum file size 4 MB (after compressing, for flat documents); PDF, JPG, PNG, DOCX, XLSX.
 - Files open through a private link made for you when you tap VIEW, SIGNED COPY or a picture. The link works for a few minutes only, so a copied or forwarded link stops working. To open the file again, tap it again in the app.
@@ -157,6 +158,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 
 ## Common problems
 - **Something new is missing or the screen looks old**: reload the page (pull down on phone, or Ctrl + Shift + R on a computer). On the installed phone app, close it fully from the app switcher and open it again.
+- **Saving or sharing a printout as PDF on a phone**: every print screen has **SAVE / SHARE PDF** at the top. It makes an A4 PDF (landscape for wide reports such as the directory) and opens the phone's share sheet: choose Save to Files, WhatsApp or mail. If the share sheet does not open by itself, tap **SHARE PDF** or **SAVE / OPEN PDF** in the box that appears. On a phone, PRINT may do nothing (especially in the installed app); use SAVE / SHARE PDF. The PDF is a picture of the page, so its text cannot be selected or searched. On a computer, PRINT still opens the normal print window.
 - **A tab is missing**: on a phone, swipe the tab row left. Some tabs are only for committee logins.
 - **Upload is stuck on an office laptop**: some office laptops block web pages from reading files. Use your phone, or a personal computer.
 - **A page or tab opens blank**: reload; if it stays blank, tell the app coordinator which button you pressed.

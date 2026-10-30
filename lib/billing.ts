@@ -2,7 +2,7 @@
 // Billing: shared types, numbering, amounts, ledger maths and the printable bill / receipt / statement.
 import { supabase } from "./supabaseClient";
 import { label, SOCIETY, type Flat } from "./society";
-import { backButton } from "./printBack";
+import { backButton, pdfButton } from "./printBack";
 
 export type Settings = {
   id: number; bill_prefix: string; bill_last_no: number; other_prefix: string; other_last_no: number;
@@ -153,7 +153,7 @@ const CSS = `@page{size:A4 portrait;margin:0}
 body{background:#e9e6dc;font-family:Inter,"Segoe UI","Noto Sans Gujarati","Nirmala UI",Shruti,Arial,sans-serif;color:var(--ink)}
 .page{position:relative;width:210mm;height:297mm;padding:9mm;background:#fff;break-after:page;overflow:hidden}.page:last-child{break-after:auto}
 .frame{height:100%;border:2.2mm solid var(--navy);padding:1.6mm;position:relative}
-.inner{height:100%;border:.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;background:radial-gradient(circle at 100% 0,rgba(184,147,42,.07),transparent 40%),#fff;isolation:isolate}
+.inner{height:100%;border:.5mm solid var(--gold);padding:6mm 8mm 5mm;position:relative;display:flex;flex-direction:column;background:radial-gradient(circle at 100% 0,#faf7f0,#fff 40%);isolation:isolate}
 .wm{position:absolute;left:50%;top:54%;width:158mm;max-height:205mm;object-fit:contain;transform:translate(-50%,-50%);z-index:-1;pointer-events:none}.nobg .wm{display:none}
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}.c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
 .head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:.6mm solid var(--navy)}
@@ -421,7 +421,7 @@ export function openPrint(title: string, pages: string[], win?: Window | null) {
   // <base> so the building background (/print/building-bg.jpg) loads in this blank window; the tick in the bar turns it
   // off (remembered on this device), e.g. to save ink when printing many bills.
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${esc(window.location.origin)}/"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
-    <div class="bar">${backButton()}<button onclick="window.print()">PRINT / SAVE AS PDF</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span>
+    <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Building background</label></div>${pages.join("")}
     <script>(function(){var cb=document.getElementById('aakarBg'),on=true;try{on=localStorage.getItem('aakar_print_bg')!=='0'}catch(e){}
       function set(v){cb.checked=v;document.body.classList.toggle('nobg',!v);try{localStorage.setItem('aakar_print_bg',v?'1':'0')}catch(e){}}
