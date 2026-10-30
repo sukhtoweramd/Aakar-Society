@@ -8,6 +8,8 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 |---|---|---|---|
 | 1 | `SPLIT_B101_B102.sql` | Step 2: B101 and B102 as separate flats (PR #24) | **run 30 Oct 2026, check OK** |
 | 2 | `BILLING_ANNUAL.sql` | Step 3: annual rates, half-yearly bills, rented 1.5× (PR #25) | **run 30 Oct 2026, check OK** |
+| 3 | `CONTACTS.sql` | Step 4: CONTACTS tab | to run after the contacts PR is merged and live |
+| 4 | `sql-security/08_RESTORE_contacts.sql` | Step 4: restores bring contacts back | right after 3 |
 
 ---
 
@@ -75,3 +77,29 @@ committee change it.
 **Undo:** `BILLING_ANNUAL_UNDO.sql` (removes the setting; the app then uses 1.5).
 
 **Tested:** local PostgreSQL 16 with sample tables: run, second run, undo. **Run on the live database 30 Oct 2026: multiplier 1.50; annual rates entered for all 91 flats.**
+
+---
+
+## 3. `CONTACTS.sql` — important contacts
+
+**What it changes:** new table `society_contacts` (category, service/name, contact person, phone, alternate phone, notes,
+order, on/off, optional link to an AMC contract). Rules: every logged-in member reads **active** contacts; committee
+logins read all, add and change; **nobody can delete** (no delete rule — switch off instead); anon has no access.
+Also adds **CONTACTS** to the member screens (ADMIN → MEMBER SCREENS can hide it again).
+
+**Prerequisites:** COMMITTEE_AMC.sql and MEMBER_SCREENS.sql (both run earlier). The contacts PR merged and live.
+
+**Expected check result:** `table 1` • `rules 4` • `rls on true` • `anon can read false` • `CONTACTS in member tabs true`.
+
+**Undo:** not needed while empty; to remove: `drop table public.society_contacts;` and untick CONTACTS in MEMBER SCREENS.
+
+## 4. `sql-security/08_RESTORE_contacts.sql` — restore includes contacts
+
+**What it changes:** adds `society_contacts` to the end of the restore list (backups already include it). No data change.
+
+**Expected check result:** every row `true` (help_guide … event_checkins, society_contacts, only the server can run it).
+
+**Undo:** `sql-security/08_UNDO.sql` (function as after script 07).
+
+**Tested (3 and 4):** local PostgreSQL 16 with sample tables: run, second run, restore script + undo; a member login sees only
+active contacts and cannot add; a committee login sees all and can change. **Not yet run on the live database.**

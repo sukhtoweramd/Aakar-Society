@@ -18,7 +18,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Members cannot sign up by themselves; logins are created only by the committee.
 
 ## Finding your way
-- Tabs across the top: COVER, INDEX, FLOOR, MY FLAT (called DETAIL in committee logins), BUSINESS, DIRECTORY, NOTICES, EVENTS, VAULT. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
+- Tabs across the top: COVER, INDEX, FLOOR, MY FLAT (called DETAIL in committee logins), BUSINESS, DIRECTORY, NOTICES, CONTACTS, EVENTS, VAULT. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
 - On a phone the row of tabs is wider than the screen: swipe the tab row left to see more tabs.
 - The committee chooses which tabs members see (ADMIN → MEMBER SCREENS). MY FLAT and NOTICES are always there; if another tab is missing, the committee has turned it off for members.
 - HELP: on a phone it is the round **?** button at the bottom right; on a computer the HELP button.
@@ -33,6 +33,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - **DIRECTORY**: MEMBER DIRECTORY of families and mobile numbers, only for flats that gave consent (others show only flat number and owner or tenant name). Also a COMMITTEE DIRECTORY. PRINT / SAVE AS PDF prints it.
 - **NOTICES**: society notices (see Notices and banners).
 - **EVENTS**: events, photos, registration and passes (see Events).
+- **CONTACTS**: important phone numbers for the society (lift, fire, security, MyGate, CCTV, electricity, Torrent Power, borewell, garbage collection, plumber …), grouped by category. Tap a number to call. Search by name or number. Below the list: WHO TO CONTACT (the committee member responsible for each area). Committee logins add contacts with + ADD CONTACT, edit them, and switch off a contact that is no longer used (it is kept, not deleted, and can be switched on again).
 - **VAULT**: SOCIETY DOCUMENT VAULT with the society's official documents (for example Registration Certificate, Society Bye-laws, Terrace Ownership Agreement marked IMPORTANT, Building Plan Approval, Fire NOC, Lift AMC) and OTHER SOCIETY DOCUMENTS. Tap VIEW to open a document. Only the committee can UPLOAD, REPLACE or DELETE.
 - Committee only: **BILLING** (bills, receipts, VERIFY PAYMENTS, dues, letters, settings), **COMMITTEE** (COMPLAINTS, BOOKINGS, RESPONSIBILITIES, AMC CONTRACTS, MINUTES), **ADMIN** (logins, MEMBER SCREENS, backup, test tools, HELP GUIDE, storage), **REPORTS** (flat-wise reports: PDF REPORT, CSV / EXCEL, FLAT DOCUMENTS, NOMINATIONS, FLAT PROFILE CARDS).
 

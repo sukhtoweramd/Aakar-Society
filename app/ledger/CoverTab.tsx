@@ -12,6 +12,7 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "DIRECTORY", title: "MEMBER DIRECTORY", desc: "Families & mobiles (with consent)" },
   { id: "BUSINESS", title: "BUSINESS DIR", desc: "Members' professions" },
   { id: "VAULT", title: "VAULT 🔒", desc: "Society legal documents" },
+  { id: "CONTACTS", title: "IMPORTANT CONTACTS", desc: "Lift, fire, security, plumber …" },
   { id: "NOTICES", title: "NOTICES", desc: "Society notices" },
   { id: "EVENTS", title: "EVENTS", desc: "Events & photo gallery" },
   { id: "COMMITTEE", title: "COMMITTEE", desc: "Responsibilities & AMC" },
