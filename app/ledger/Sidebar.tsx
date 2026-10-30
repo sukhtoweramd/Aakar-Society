@@ -1,5 +1,5 @@
 "use client";
-import { SOCIETY, byCommitteeRole, committeePeople } from "@/lib/society";
+import { SOCIETY, committeeRoster } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function Sidebar({ ctx }: { ctx: Ctx }) {
@@ -39,8 +39,7 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
             );
           })}
           {(() => {
-            const com = flats.filter((f) => f.is_committee).sort(byCommitteeRole);
-            const people = com.flatMap((f) => committeePeople(f)).filter((p) => p.name !== "Owner not recorded");
+            const people = committeeRoster(flats).filter((p) => p.name !== "Owner not recorded");
             const on = towerFilter === "COMMITTEE";
             return (
               <button onClick={() => filter("COMMITTEE")}

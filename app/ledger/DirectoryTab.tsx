@@ -59,7 +59,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     (who === "ALL" || (who === "TENANTS" ? !!e.tenant : !e.tenant)) &&
     (!s || flatLabel(e.flat_id).toLowerCase().includes(s) || (e.owner_name || "").toLowerCase().includes(s) || (cp[e.flat_id] || "").toLowerCase().includes(s) || (e.tenant || "").toLowerCase().includes(s) ||
       e.members.some((m) => (m.member_name || "").toLowerCase().includes(s) || (m.mobile || "").replace(/\s/g, "").includes(s.replace(/\s/g, "")))));
-  if (towerFilter === "COMMITTEE") shown.sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }));
+  if (towerFilter === "COMMITTEE") shown.sort((a, b) => byCommitteeRole({ committee_role: a.role, tower: a.tower, id: a.flat_id }, { committee_role: b.role, tower: b.tower, id: b.flat_id }));
   const sharedCount = entries.filter((e) => e.consent).length;
   const mine = entries.find((e) => e.flat_id === homeFlat);
   const scope = filterName(towerFilter, categories) + (who === "OWNERS" ? " • owners living in their flat" : who === "TENANTS" ? " • rented flats (tenants)" : "");
@@ -82,7 +82,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     // Committee filter: one "COMMITTEE" section ordered Chairman, Secretary, Treasurer …; otherwise one section per tower.
     const committeeOnly = towerFilter === "COMMITTEE";
     const groups: [string, Entry[]][] = committeeOnly
-      ? [["COMMITTEE", [...shown].sort((a, b) => byCommitteeRole({ committee_role: a.role }, { committee_role: b.role }))]]
+      ? [["COMMITTEE", [...shown].sort((a, b) => byCommitteeRole({ committee_role: a.role, tower: a.tower, id: a.flat_id }, { committee_role: b.role, tower: b.tower, id: b.flat_id }))]]
       : Array.from(new Set(shown.map((e) => e.tower || "?"))).map((t) => [`TOWER ${t}`, shown.filter((e) => (e.tower || "?") === t)]);
     const docTitle = committeeOnly ? "COMMITTEE DIRECTORY" : "MEMBER DIRECTORY";
     const sections = groups.map(([t, list], i) => {

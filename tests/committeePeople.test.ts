@@ -17,3 +17,22 @@ test("no list: the chosen person or the owner, with the flat's designation", () 
   assert.deepEqual(committeePeople({ is_committee: true, committee_role: null, owner_name: "OWNER", committee_person: "WIFE" } as any), [{ name: "WIFE", role: "Committee Member" }]);
   assert.deepEqual(committeePeople({ is_committee: false, owner_name: "X" } as any), []);
 });
+
+// Display order (30 Oct 2026): by designation (Chairman, Secretary, Treasurer, Committee Member, Co-opted Member), then flat number.
+import { byCommitteeRole, committeeRoster, isCoopted } from "../lib/society";
+test("committee order: designation first, then flat number", () => {
+  const fl = (id: string, tower: string, role: string, extra: any = {}) => ({ id, flat_no: id, tower, is_committee: true, committee_role: role, owner_name: "OWNER " + id, ...extra });
+  const flats: any[] = [
+    fl("C701", "C", "Treasurer"), fl("A1201", "A", "Committee Member"), fl("A301", "A", "Secretary"),
+    fl("B501", "B", "Chairman"), fl("A201", "A", "Co-opted Member"), fl("B103", "B", "Committee Member"),
+    { id: "X", tower: null, is_committee: true, committee_role: "Committee Member", owner_name: "NO TOWER" },
+    fl("A101", "A", "Secretary"), fl("B701", "C", "Co-opted Member", { flat_no: "B701/702" }),
+  ];
+  assert.deepEqual([...flats].sort(byCommitteeRole).map((f) => f.id), ["B501", "A101", "A301", "C701", "A1201", "B103", "X", "A201", "B701"]);
+  const two = fl("A501", "A", "Committee Member", { committee_members: [{ name: "FATHER", role: "Committee Member" }, { name: "SON", role: "Co-opted Member" }] });
+  const r = committeeRoster([fl("A901", "A", "Chairman"), fl("A201", "A", "Co-opted Member"), two, fl("A401", "A", "Treasurer"), fl("A701", "A", "Committee Member")] as any);
+  assert.deepEqual(r.map((p) => `${p.flat.id}:${p.role}`), ["A901:Chairman", "A401:Treasurer", "A501:Committee Member", "A701:Committee Member", "A201:Co-opted Member", "A501:Co-opted Member"]);
+  assert.equal(isCoopted("Co-opted Member"), true);
+  assert.equal(isCoopted("Committee Member"), false);
+  assert.deepEqual(committeeRoster([{ id: "A1", is_committee: true, committee_role: null, owner_name: null } as any]).map((p) => p.role), ["Committee Member"]);
+});
