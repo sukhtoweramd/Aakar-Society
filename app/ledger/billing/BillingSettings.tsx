@@ -22,6 +22,11 @@ export default function BillingSettings({ settings, signatories, email, onChange
       ifsc: (s.ifsc || "").toUpperCase() || null, upi_id: s.upi_id || null, cheque_payee: s.cheque_payee || null, pay_note: s.pay_note || null,
       bill_signer: s.bill_signer || null, rcpt_signer: s.rcpt_signer || null, updated_by: email, updated_at: new Date().toISOString(),
     };
+    if ("rent_multiplier" in settings) {
+      const m = Number(String(s.rent_multiplier ?? "").replace(",", "."));
+      if (!(m >= 1 && m <= 5)) { setBusy(false); setError("RENTED FLAT MULTIPLIER must be a number from 1 to 5 (e.g. 1.5)."); return; }
+      upd.rent_multiplier = m;
+    }
     if ("letter_prefix" in settings) { upd.letter_prefix = s.letter_prefix || "AKR/L/"; upd.letter_last_no = n(s.letter_last_no); }
     // The last number must not be below a number already issued, or the next document would clash.
     const checks: [string, string, string, string, number][] = [
@@ -86,6 +91,9 @@ export default function BillingSettings({ settings, signatories, email, onChange
         </div>
         <div className="flex flex-wrap gap-3 mt-3">
           <label className="text-[10px] opacity-80">DIGITS IN NUMBER<input className="field mt-1 !w-[90px]" inputMode="numeric" value={s.num_digits} onChange={(e) => set("num_digits", e.target.value.replace(/\D/g, ""))} /></label>
+          <label className="text-[10px] opacity-80">RENTED FLAT MULTIPLIER{"rent_multiplier" in settings
+            ? <input className="field mt-1 !w-[90px]" inputMode="decimal" value={s.rent_multiplier ?? ""} onChange={(e) => set("rent_multiplier", e.target.value.replace(/[^\d.,]/g, ""))} />
+            : <div className="mt-1 opacity-70">1.5 (run BILLING_ANNUAL.sql to change)</div>} <span className="opacity-70">× standard maintenance</span></label>
           <label className="text-[10px] opacity-80">DUE DATE = BILL DATE +<input className="field mt-1 !w-[90px]" inputMode="numeric" value={s.due_days} onChange={(e) => set("due_days", e.target.value.replace(/\D/g, ""))} /> days</label>
         </div>
       </div>

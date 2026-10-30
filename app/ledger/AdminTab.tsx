@@ -78,7 +78,7 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
     setBusy(null);
   }
 
-  const monthly = flats.reduce((n, f) => n + (f.maintenance || 0), 0);
+  const annual = flats.reduce((n, f) => n + (f.maintenance || 0), 0);
   const terraceCount = categories.filter((c) => c.terrace).reduce((n, c) => n + c.ids.length, 0);
   const preview = categories.reduce((n, c) => n + (Number(rows[c.key]?.maint) || 0) * c.ids.length, 0);
 
@@ -104,7 +104,7 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
                   <div className="mono text-[11px] font-bold tracking-[0.08em]">{c.label}</div>
                   <div className="mono text-[10px] opacity-60 mt-1">{c.ids.length} FLATS • {c.range}</div>
                 </div>
-                <label className="block"><div className="mono text-[9px] opacity-60">MAINT ₹</div>
+                <label className="block"><div className="mono text-[9px] opacity-60">MAINT ₹ / YEAR</div>
                   <input type="number" value={r.maint} onChange={(e) => set(c.key, "maint", e.target.value)} className="w-full mono text-[13px] border border-[var(--border)] bg-white px-2 py-1.5 rounded-[2px]" /></label>
                 <label className="block"><div className="mono text-[9px] opacity-60">SQFT</div>
                   <input type="number" value={r.sqft} disabled={!hasSqft} title={hasSqft ? "" : "Run the sqft SQL step to enable"} onChange={(e) => set(c.key, "sqft", e.target.value)} className="w-full mono text-[13px] border border-[var(--border)] bg-white px-2 py-1.5 rounded-[2px] disabled:opacity-50" /></label>
@@ -127,9 +127,9 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
           <div className="border border-[var(--border)] p-4 bg-[var(--bg)] rounded-[3px]">
             <div className="font-bold tracking-[0.06em]">CALCULATED TOTALS</div>
             <div className="mt-3 space-y-2">
-              <div className="flex justify-between"><span className="opacity-70">Monthly Maintenance (ledger)</span><span className="font-bold serif text-[14px]">{rupees(monthly)}</span></div>
-              <div className="flex justify-between"><span className="opacity-70">Annual Collection</span><span className="font-bold">{rupees(monthly * 12)}</span></div>
-              {changed.length > 0 && <div className="flex justify-between text-amber-700"><span>Monthly after unsaved changes</span><span className="font-bold">{rupees(preview)}</span></div>}
+              <div className="flex justify-between"><span className="opacity-70">Annual Maintenance (ledger, standard rates)</span><span className="font-bold serif text-[14px]">{rupees(annual)}</span></div>
+              <div className="flex justify-between"><span className="opacity-70">Per half-year bill run</span><span className="font-bold">{rupees(Math.round(annual / 2))}</span></div>
+              {changed.length > 0 && <div className="flex justify-between text-amber-700"><span>Annual after unsaved changes</span><span className="font-bold">{rupees(preview)}</span></div>}
               <div className="flex justify-between"><span className="opacity-70">Terrace Premium Flats</span><span>{terraceCount} flats</span></div>
               <div className="flex justify-between opacity-60"><span>Standard Flats</span><span>{flats.length - terraceCount} flats</span></div>
             </div>

@@ -16,7 +16,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   const list = flats.filter((f) => inFilter(f, towerFilter, categories));
   const occupied = list.filter(isOccupied).length;
   const withOwner = list.filter((f) => f.owner_name).length;
-  const monthly = list.reduce((n, f) => n + (f.maintenance || 0), 0);
+  const annual = list.reduce((n, f) => n + (f.maintenance || 0), 0);
   const scope = filterName(towerFilter, categories);
   const [members, setMembers] = useState<MemberLite[]>([]);
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   // Charges summary for the PDF heading, per category (e.g. "Tower A floors 1-9: 3BHK • 1500 sqft • ₹3,500")
   const shownIds = new Set(list.map((f) => f.id));
   const chargeLines = categories.filter((c) => c.ids.some((id) => shownIds.has(id)))
-    .map((c) => `${c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`}: ${[c.bhk, c.sqft ? `${c.sqft} sqft` : "", c.maint != null ? `${rupees(c.maint)}/month` : ""].filter(Boolean).join(" • ")}`);
+    .map((c) => `${c.terrace ? `Tower ${c.tower} floor ${c.floors} (terrace)` : `Tower ${c.tower} floors ${c.floors}`}: ${[c.bhk, c.sqft ? `${c.sqft} sqft` : "", c.maint != null ? `${rupees(c.maint)}/year` : ""].filter(Boolean).join(" • ")}`);
 
   function exportCSV() {
     const headers = ["Flat", "Tower", "Floor", "Owner Name", "Lives here", "Tenant Name", "Rent agreement until", "Owner Mobile (if rented)", "Profession / Business", "Spouse", "Mobile", "Email", "Family Members", "BHK", "Sqft", "Maintenance", "Committee", "Status"];
@@ -70,8 +70,8 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
         </thead>
         <tbody>
           <tr class="intro"><td colspan="6">
-            <div class="meta">Date: ${esc(today)} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • On rent: ${list.filter((f) => f.occupancy === "tenant").length} • Monthly maintenance: ${esc(rupees(monthly))} • By: ${esc(email)}</div>
-            ${chargeLines.length ? `<div class="charges"><b>Flat types & monthly maintenance</b><br>${chargeLines.map(esc).join("<br>")}</div>` : ""}
+            <div class="meta">Date: ${esc(today)} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • On rent: ${list.filter((f) => f.occupancy === "tenant").length} • Annual maintenance: ${esc(rupees(annual))} • By: ${esc(email)}</div>
+            ${chargeLines.length ? `<div class="charges"><b>Flat types & annual maintenance</b><br>${chargeLines.map(esc).join("<br>")}</div>` : ""}
           </td></tr>
           ${list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ` <span class="gold">★ ${esc(f.committee_role || "")}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
         </tbody>
@@ -85,7 +85,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   return (
     <div className="space-y-4 fade-in">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[["FLATS", list.length], ["OCCUPIED", occupied], ["OWNERS RECORDED", withOwner], ["MONTHLY ₹", rupees(monthly)]].map(([k, v]) => (
+        {[["FLATS", list.length], ["OCCUPIED", occupied], ["OWNERS RECORDED", withOwner], ["ANNUAL ₹", rupees(annual)]].map(([k, v]) => (
           <div key={k as string} className="bg-[var(--surface)] border border-[var(--border)] p-4">
             <div className="mono text-[10px] opacity-60 tracking-[0.12em]">{k}</div>
             <div className="serif text-[26px] font-bold mt-1">{v}</div>

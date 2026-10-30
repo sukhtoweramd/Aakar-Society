@@ -88,6 +88,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Seen only by the flat's owner and the committee. In a rented flat the tenant's login does not show the owner's nominee; the owner gives the details to the committee.
 
 ## Bills, receipts and paying maintenance
+- Maintenance rates are set per year and billed every half-year (April and October): each bill is half of the yearly rate. A flat given on rent pays 1.5 times the standard maintenance; the bill is still in the owner's name and shows the extra amount on its own line.
 - Your bills and receipts are in MY FLAT → MY BILLS & RECEIPTS, with the balance due and a MEMBER LEDGER CARD. PRINT MY LEDGER and STATEMENT PDF give printable copies.
 - Pay by UPI / bank transfer or cheque using the details printed on the bill. Write your flat number in the payment remark.
 - After paying, tell the committee: **I HAVE PAID** in MY BILLS & RECEIPTS.

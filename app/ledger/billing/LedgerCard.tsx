@@ -113,7 +113,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
         <div>
           <div className="mono text-[10px] tracking-[0.18em] opacity-60">MEMBER LEDGER CARD</div>
           <div className="serif text-[32px] font-bold leading-none mt-1 text-[var(--navy)]">{label(flat)}</div>
-          <div className="text-[12.5px] mt-1.5 opacity-80"><b>{flat.owner_name || "Owner not recorded"}</b>{flat.occupancy === "tenant" && flat.tenant_name ? ` • Tenant: ${flat.tenant_name}` : ""} • Tower {flat.tower}, Floor {flat.floor} • Maintenance ₹{inr(flat.maintenance)}/month{mobile ? ` • ${mobile}` : ""}</div>
+          <div className="text-[12.5px] mt-1.5 opacity-80"><b>{flat.owner_name || "Owner not recorded"}</b>{flat.occupancy === "tenant" && flat.tenant_name ? ` • Tenant: ${flat.tenant_name}` : ""} • Tower {flat.tower}, Floor {flat.floor} • Maintenance ₹{inr(flat.maintenance)}/year{mobile ? ` • ${mobile}` : ""}</div>
           {nav && <div className="flex gap-2 mt-3">{nav}</div>}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

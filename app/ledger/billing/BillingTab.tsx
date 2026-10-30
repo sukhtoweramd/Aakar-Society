@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, sortFlats, type MemberLite } from "@/lib/society";
 import {
   addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
-  OTHER_PRESETS, periodOf, periodOptions, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
+  OTHER_PRESETS, periodOf, periodOptions, maintenanceCharge, rentMultiplier, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
 } from "@/lib/billing";
 import type { Ctx } from "../ctx";
 import SharePdfButton from "./SharePdfButton";
@@ -108,7 +108,9 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
   useEffect(() => { setBillDate(periodOf(pk).billDate); setMade([]); }, [pk]);
   useEffect(() => { setPicked(new Set(rows.filter((f) => !already(f.id) && num(f.maintenance) > 0).map((f) => f.id))); }, [pk, tower, bills.length]);
   const chosen = rows.filter((f) => picked.has(f.id));
-  const total = chosen.reduce((n, f) => n + num(f.maintenance) * months, 0);
+  const mult = rentMultiplier(settings);
+  const charge = (f: any) => maintenanceCharge(f.maintenance, months, f.occupancy === "tenant", mult);
+  const total = chosen.reduce((n, f) => n + charge(f).amount, 0);
   const due = addDays(billDate, settings.due_days || 30);
 
   async function generate() {
@@ -119,8 +121,7 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
       const nos = await reserveNumbers("bill", chosen.length);
       const rowsIns = chosen.map((f, i) => ({
         bill_no: nos[i], flat_id: f.id, kind: "maintenance", bill_to: f.owner_name, bill_date: billDate, due_date: due, period_from: per.from, period_to: per.to,
-        lines: [{ description: "Maintenance charges", rate: num(f.maintenance), qty: months, amount: num(f.maintenance) * months }],
-        amount: num(f.maintenance) * months, ...signerOf(signatories, signer || null), created_by: ctx.email,
+        ...charge(f), ...signerOf(signatories, signer || null), created_by: ctx.email,
       }));
       const { data, error } = await supabase.from("bills").insert(rowsIns).select("*");
       if (error) throw error;
@@ -145,7 +146,7 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
         <label className="text-[10px] opacity-80">TOWERS<select className="field mt-1 !w-[120px]" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All</option><option>A</option><option>B</option><option>C</option></select></label>
         <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[190px]" value={signer} onChange={(e) => setSigner(e.target.value)}><option value="">— blank line —</option>{signatories.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.designation} – {s.name}</option>)}</select></label>
       </div>
-      <div className="opacity-70">Each flat is billed its monthly maintenance × {months} months. Flats already billed for this period are skipped, so no flat is billed twice. To bill a single flat, tick only that flat here (not in OTHER BILL). Bill to: owner. Next bill no.: <b>{settings.bill_prefix}{String(settings.bill_last_no + 1).padStart(settings.num_digits, "0")}</b></div>
+      <div className="opacity-70">Maintenance rates are per year: each flat is billed {months === 6 ? "half its annual rate" : `${months}/12 of its annual rate`}; a rented flat pays {mult} × that (bill still in the owner's name). Flats already billed for this period are skipped, so no flat is billed twice. To bill a single flat, tick only that flat here (not in OTHER BILL). Bill to: owner. Next bill no.: <b>{settings.bill_prefix}{String(settings.bill_last_no + 1).padStart(settings.num_digits, "0")}</b></div>
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-2.5">{error}</div>}
       {made.length > 0 && (
         <div className="border border-emerald-300 bg-emerald-50 p-3 flex flex-wrap gap-3 items-center justify-between">
@@ -157,13 +158,13 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
         <table className="w-full text-[12px]">
           <thead className="sticky top-0"><tr className="bg-[var(--navy)] text-white text-left mono text-[10px]">
             <th className="px-2 py-2"><input type="checkbox" checked={chosen.length > 0 && chosen.length === rows.filter((f) => !already(f.id)).length} onChange={(e) => setPicked(new Set(e.target.checked ? rows.filter((f) => !already(f.id)).map((f) => f.id) : []))} /></th>
-            <th className="px-2 py-2">FLAT</th><th className="px-2 py-2">BILL TO (OWNER)</th><th className="px-2 py-2 text-right">₹ / MONTH</th><th className="px-2 py-2 text-right">AMOUNT</th><th className="px-2 py-2">NOTE</th></tr></thead>
+            <th className="px-2 py-2">FLAT</th><th className="px-2 py-2">BILL TO (OWNER)</th><th className="px-2 py-2 text-right">₹ / YEAR</th><th className="px-2 py-2 text-right">AMOUNT</th><th className="px-2 py-2">NOTE</th></tr></thead>
           <tbody>{rows.map((f) => { const done = already(f.id); return (
             <tr key={f.id} className={`border-b border-[var(--border)] ${done ? "opacity-50" : ""}`}>
               <td className="px-2 py-1.5"><input type="checkbox" disabled={done} checked={picked.has(f.id)} onChange={() => setPicked((s) => { const n = new Set(s); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; })} /></td>
               <td className="px-2 py-1.5 font-bold">{label(f)}</td><td className="px-2 py-1.5">{f.owner_name || <span className="text-amber-700">owner not recorded</span>}</td>
-              <td className="px-2 py-1.5 text-right">{inr(f.maintenance)}</td><td className="px-2 py-1.5 text-right font-bold">{inr(num(f.maintenance) * months)}</td>
-              <td className="px-2 py-1.5 opacity-70">{done ? "already billed" : !num(f.maintenance) ? "no maintenance set" : ""}</td></tr>); })}</tbody>
+              <td className="px-2 py-1.5 text-right">{inr(f.maintenance)}</td><td className="px-2 py-1.5 text-right font-bold">{inr(charge(f).amount)}</td>
+              <td className="px-2 py-1.5 opacity-70">{done ? "already billed" : !num(f.maintenance) ? "no maintenance set" : f.occupancy === "tenant" ? `rented × ${mult}` : ""}</td></tr>); })}</tbody>
         </table>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">

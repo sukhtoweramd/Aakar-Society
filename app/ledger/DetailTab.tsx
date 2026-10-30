@@ -351,7 +351,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               </Box>
               <Box title="MAINTENANCE">
                 <div className="serif text-[22px] font-bold mt-1">{rupees(f.maintenance)}</div>
-                <div className="mono text-[10px] mt-1 opacity-70">Per month • Due 5th</div>
+                <div className="mono text-[10px] mt-1 opacity-70">Per year • billed half-yearly</div>
                 {cat && <div className="mono text-[9px] mt-1 opacity-50">Category: {cat.label} {rupees(cat.maint)}</div>}
               </Box>
               <Box title="BUILT-UP">
@@ -371,7 +371,7 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               <div className="font-bold">FLAT DETAILS</div>
               <div className="mt-2 opacity-80">
                 {label(f)} is in Tower {f.tower}, Floor {floorOf(f)}. Registered under G-16551. {f.bhk ? `${f.bhk} layout. ` : ""}
-                Maintenance {rupees(f.maintenance)} per month. {terrace ? "Terrace ownership applicable - owner holds exclusive terrace rights per agreement in VAULT." : "Terrace ownership not applicable for this floor."}
+                Maintenance {rupees(f.maintenance)} per year, billed half-yearly. {terrace ? "Terrace ownership applicable - owner holds exclusive terrace rights per agreement in VAULT." : "Terrace ownership not applicable for this floor."}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
                 <div className="border border-[var(--border)] bg-white p-2"><span className="opacity-60">TOWER</span><br /><span className="font-bold">Tower {f.tower}</span></div>
