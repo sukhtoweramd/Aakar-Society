@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { SOCIETY, label, ownerText, byCommitteeRole, committeeText } from "@/lib/society";
+import { SOCIETY, label, ownerText, committeeRoster, isCoopted } from "@/lib/society";
 import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
@@ -22,7 +22,7 @@ const TILES: { id: Tab; title: string; desc: string }[] = [
 export default function CoverTab({ ctx }: { ctx: Ctx }) {
   const { flats, go, selectFlat } = ctx;
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
-  const committee = flats.filter((f) => f.is_committee).sort(byCommitteeRole);
+  const committee = committeeRoster(flats); // Chairman, Secretary, Treasurer, then flat order
   const [areas, setAreas] = useState<Area[] | null>(null);
   const [amcDue, setAmcDue] = useState(0);
   useEffect(() => { loadAreas().then(setAreas); if (ctx.isCommittee) loadAmc().then((d) => setAmcDue(d ? amcAlerts(d.amc).length : 0)); }, [ctx.isCommittee]);
@@ -70,9 +70,9 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                 <div className="mt-2 pt-2 border-t border-dashed border-[var(--border)]">
                   <div className="opacity-60 mb-1">COMMITTEE</div>
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
-                  {committee.map((f) => (
-                    <button key={f.id} onClick={() => { if (ctx.isCommittee) { selectFlat(f.id); go("DETAIL"); } }} className="w-full flex justify-between hover:underline text-left">
-                      <span className="truncate pr-2">{committeeText(f)}</span><span>{label(f)}</span>
+                  {committee.map((p, i) => (
+                    <button key={`${p.flat.id}:${i}`} onClick={() => { if (ctx.isCommittee) { selectFlat(p.flat.id); go("DETAIL"); } }} className="w-full flex justify-between gap-2 hover:underline text-left py-0.5">
+                      <span className="min-w-0 truncate">{p.name} <span className="opacity-70">({p.role})</span>{isCoopted(p.role) && <span className="ml-1 px-1 border border-[var(--gold)] text-[9px] align-middle">CO-OPTED</span>}</span><span className="shrink-0">{label(p.flat)}</span>
                     </button>
                   ))}
                 </div>
