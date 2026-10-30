@@ -7,7 +7,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | # | Script | Needed by | Status |
 |---|---|---|---|
 | 1 | `SPLIT_B101_B102.sql` | Step 2: B101 and B102 as separate flats (PR #24) | **run 30 Oct 2026, check OK** |
-| 2 | `BILLING_ANNUAL.sql` | Step 3: annual rates, half-yearly bills, rented 1.5× | to run after the PR is merged and live |
+| 2 | `BILLING_ANNUAL.sql` | Step 3: annual rates, half-yearly bills, rented 1.5× (PR #25) | **run 30 Oct 2026, check OK** |
 
 ---
 
@@ -74,4 +74,4 @@ committee change it.
 
 **Undo:** `BILLING_ANNUAL_UNDO.sql` (removes the setting; the app then uses 1.5).
 
-**Tested:** local PostgreSQL 16 with sample tables: run, second run, undo. **Not yet run on the live database.**
+**Tested:** local PostgreSQL 16 with sample tables: run, second run, undo. **Run on the live database 30 Oct 2026: multiplier 1.50; annual rates entered for all 91 flats.**
