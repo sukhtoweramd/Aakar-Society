@@ -12,8 +12,10 @@ import BookingPanel from "./BookingPanel";
 import WhoToContact from "./WhoToContact";
 import { EmergencyPanel, VehiclesPanel } from "./flatLists";
 import type { Ctx } from "./ctx";
+import type { Section } from "@/lib/phoneMenu";
+import { PhoneSection } from "./PhoneHome";
 
-export default function TenantHome({ ctx }: { ctx: Ctx }) {
+export default function TenantHome({ ctx, only }: { ctx: Ctx; only?: Section | null }) {
   const flatId = ctx.tenantFlat || "";
   const f = ctx.flats.find((x) => x.id === flatId) || null;
   const [areas, setAreas] = useState<Area[]>([]);
@@ -31,6 +33,20 @@ export default function TenantHome({ ctx }: { ctx: Ctx }) {
       <button onClick={() => supabase.auth.signOut()} className="btn-navy px-4 min-h-[44px]">LOG OUT</button>
     </div>);
   if (!flatId) return <div className="border border-dashed border-[var(--border)] p-6 mono text-[12px]">This tenant login is not linked to a flat. Please ask the committee.</div>;
+
+  // Phone: one function on its own screen, opened from the phone home screen (30 Oct 2026).
+  if (only) {
+    const one: Partial<Record<Section, [React.ReactNode, string]>> = {
+      family: [<MembersPanel key="m" flatId={flatId} ownerName={f?.tenant_name || null} ownerEmail={null} tenant lockHead />, ""],
+      vehicles: [<VehiclesPanel key="v" flatId={flatId} rented />, ""],
+      emergency: [<EmergencyPanel key="e" flatId={flatId} />, ""],
+      complaints: [<ComplaintsPanel key="c" mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} />, "Complaints are not switched on yet."],
+      booking: [<BookingPanel key="b" mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} />, "Bookings are not switched on yet."],
+      contacts: [areas.length > 0 ? <div key="w" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4"><WhoToContact flats={ctx.flats} isCommittee={false} areas={areas} /></div> : null, "The committee has not set up who to contact yet."],
+    };
+    const [body, empty] = one[only] || [null, "This is not available for a tenant login."];
+    return <div className="fade-in min-w-0"><PhoneSection key={only} empty={empty}>{body}</PhoneSection></div>;
+  }
 
   return (
     <div className="space-y-4 fade-in min-w-0">

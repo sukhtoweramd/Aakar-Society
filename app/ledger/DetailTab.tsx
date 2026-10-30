@@ -20,9 +20,10 @@ import BookingPanel from "./BookingPanel";
 import { FileLink } from "./SecureFile";
 import { DOC_TYPES, OTHER, docChecklist } from "@/lib/flatDocTypes";
 import { compressForUpload, sizeNote } from "@/lib/compressFile";
+import type { Section } from "@/lib/phoneMenu";
+import { PhoneSection } from "./PhoneHome";
 
-
-export default function DetailTab({ ctx }: { ctx: Ctx }) {
+export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | null }) {
   const { flats, categories, selectedId, selectFlat, go, reloadFlats, isCommittee, myFlat } = ctx;
   const f = flats.find((x) => x.id === (isCommittee ? selectedId : myFlat)) || null;
   // Rented flat with its own tenant login (TENANT_LOGINS.sql): the owner's login only views the tenant's family, vehicles
@@ -234,37 +235,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
     <div className="border border-[var(--border)] p-4 bg-[var(--bg)]"><div className="mono text-[10px] opacity-60">{title}</div>{children}</div>
   );
 
-  return (
-    <div className="space-y-4 fade-in">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
-        <div className="flex flex-wrap justify-between gap-4">
-          <div>
-            <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
-            <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)] text-[16px] align-middle ml-2 mono">{committeeBadge(f)}</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
-            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{f.is_committee && committeePeople(f).some((p) => p.name.trim().toLowerCase() !== (f.owner_name || "").trim().toLowerCase()) ? ` • Committee: ${committeeText(f)}` : ""}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
-          </div>
-          <div className="flex gap-2 flex-wrap items-start">
-            {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
-            {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
-            {isCommittee && <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">LETTERS / ISSUE LETTER ↓</button>}
-            <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
-            <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] px-3 py-2">{isCommittee && f.id !== ctx.homeFlat ? "PRINT CARD" : "PRINT MY CARD"}</button>
-            <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
-            {!isCommittee && <>
-              <button onClick={() => jump("sec-ledger", "No bills have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LEDGER ↓</button>
-              <button onClick={() => jump("sec-vehicles", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY VEHICLES ↓</button>
-              <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS / REQUEST ↓</button>
-              <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
-              <button onClick={() => jump("sec-complaints", "Complaints are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">COMPLAINTS ↓</button>
-              <button onClick={() => jump("sec-booking", "Bookings are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">BOOK COMMON PLOT ↓</button>
-              {!rented && <button onClick={() => jump("sec-nominee", "The nominee form is not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">NOMINEE ↓</button>}
-            </>}
-          </div>
-        </div>
-        {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
-        {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
-
-        {editing && (
+  // Pieces of MY FLAT. The full page (desktop, committee) shows them all; a phone opens one at a time (phone home screen).
+  const editForm = (
           <div className="mt-5 border border-[var(--gold)] bg-[#fffdf5] p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mono text-[11px]">
             {tenantReady && (
               <div className="sm:col-span-2 lg:col-span-4">
@@ -334,10 +306,8 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
               <button onClick={() => setEditing(false)} className="btn-line px-4 py-2 text-[11px]">CANCEL</button>
             </div>
           </div>
-        )}
-
-        <div className="mt-6 grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-6">
-          <div className="space-y-3">
+  );
+  const infoEl = (<>
             {rented && (
               <div className={`border p-4 ${agreementOver ? "border-red-300 bg-red-50" : "border-[var(--gold)] bg-[#fffdf5]"}`}>
                 <div className="mono text-[10px] opacity-60">GIVEN ON RENT • TENANT LIVES HERE</div>
@@ -390,18 +360,19 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                 <div className="border border-[var(--border)] bg-white p-2"><span className="opacity-60">CONTACT</span><br /><span className="font-bold break-all">{f.email || "Not on file"}</span></div>
               </div>
             </div>
-
-            {isCommittee && rented && <TenantLoginCard key={`tl-${f.id}`} flat={f} />}
+  </>);
+  const familyEl = (<>
             <MembersPanel key={`${f.id}-${familyVersion}-${f.occupancy}-${f.tenant_name}`} flatId={f.id} ownerName={rented ? f.tenant_name : f.owner_name} ownerEmail={rented ? null : f.email} tenant={rented} lockHead={!isCommittee} committeeFlat={f} canSetCommittee={isCommittee} onFlatChanged={reloadFlats} readOnly={tenantManaged} />
             {tenantManaged && <div className="mono text-[11px] border border-[var(--border)] bg-[var(--bg)] p-2.5 -mt-2">The tenant keeps the family, vehicles and emergency contacts up to date from their own login. You can see them here.</div>}
             <ConsentCard flat={f} email={ctx.email} isCommittee={isCommittee && f.id !== ctx.homeFlat} onSaved={reloadFlats} />
-
-            {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
-
+  </>);
+  const vehiclesEl = (
             <div id="sec-vehicles" className="scroll-mt-28"><VehiclesPanel key={`veh-${f.id}-${familyVersion}`} flatId={f.id} rented={rented} readOnly={tenantManaged} /></div>
-
+  );
+  const emergencyEl = (
             <EmergencyPanel key={`emg-${f.id}-${familyVersion}`} flatId={f.id} readOnly={tenantManaged} />
-
+  );
+  const docsEl = (
             <div className="border border-amber-300 bg-[#fff8d6] p-4">
               <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div>
@@ -461,6 +432,98 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
                 {!f.r2_url && docs.length === 0 && <div className="opacity-60">No documents uploaded for this flat yet.</div>}
               </div>
             </div>
+  );
+  const billsEl = <MyBills flat={f} flats={flats} email={ctx.email} />;
+  const lettersEl = <>{!isCommittee && <LetterRequestPanel flatId={f.id} />}<LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></>;
+  const contactsEl = <WhoToContact flats={flats} isCommittee={false} areas={contacts} className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5" />;
+  const complaintsEl = <ComplaintsPanel key={`c-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />;
+  const bookingEl = <BookingPanel key={`b-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />;
+  const nomineeEl = <NomineePanel key={`n-${f.id}`} flat={f} isCommittee={isCommittee} email={ctx.email} />;
+  const actionsEl = <MyActionPoints key={f.id} flats={flats} />;
+
+  // Phone: one section on its own screen (the HOME bar above it is drawn by the page).
+  if (only) {
+    const box = "bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4";
+    const one: Record<Section, [React.ReactNode, string]> = {
+      bills: [billsEl, "No bills have been issued for your flat yet."],
+      family: [familyEl, ""],
+      vehicles: [vehiclesEl, ""],
+      emergency: [emergencyEl, ""],
+      documents: [docsEl, ""],
+      letters: [lettersEl, ""],
+      complaints: [complaintsEl, "Complaints are not switched on yet."],
+      booking: [bookingEl, "Bookings are not switched on yet."],
+      nominee: [rented ? null : nomineeEl, rented ? "The nominee form is not shown for a flat given on rent. Please ask the committee." : "The nominee form is not switched on yet."],
+      contacts: [contacts.length > 0 ? contactsEl : null, "The committee has not set up who to contact yet."],
+      actions: [actionsEl, "You have no open action points."],
+      details: [<div key="d" className={`${box} space-y-4`}>
+        <div>
+          <div className="serif text-[28px] font-bold leading-none">{label(f)}</div>
+          <div className="mono text-[11px] mt-2 opacity-70">Owner: {ownerText(f)}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Tower {f.tower} • Floor {floorOf(f)}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] min-h-[44px]">{editing ? "CANCEL EDIT" : "EDIT MY DETAILS"}</button>
+          <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] min-h-[44px]">PRINT MY CARD</button>
+        </div>
+        {editing && editForm}
+        <div className="space-y-3">{infoEl}</div>
+      </div>, ""],
+    };
+    const [body, empty] = one[only];
+    return (
+      <div className="space-y-4 fade-in min-w-0">
+        {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
+        <PhoneSection key={only} empty={empty}>{body}</PhoneSection>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 fade-in">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
+        <div className="flex flex-wrap justify-between gap-4">
+          <div>
+            <div className="mono text-[10px] tracking-[0.2em] opacity-60">{isCommittee ? "FLAT DETAIL • SELECTED" : "MY FLAT"}</div>
+            <div className="serif text-[32px] font-bold mt-1">{label(f)}{f.is_committee && <span className="text-[var(--gold)] text-[16px] align-middle ml-2 mono">{committeeBadge(f)}</span>}{terrace && <span className="ml-3 align-middle mono text-[10px] bg-amber-400 text-black px-1.5 py-0.5 font-bold">TERRACE • OWNER</span>}</div>
+            <div className="mono text-[11px] mt-1 opacity-70">Owner: {ownerText(f)}{f.is_committee && committeePeople(f).some((p) => p.name.trim().toLowerCase() !== (f.owner_name || "").trim().toLowerCase()) ? ` • Committee: ${committeeText(f)}` : ""}{rented ? ` • On rent to: ${f.tenant_name || "—"}` : ""} • Status: {statusText(f)} • Type: {f.bhk || "—"} • Tower {f.tower} • Floor {floorOf(f)}{f.is_committee ? ` • ${committeeBadge(f)}` : ""}</div>
+          </div>
+          <div className="flex gap-2 flex-wrap items-start">
+            {isCommittee && rented && <button onClick={tenantMovedOut} disabled={!!busy} className="btn-line mono text-[11px] px-3 py-2 text-red-700">{busy === "out" ? "UPDATING…" : "TENANT MOVED OUT"}</button>}
+            {isCommittee && <button onClick={() => go("INDEX")} className="btn-line mono text-[11px] px-3 py-2">← BACK TO INDEX</button>}
+            {isCommittee && <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">LETTERS / ISSUE LETTER ↓</button>}
+            <button onClick={() => go("FLOOR")} className="btn-navy mono text-[11px] px-3 py-2">VIEW FLOOR</button>
+            <button onClick={() => printFlatCards([f], `Flat Profile Card – ${label(f)}`)} className="btn-navy mono text-[11px] px-3 py-2">{isCommittee && f.id !== ctx.homeFlat ? "PRINT CARD" : "PRINT MY CARD"}</button>
+            <button onClick={() => { setForm({ ...f }); setEditing((v) => !v); }} className="btn-gold mono text-[11px] px-3 py-2">{editing ? "CANCEL EDIT" : isCommittee ? "EDIT FLAT" : "EDIT MY DETAILS"}</button>
+            {!isCommittee && <>
+              <button onClick={() => jump("sec-ledger", "No bills have been issued for your flat yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LEDGER ↓</button>
+              <button onClick={() => jump("sec-vehicles", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY VEHICLES ↓</button>
+              <button onClick={() => jump("sec-letters", "")} className="btn-line mono text-[11px] px-3 py-2 font-bold">MY LETTERS / REQUEST ↓</button>
+              <button onClick={() => jump("sec-contacts", "The committee has not set up who to contact yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">WHO TO CONTACT ↓</button>
+              <button onClick={() => jump("sec-complaints", "Complaints are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">COMPLAINTS ↓</button>
+              <button onClick={() => jump("sec-booking", "Bookings are not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">BOOK COMMON PLOT ↓</button>
+              {!rented && <button onClick={() => jump("sec-nominee", "The nominee form is not switched on yet.")} className="btn-line mono text-[11px] px-3 py-2 font-bold">NOMINEE ↓</button>}
+            </>}
+          </div>
+        </div>
+        {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
+        {jumpNote && <div className="mt-3 border border-[var(--border)] bg-[var(--bg-soft)] p-2.5 mono text-[11px]">{jumpNote}</div>}
+
+        {editing && editForm}
+
+        <div className="mt-6 grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-6">
+          <div className="space-y-3">
+            {infoEl}
+
+            {isCommittee && rented && <TenantLoginCard key={`tl-${f.id}`} flat={f} />}
+            {familyEl}
+
+            {isCommittee && <button onClick={() => { selectFlat(f.id); go("BILLING"); }} className="w-full border border-[var(--border)] bg-[var(--surface)] p-3 mono text-[11px] font-bold text-left hover:border-[var(--gold)]">BILLS, PAYMENTS &amp; RECEIPTS FOR THIS FLAT → open in BILLING</button>}
+
+            {vehiclesEl}
+
+            {emergencyEl}
+
+            {docsEl}
           </div>
 
           <div className="border border-[var(--border)] rounded-[3px] overflow-hidden self-start">
@@ -488,14 +551,14 @@ export default function DetailTab({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
         </div>
-        {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28"><MyBills flat={f} flats={flats} email={ctx.email} /></div>}
-        <div id="sec-letters" className="mt-6 scroll-mt-28">{!isCommittee && <LetterRequestPanel flatId={f.id} />}<LettersPanel flat={f} flats={flats} isCommittee={isCommittee} email={ctx.email} /></div>
-        {!isCommittee && <div id="sec-contacts" className="scroll-mt-28">{contacts.length > 0 && <WhoToContact flats={flats} isCommittee={false} areas={contacts} className="mt-6 bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5" />}</div>}
+        {!isCommittee && <div id="sec-ledger" className="mt-6 scroll-mt-28">{billsEl}</div>}
+        <div id="sec-letters" className="mt-6 scroll-mt-28">{lettersEl}</div>
+        {!isCommittee && <div id="sec-contacts" className="scroll-mt-28">{contacts.length > 0 && <div className="mt-6">{contactsEl}</div>}</div>}
         {/* Below the flat's own details, in the order of the quick buttons (27 Oct 2026): owner and family come first. */}
-        {(!isCommittee || f.id === ctx.homeFlat) && <ComplaintsPanel key={`c-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
-        {(!isCommittee || f.id === ctx.homeFlat) && <BookingPanel key={`b-${f.id}`} mode="flat" flats={flats} flatId={f.id} isCommittee={isCommittee} />}
-        {(isCommittee || !rented) && <NomineePanel key={`n-${f.id}`} flat={f} isCommittee={isCommittee} email={ctx.email} />}
-        {(!isCommittee || f.id === ctx.homeFlat) && <MyActionPoints key={f.id} flats={flats} />}
+        {(!isCommittee || f.id === ctx.homeFlat) && complaintsEl}
+        {(!isCommittee || f.id === ctx.homeFlat) && bookingEl}
+        {(isCommittee || !rented) && nomineeEl}
+        {(!isCommittee || f.id === ctx.homeFlat) && actionsEl}
       </div>
     </div>
   );

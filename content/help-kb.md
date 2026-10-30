@@ -19,7 +19,12 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 
 ## Finding your way
 - Tabs across the top: COVER, INDEX, FLOOR, MY FLAT (called DETAIL in committee logins), BUSINESS, DIRECTORY, NOTICES, CONTACTS, EVENTS, VAULT. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
-- On a phone the row of tabs is wider than the screen: swipe the tab row left to see more tabs.
+- **On a phone** (since 30 Oct 2026) the app opens on a **home screen of buttons** instead of tabs. Tap a button to open just that function; tap the gold **HOME** button at the top left (or the phone's back button) to come back to the buttons.
+  - Owner (flat login): your flat number, a dark card with the amount OUTSTANDING and **I HAVE PAID** / **VIEW BILL**, then BILLS & LEDGER, MY FAMILY, MY VEHICLES, DOCUMENTS, MY LETTERS, COMPLAINTS, BOOK PLOT, NOMINEE (not for a flat given on rent), EMERGENCY, WHO TO CONTACT, MY DETAILS (edit your details, print your card) and ACTION POINTS (only when you have open ones). Under SOCIETY: the screens the committee has opened for members (NOTICES, EVENTS, CONTACTS, DIRECTORY …).
+  - Tenant login: MY FAMILY, MY VEHICLES, EMERGENCY, COMPLAINTS, BOOK PLOT, WHO TO CONTACT, and under SOCIETY: NOTICES, EVENTS, CONTACTS.
+  - Committee login: BILLING, COMMITTEE, FLATS, REPORTS, ADMIN, MY FLAT (when the login is linked to a flat), and the society screens. Each opens the full screen of that tab.
+  - PASSWORD and LOG OUT are at the top of the home screen. On a computer (or a phone turned sideways on a wide screen) the tabs are shown as before.
+- On a computer the row of tabs is across the top.
 - The committee chooses which tabs members see (ADMIN → MEMBER SCREENS). MY FLAT and NOTICES are always there; if another tab is missing, the committee has turned it off for members.
 - HELP: on a phone it is the round **?** button at the bottom right; on a computer the HELP button.
 - The left panel (on a computer) shows Tower A, B, C and the COMMITTEE with FILTER links, and the SOCIETY NOTICE.

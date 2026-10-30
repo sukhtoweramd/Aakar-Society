@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
@@ -28,6 +28,8 @@ import TenantHome from "./ledger/TenantHome";
 import DirectoryTab from "./ledger/DirectoryTab";
 import AdminTab from "./ledger/AdminTab";
 import ReportsTab from "./ledger/ReportsTab";
+import PhoneHome, { PhoneBar, useIsPhone } from "./ledger/PhoneHome";
+import { SECTION_TITLE, TAB_TITLE, type Section, type Tile } from "@/lib/phoneMenu";
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +51,30 @@ export default function Home() {
   const tenantFlat: string | null = isTenant ? String(meta.tenant_flat || "") || null : null;
   const [refreshed, setRefreshed] = useState(false);
   const homeFlat: string | null = isTenant ? null : String(meta.flat_id || "") || null; // committee logins may be linked to their own flat
+  // Phones (30 Oct 2026): a home screen of buttons; each opens one function with a HOME bar. Desktop keeps the tabs.
+  const isPhone = useIsPhone();
+  const [phoneHome, setPhoneHome] = useState(true);
+  const [section, setSection] = useState<Section | null>(null);
+  const atHome = useRef(true);
+  atHome.current = phoneHome;
+  // The phone's back button returns to the home screen instead of leaving the app.
+  useEffect(() => {
+    const back = () => { setPhoneHome(true); setSection(null); };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
+  function leaveHome() {
+    if (!isPhone) return;
+    if (atHome.current) { try { window.history.pushState({ aakarPhone: 1 }, ""); } catch {} }
+    setPhoneHome(false);
+  }
+  function goHome() {
+    let pushed = false;
+    try { pushed = !!(window.history.state as any)?.aakarPhone; } catch {}
+    if (pushed) window.history.back(); // popstate brings the home screen back
+    else { setPhoneHome(true); setSection(null); }
+    window.scrollTo({ top: 0 });
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -99,7 +125,18 @@ export default function Home() {
   function go(t: Tab) {
     if (!isCommittee && !residentAllowed.includes(t)) { alert("This screen is not open for members. Please ask the committee."); return; }
     setTab(t);
+    setSection(null);
+    leaveHome();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openTile(x: Tile) {
+    if (x.section) {
+      if (isCommittee && homeFlat) setSelectedId(homeFlat);
+      setTab("DETAIL"); setSection(x.section); leaveHome(); window.scrollTo({ top: 0 }); return;
+    }
+    if (x.key === "MYFLAT" && homeFlat) { setSelectedId(homeFlat); setTab("DETAIL"); setSection(null); leaveHome(); window.scrollTo({ top: 0 }); return; }
+    if (x.tab) go(x.tab);
   }
 
   if (checking) return <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
@@ -129,8 +166,25 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[var(--bg)] text-[var(--ink)] antialiased" style={{ paddingTop: "var(--safe-area-inset-top)" }}>
       <LoginBanner userId={session.user.id} tower={(myFlat || homeFlat || tenantFlat || "")[0] || null} isCommittee={isCommittee} onRead={() => go("NOTICES")} />
+      {isPhone && phoneHome && (
+        <div className="w-full bg-[var(--navy)] text-white px-4 py-2.5 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-[var(--navy)] border border-[var(--gold)] text-[var(--gold)] grid place-items-center serif text-[18px] font-bold shrink-0">ॐ</div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">AAKAR CO-OP • {SOCIETY.building}</div>
+            <div className="mono text-[11px] opacity-80 truncate normal-case">{who}</div>
+          </div>
+          <InstallApp variant="bar" />
+          <button onClick={() => setShowPassword(true)} className="border border-white/30 px-2 min-h-[36px] mono text-[10px] font-semibold">PASSWORD</button>
+          <button onClick={() => { clearBannerDismissal(session.user.id); supabase.auth.signOut(); }} className="bg-[var(--gold)] text-black px-2.5 min-h-[36px] mono text-[10px] font-bold">LOG OUT</button>
+        </div>
+      )}
+      {isPhone && !phoneHome && (
+        <PhoneBar onHome={goHome}
+          sub={isCommittee ? (tab === "DETAIL" && selectedId ? `FLAT ${label({ id: selectedId, flat_no: selectedId } as any)}` : "COMMITTEE") : (myFlat || tenantFlat) ? `FLAT ${label({ id: (myFlat || tenantFlat)!, flat_no: (myFlat || tenantFlat)! } as any)}` : ""}
+          title={section ? SECTION_TITLE[section] : tab === "DETAIL" ? (isCommittee ? "Flat detail" : "My flat") : TAB_TITLE[tab] || tab} />
+      )}
       {/* Top strip */}
-      <div className="w-full bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
+      {!isPhone && <div className="w-full bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[38px] py-1.5 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-2 font-semibold">
@@ -156,10 +210,10 @@ export default function Home() {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Header + nav */}
-      <header className="sticky top-0 z-30 w-full max-w-[100vw] border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur">
+      {!isPhone && <header className="sticky top-0 z-30 w-full max-w-[100vw] border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[60px] py-2.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-[4px] bg-[var(--navy)] text-[var(--gold)] grid place-items-center serif text-[20px] font-bold">ॐ</div>
@@ -177,19 +231,20 @@ export default function Home() {
             ))}
           </nav>
         </div>
-      </header>
+      </header>}
 
-      <div className={`mx-auto max-w-[1600px] w-full px-4 md:px-6 py-6 md:py-8 grid grid-cols-1 ${tab === "BILLING" || tab === "COMMITTEE" ? "" : "lg:grid-cols-[320px_minmax(0,1fr)]"} gap-6 items-start overflow-x-hidden`}>
-        {tab !== "BILLING" && tab !== "COMMITTEE" && <Sidebar ctx={ctx} />}
+      <div className={`mx-auto max-w-[1600px] w-full px-4 md:px-6 ${isPhone ? "py-4" : "py-6 md:py-8"} grid grid-cols-1 ${tab === "BILLING" || tab === "COMMITTEE" ? "" : "lg:grid-cols-[320px_minmax(0,1fr)]"} gap-6 items-start overflow-x-hidden`}>
+        {!isPhone && tab !== "BILLING" && tab !== "COMMITTEE" && <Sidebar ctx={ctx} />}
         <main className="order-1 lg:order-2 min-w-0 max-w-full overflow-x-hidden">
-          <div className="mono text-[11px] opacity-40 mb-3 tracking-[0.04em]">
+          {!isPhone && <div className="mono text-[11px] opacity-40 mb-3 tracking-[0.04em]">
             SOCIETY LEDGER • TAB {tab} • {flats.length} FLATS • A {towerCount("A")} • B {towerCount("B")} • C {towerCount("C")}
-          </div>
+          </div>}
           {loadError && <div className="mb-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[12px]">{loadError}</div>}
+          {isPhone && phoneHome ? <PhoneHome ctx={ctx} allowed={residentAllowed} onOpen={openTile} /> : <>
           {tab === "COVER" && <CoverTab ctx={ctx} />}
           {tab === "INDEX" && <IndexTab ctx={ctx} />}
           {tab === "FLOOR" && <FloorTab ctx={ctx} />}
-          {tab === "DETAIL" && (isTenant ? <TenantHome ctx={ctx} /> : <DetailTab ctx={ctx} />)}
+          {tab === "DETAIL" && (isTenant ? <TenantHome ctx={ctx} only={isPhone ? section : null} /> : <DetailTab ctx={ctx} only={isPhone ? section : null} />)}
           {tab === "BUSINESS" && <BusinessTab ctx={ctx} />}
           {tab === "VAULT" && <VaultTab ctx={ctx} />}
           {tab === "NOTICES" && <NoticesTab ctx={ctx} />}
@@ -200,6 +255,7 @@ export default function Home() {
           {tab === "REPORTS" && isCommittee && <ReportsTab ctx={ctx} />}
           {tab === "BILLING" && isCommittee && <BillingTab ctx={ctx} />}
           {tab === "COMMITTEE" && isCommittee && <CommitteeTab ctx={ctx} />}
+          </>}
         </main>
       </div>
 
