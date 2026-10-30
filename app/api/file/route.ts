@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const unauthorized = () => NextResponse.json({ error: "Please log in again." }, { status: 401 });
 const forbidden = () => NextResponse.json({ error: "You are not allowed to change this." }, { status: 403 });
-type Me = { isCommittee: boolean; flatId: string | null; db: any };
+type Me = { isCommittee: boolean; flatId: string | null; db: any; isTenant?: boolean; tenantFlatId?: string | null };
 /** Role of this flat in an event's organising team (Convenor / Treasurer / Member), or null */
 async function eventRole(me: Me, folder: string): Promise<string | null> {
   const id = folder.split("/")[1];
@@ -33,6 +33,7 @@ async function canRead(me: Me, folder: string) {
 }
 async function canWrite(me: Me, folder: string) {
   if (me.isCommittee || (!!me.flatId && (folder === `flats/${me.flatId}` || folder === `complaints/${me.flatId}`))) return true;
+  if (me.isTenant && !!me.tenantFlatId && folder === `complaints/${me.tenantFlatId}`) return true;   // tenant: complaint photos only
   if (folder.startsWith("events/")) return (await eventRole(me, folder)) === "Convenor";
   if (folder.startsWith("eventdocs/")) return ["Convenor", "Treasurer"].includes((await eventRole(me, folder)) || "");
   return false;

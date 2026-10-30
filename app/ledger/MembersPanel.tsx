@@ -23,8 +23,8 @@ const toRow = (f: Form) => ({
   office_address: f.office_address.trim() || null, office_phone: f.office_phone.trim() || null,
 });
 
-export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false, lockHead = false, committeeFlat, canSetCommittee = false, onFlatChanged }:
-  { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean; lockHead?: boolean; committeeFlat?: Flat; canSetCommittee?: boolean; onFlatChanged?: () => void }) {
+export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = false, lockHead = false, committeeFlat, canSetCommittee = false, onFlatChanged, readOnly = false }:
+  { flatId: string; ownerName?: string | null; ownerEmail?: string | null; tenant?: boolean; lockHead?: boolean; committeeFlat?: Flat; canSetCommittee?: boolean; onFlatChanged?: () => void; readOnly?: boolean }) {
   // Committee member of the society (COMMITTEE_PERSON.sql): the flag and designation are the flat's; this marks which
   // family member holds it. Only committee logins can change it.
   const cf = committeeFlat;
@@ -147,13 +147,13 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
     <div className="border border-[var(--border)] p-4 bg-[var(--surface)]">
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="mono text-[10px] font-bold tracking-[0.14em]">{tenant ? "TENANT'S FAMILY" : "FAMILY MEMBERS"} • {members.length}</div>
-        {editId === null && <button onClick={() => { setForm(BLANK); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy mono text-[11px] px-3 py-1.5">+ ADD MEMBER</button>}
+        {editId === null && !readOnly && <button onClick={() => { setForm(BLANK); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy mono text-[11px] px-3 py-1.5">+ ADD MEMBER</button>}
       </div>
       {error && <div className="mt-2 border border-red-200 bg-red-50 text-red-700 p-2 mono text-[11px]">{error}</div>}
       {ownerMissing && editId === null && (
         <div className="mt-3 border border-amber-300 bg-[#fff8d6] p-3 mono text-[11px] flex flex-wrap gap-3 items-center justify-between">
           <span>{who} <b>{firstOwner}</b> is not in the family list yet. Add them so their profession and mobile show in reports and the directories.</span>
-          <button onClick={() => { setForm({ ...BLANK, name: firstOwner, relation: "Self", is_head: true, email: ownerEmail || "" }); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy px-3 py-1.5 shrink-0">+ ADD {who.toUpperCase()} AS FAMILY MEMBER</button>
+          {!readOnly && <button onClick={() => { setForm({ ...BLANK, name: firstOwner, relation: "Self", is_head: true, email: ownerEmail || "" }); setEditId("new"); setCom({ on: false, role: "Committee Member" }); }} className="btn-navy px-3 py-1.5 shrink-0">+ ADD {who.toUpperCase()} AS FAMILY MEMBER</button>}
         </div>
       )}
       {editId === "new" && <div className="mt-3">{editor}</div>}
@@ -174,8 +174,8 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
                 )}
               </div>
               <div className="flex gap-3 shrink-0 mono text-[10px]">
-                <button onClick={() => { setForm(toForm(m)); setEditId(m.id); setCom({ on: isCp(m.name), role: roleOf(m.name) || "Committee Member" }); }} className="underline">Edit</button>
-                {!headLocked(m) && <button onClick={() => remove(m)} className="text-red-600">✕</button>}
+                {!readOnly && <button onClick={() => { setForm(toForm(m)); setEditId(m.id); setCom({ on: isCp(m.name), role: roleOf(m.name) || "Committee Member" }); }} className="underline">Edit</button>}
+                {!headLocked(m) && !readOnly && <button onClick={() => remove(m)} className="text-red-600">✕</button>}
               </div>
             </div>
           </div>

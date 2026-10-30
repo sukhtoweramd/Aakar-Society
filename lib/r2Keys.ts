@@ -12,7 +12,7 @@
 //                                                                              the meeting it is attached to
 //   eventdocs/<event id>/ event minutes, bills, receipts                     → committee, that event's team, or a
 //                                                                              member who can see the entry it is attached to
-//   complaints/<flat>/    complaint photos                                   → committee, that flat, and the member(s)
+//   complaints/<flat>/    complaint photos                                   → committee, that flat (owner or tenant login), and the member(s)
 //                                                                              the complaint is assigned to
 // Not served by these routes: payproofs/ (own route /api/payment-proof) and backups/ (main admin only).
 
@@ -66,7 +66,7 @@ export function parseFileRef(ref: string, publicBases: string[]): FileRef | null
   return folder ? { kind: "r2", key, folder } : null;
 }
 
-export type Who = { isCommittee: boolean; flatId: string | null };
+export type Who = { isCommittee: boolean; flatId: string | null; tenantFlatId?: string | null };
 /**
  * yes   → may open every file in the folder
  * no    → may not
@@ -78,7 +78,7 @@ export function folderAccess(folder: string, who: Who): FolderAccess {
   if (who.isCommittee) return "yes";
   if (folder === "notices" || folder === "vault" || folder.startsWith("floor-plans/") || folder.startsWith("events/")) return "yes";
   if (folder.startsWith("flats/")) return !!who.flatId && folder === `flats/${who.flatId}` ? "yes" : "no";
-  if (folder.startsWith("complaints/")) return !!who.flatId && folder === `complaints/${who.flatId}` ? "yes" : "record";
+  if (folder.startsWith("complaints/")) return (!!who.flatId && folder === `complaints/${who.flatId}`) || (!!who.tenantFlatId && folder === `complaints/${who.tenantFlatId}`) ? "yes" : "record";
   if (folder === "minutes") return "record";
   if (folder.startsWith("eventdocs/")) return "team";
   return "no";   // amc and anything new: committee only until a rule is added here

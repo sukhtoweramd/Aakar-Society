@@ -24,7 +24,7 @@ export async function signKey(key: string, seconds = SHOW_SECONDS): Promise<stri
   return getSignedUrl(r2.client, new GetObjectCommand({ Bucket: r2.bucket, Key: key }), { expiresIn: seconds });
 }
 
-type Me = Pick<Authed, "isCommittee" | "flatId" | "db">;
+type Me = Pick<Authed, "isCommittee" | "flatId" | "db" | "isTenant" | "tenantFlatId">;
 
 /** Is this flat on the organising team of the event (Convenor / Treasurer / Member)? */
 async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<boolean>>) {

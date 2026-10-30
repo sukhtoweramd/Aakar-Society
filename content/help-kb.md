@@ -88,6 +88,13 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - **PRINT FORM TO SIGN** (once the shares add up to 100%): sign it with two witnesses and give it to the society office. The committee then ticks "signed form received". Changing a nominee later needs a new signed form.
 - Seen only by the flat's owner and the committee. In a rented flat the tenant's login does not show the owner's nominee; the owner gives the details to the committee.
 
+## Tenant login (rented flats)
+- The flat login (flat number, e.g. A-101) is the OWNER's. A rented flat can also have a separate TENANT login: the flat number followed by T, e.g. **A-101-T**. The committee creates it on the flat's page (TENANT LOGIN → CREATE TENANT LOGIN) and gives the first password; the tenant sets their own at first login.
+- The tenant sees MY FLAT (family members, vehicles, emergency contacts of the flat, complaints, BOOK COMMON PLOT, who to contact), NOTICES, CONTACTS and EVENTS (and COVER if shown to members).
+- The tenant does not see bills, receipts, the ledger, "I have paid", nominees, letters or the flat's documents; those stay with the owner.
+- While the flat has a tenant login, the owner's login can see the family, vehicles and emergency contacts but not change them (the tenant keeps them up to date).
+- When the committee marks TENANT MOVED OUT, the tenant login stops working at once. The committee can also RESET the tenant's password or REVOKE the login; the family list, vehicles and complaints are kept.
+
 ## Bills, receipts and paying maintenance
 - Maintenance rates are set per year and billed every half-year (April and October): each bill is half of the yearly rate. A flat given on rent pays 1.5 times the standard maintenance; the bill is still in the owner's name and shows the extra amount on its own line.
 - Your bills and receipts are in MY FLAT → MY BILLS & RECEIPTS, with the balance due and a MEMBER LEDGER CARD. PRINT MY LEDGER and STATEMENT PDF give printable copies.

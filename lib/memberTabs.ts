@@ -21,6 +21,13 @@ export function residentTabs(setting: string[] | null | undefined): Tab[] {
   return RESIDENT_TABS.filter((t) => ALWAYS_TABS.includes(t) || !setting || setting.includes(t));
 }
 
+/** Tabs a tenant login sees (30 Oct 2026): MY FLAT (tenant screen), NOTICES, CONTACTS and EVENTS, plus COVER when the
+ *  committee shows it to members. Never INDEX, FLOOR, DIRECTORY, BUSINESS or VAULT (owners' and members' screens). */
+export const TENANT_TABS: Tab[] = ["COVER", "DETAIL", "NOTICES", "CONTACTS", "EVENTS"];
+export function tenantTabs(setting: string[] | null | undefined): Tab[] {
+  return TENANT_TABS.filter((t) => ALWAYS_TABS.includes(t) || !setting || setting.includes(t));
+}
+
 /** Keeps only known optional tabs, in a fixed order (what gets saved). */
 export function cleanSetting(list: string[]): Tab[] {
   return OPTIONAL_TABS.map((o) => o.tab).filter((t) => list.includes(t));

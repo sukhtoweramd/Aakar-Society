@@ -3,7 +3,7 @@ import { useState } from "react";
 import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY } from "@/lib/society";
-import { flatEmail, normaliseFlat } from "@/lib/residents";
+import { flatEmail, parseLogin, tenantEmail } from "@/lib/residents";
 import { InstallApp } from "./PwaRegister";
 
 export default function Login() {
@@ -17,9 +17,10 @@ export default function Login() {
     setError("");
     setBusy(true);
     // Residents type their flat number (A-101); committee members type their email.
-    const flat = email.includes("@") ? null : normaliseFlat(email);
+    const who = email.includes("@") ? null : parseLogin(email);
+    const flat = who?.flat || null;
     if (!email.includes("@") && !flat) { setBusy(false); setError("Enter your email, or your flat number like A-101"); return; }
-    const { error } = await supabase.auth.signInWithPassword({ email: flat ? flatEmail(flat) : email.trim(), password: pass });
+    const { error } = await supabase.auth.signInWithPassword({ email: who ? (who.tenant ? tenantEmail(who.flat) : flatEmail(who.flat)) : email.trim(), password: pass });
     setBusy(false);
     if (error) setError(error.message === "Invalid login credentials" ? "Wrong flat number / email or password" : error.message);
   }

@@ -3,7 +3,9 @@ import { NextRequest } from "next/server";
 import { SUPABASE_URL, SUPABASE_KEY } from "./supabaseClient";
 import { roleOf } from "./roles";
 
-export type Authed = { db: SupabaseClient; email: string; userId: string; isCommittee: boolean; flatId: string | null };
+// flatId: the OWNER's flat login only. A tenant login has flatId null and tenantFlatId set (only while the database
+// says the tenant login is active and the flat is still rented), so every existing "own flat" check refuses tenants.
+export type Authed = { db: SupabaseClient; email: string; userId: string; isCommittee: boolean; flatId: string | null; isTenant?: boolean; tenantFlatId?: string | null };
 
 /**
  * Checks the "Authorization: Bearer <token>" header sent by the logged-in browser.
@@ -24,6 +26,11 @@ export async function getAuthedClient(req: NextRequest): Promise<Authed | null> 
   const role = roleOf(meta);
   if (!role) return null; // a login with no role has no access at all
   const isResident = role === "resident";
+  if (role === "tenant") {
+    const { data: tf, error: te } = await db.rpc("my_tenant_flat");
+    if (te || !tf) return null;   // revoked, moved out, or TENANT_LOGINS.sql not run
+    return { db, email: data.user.email || "", userId: data.user.id, isCommittee: false, flatId: null, isTenant: true, tenantFlatId: String(tf) };
+  }
   return { db, email: data.user.email || "", userId: data.user.id, isCommittee: role === "committee", flatId: isResident ? String(meta.flat_id || "") || null : null };
 }
 

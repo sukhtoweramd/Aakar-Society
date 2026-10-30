@@ -17,9 +17,9 @@ export const fmtPlate = (s: string) => {
   return m ? [m[1], m[2].padStart(2, "0"), m[3], m[4]].filter(Boolean).join(" ") : s.toUpperCase().trim();
 };
 
-export default function FlatListPanel({ table, flatId, title, note, fields, addLabel, render, empty }: {
+export default function FlatListPanel({ table, flatId, title, note, fields, addLabel, render, empty, readOnly = false }: {
   table: string; flatId: string; title: string; note?: string; fields: Field[]; addLabel: string;
-  render: (r: Row) => React.ReactNode; empty: string;
+  render: (r: Row) => React.ReactNode; empty: string; readOnly?: boolean;
 }) {
   const blank = Object.fromEntries(fields.map((f) => [f.key, f.options ? f.options[0] : ""]));
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -93,7 +93,7 @@ export default function FlatListPanel({ table, flatId, title, note, fields, addL
           <div className="mono text-[10px] font-bold tracking-[0.14em]">{title} • {rows?.length ?? 0}</div>
           {note && <div className="mono text-[10px] opacity-60 mt-0.5">{note}</div>}
         </div>
-        {editId === null && <button onClick={() => { setForm(blank); setEditId("new"); setError(""); }} className="btn-navy mono text-[11px] px-3 py-1.5">{addLabel}</button>}
+        {editId === null && !readOnly && <button onClick={() => { setForm(blank); setEditId("new"); setError(""); }} className="btn-navy mono text-[11px] px-3 py-1.5">{addLabel}</button>}
       </div>
       {error && <div className="mt-2 border border-red-200 bg-red-50 text-red-700 p-2 mono text-[11px]">{error}</div>}
       {editId === "new" && <div className="mt-3">{editor}</div>}
@@ -103,8 +103,8 @@ export default function FlatListPanel({ table, flatId, title, note, fields, addL
           <div key={r.id} className="border border-[var(--border)] bg-[var(--bg)] p-3 flex justify-between items-start gap-2">
             <div className="min-w-0">{render(r)}</div>
             <div className="flex gap-3 shrink-0 mono text-[10px]">
-              <button onClick={() => { setForm(Object.fromEntries(fields.map((f) => [f.key, r[f.key] ?? ""]))); setEditId(r.id); setError(""); }} className="underline">Edit</button>
-              <button onClick={() => remove(r)} className="text-red-600">✕</button>
+              {!readOnly && <button onClick={() => { setForm(Object.fromEntries(fields.map((f) => [f.key, r[f.key] ?? ""]))); setEditId(r.id); setError(""); }} className="underline">Edit</button>}
+              {!readOnly && <button onClick={() => remove(r)} className="text-red-600">✕</button>}
             </div>
           </div>
         ))}

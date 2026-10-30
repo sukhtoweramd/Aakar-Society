@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.text === "string")
     .map((m: any) => ({ role: m.role, content: String(m.text).slice(0, 1200) }));
 
-  const who = me.isCommittee ? "a society committee member (committee login)" : `a member using the flat login of flat ${me.flatId || ""}`;
+  const who = me.isCommittee ? "a society committee member (committee login)" : me.isTenant ? `the tenant of flat ${me.tenantFlatId || ""} (tenant login: family, vehicles, complaints, common plot booking, notices, events and contacts; no bills, documents or nominees)` : `a member using the flat login of flat ${me.flatId || ""}`;
   const system = `You are the HELP assistant inside the Aakar Co-op Housing Society app (Sukh Tower).
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
