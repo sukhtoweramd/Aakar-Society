@@ -5,8 +5,8 @@ import { supabase } from "./supabaseClient";
 import { dmy, docPage, inr, today } from "./billing";
 import { label, ownerText, type Flat } from "./society";
 
-export type EventRole = "Convenor" | "Treasurer" | "Member";
-export type TeamRow = { id: string; event_id: string; flat_id: string; person: string | null; role: EventRole; created_at: string };
+export type EventRole = "Convenor" | "Treasurer" | "Member" | "Assisting";
+export type TeamRow = { id: string; event_id: string; flat_id: string; person: string | null; role: EventRole; created_at: string; member_kind?: "flat" | "tenant" | null };
 export type Money = {
   id: string; event_id: string; entry_date: string; direction: "in" | "out"; category: string; flat_id: string | null; party: string | null; purpose: string | null;
   qty: number | null; rate: number | null; amount: number; pass_type?: "Member" | "Guest" | null; jain_qty?: number | null; mode: "Cash" | "UPI" | "Bank" | "Cheque" | "In kind"; reference: string | null; note: string | null; file_url: string | null;
@@ -17,7 +17,7 @@ export type EventMoneySettings = { fund_per_flat: number | null; pass_price: num
 export const IN_CATS = ["Member fund", "Sponsorship", "Passes", "Donation", "Other income"];
 export const OUT_CATS = ["Food", "Prizes", "Decoration", "Sound & lights", "Venue / ground", "Artists", "Printing", "Other expense"];
 export const EV_MODES: Money["mode"][] = ["Cash", "UPI", "Bank", "Cheque", "In kind"];
-export const ROLE_ORDER: Record<EventRole, number> = { Convenor: 0, Treasurer: 1, Member: 2 };
+export const ROLE_ORDER: Record<EventRole, number> = { Convenor: 0, Treasurer: 1, Member: 2, Assisting: 3 };
 
 const missing = (m: string) => /event_team|event_money|schema cache|does not exist/i.test(m);
 /** null = not set up yet (run EVENT_COMMITTEES.sql) */

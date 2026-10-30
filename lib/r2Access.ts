@@ -31,7 +31,7 @@ async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<bo
   if (!me.flatId) return false;
   if (!memo.has(eventId)) {
     memo.set(eventId, Promise.resolve(me.db.rpc("my_event_role", { p_event: eventId }))
-      .then(({ data, error }: any) => !error && !!data).catch(() => false));
+      .then(({ data, error }: any) => !error && ["Convenor", "Treasurer", "Member"].includes(data)).catch(() => false));   // Assisting: only through the row (minutes it can see)
   }
   return memo.get(eventId)!;
 }

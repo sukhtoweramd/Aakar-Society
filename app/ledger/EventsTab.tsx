@@ -1,4 +1,5 @@
 "use client";
+import { myTeamRole } from "@/lib/eventTeamRules";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { EventRow, StoredFile } from "@/lib/society";
@@ -72,7 +73,7 @@ export default function EventsTab({ ctx }: { ctx: Ctx }) {
   const [teams, setTeams] = useState<TeamRow[] | null>([]);
   const [sec, setSec] = useState<Record<string, Section>>({});
   const reloadTeams = () => loadTeams().then(setTeams);
-  const roleIn = (id: string) => (teams || []).find((t) => t.event_id === id && !!ctx.homeFlat && t.flat_id === ctx.homeFlat)?.role || null;
+  const roleIn = (id: string) => myTeamRole(teams || [], id, { homeFlat: ctx.homeFlat, tenantFlat: ctx.tenantFlat });
   const [openId, setOpenId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Record<string, StoredFile[]>>({});
   const [error, setError] = useState("");

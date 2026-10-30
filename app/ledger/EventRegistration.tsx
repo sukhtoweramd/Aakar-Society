@@ -1,4 +1,5 @@
 "use client";
+import { ROLE_ORDER } from "@/lib/events";
 // EVENTS → event → REGISTRATION
 //   Convenor / committee: meals (sessions), prices, last date, open or close registration.
 //   Every flat: register the numbers (regular / Jain, members / guests), pay by UPI screenshot or cash, then see the passes.
@@ -231,7 +232,8 @@ function Payment({ ev, reg, flats, team, keeperMode, onChanged }: { ev: Ev; reg:
   const [f, setF] = useState({ amount: String(reg.amount), date: istToday(), ref: "", bank: "", cashTo: "" });
   const [file, setFile] = useState<File | null>(null); const [thumb, setThumb] = useState("");
   const [busy, setBusy] = useState(""); const [err, setErr] = useState(""); const [note, setNote] = useState("");
-  const teamList = [...team].sort((a, b) => ({ Convenor: 0, Treasurer: 1, Member: 2 }[a.role] - { Convenor: 0, Treasurer: 1, Member: 2 }[b.role]));
+  // who can take cash: the organising team, not Assisting helpers (they do not handle the money book)
+  const teamList = team.filter((t) => t.role !== "Assisting").sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
   if (reg.pay_status === "verified") {
     const balance = Number(reg.amount) - Number(reg.pay_amount || 0);
     return <div className="border border-emerald-200 bg-emerald-50 text-emerald-800 p-3 text-[13px]">✓ <b>Paid ₹{inr(reg.pay_amount)}</b> ({reg.pay_mode}) — confirmed.{balance > 0.001 && <div className="mt-1 text-amber-800">Numbers were increased later: ₹{inr(balance)} more to pay to the event team.</div>}</div>;

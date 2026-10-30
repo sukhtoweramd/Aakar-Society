@@ -28,7 +28,7 @@ async function eventRole(me: Me, folder: string): Promise<string | null> {
 async function canRead(me: Me, folder: string) {
   const a = folderAccess(folder, me);
   if (a === "yes") return true;
-  if (a === "team") return !!(await eventRole(me, folder));
+  if (a === "team") return ["Convenor", "Treasurer", "Member"].includes((await eventRole(me, folder)) || "");   // not Assisting (event bills / receipts are here)
   return false;
 }
 async function canWrite(me: Me, folder: string) {
