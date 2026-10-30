@@ -20,7 +20,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 ## Finding your way
 - Tabs across the top: COVER, INDEX, FLOOR, MY FLAT (called DETAIL in committee logins), BUSINESS, DIRECTORY, NOTICES, CONTACTS, EVENTS, VAULT. Committee logins also have BILLING, COMMITTEE, ADMIN and REPORTS.
 - **On a phone** (since 30 Oct 2026) the app opens on a **home screen of buttons** instead of tabs. Tap a button to open just that function; tap the gold **HOME** button at the top left (or the phone's back button) to come back to the buttons.
-  - Owner (flat login): your flat number, a dark card with the amount OUTSTANDING and **I HAVE PAID** / **VIEW BILL**, then BILLS & LEDGER, MY FAMILY, MY VEHICLES, DOCUMENTS, MY LETTERS, COMPLAINTS, BOOK PLOT, NOMINEE (not for a flat given on rent), EMERGENCY, WHO TO CONTACT, MY DETAILS (edit your details, print your card) and ACTION POINTS (only when you have open ones). Under SOCIETY: the screens the committee has opened for members (NOTICES, EVENTS, CONTACTS, DIRECTORY …).
+  - Owner (flat login): your flat number, a dark card with the amount OUTSTANDING and **I HAVE PAID** / **VIEW BILL**, then BILLS & LEDGER, MY FAMILY, MY VEHICLES, DOCUMENTS, MY LETTERS, COMPLAINTS, BOOK PLOT, NOMINEE, EMERGENCY, WHO TO CONTACT, MY DETAILS (edit your details, print your card) and ACTION POINTS (only when you have open ones). Under SOCIETY: the screens the committee has opened for members (NOTICES, EVENTS, CONTACTS, DIRECTORY …).
   - Tenant login: MY FAMILY, MY VEHICLES, EMERGENCY, COMPLAINTS, BOOK PLOT, WHO TO CONTACT, and under SOCIETY: NOTICES, EVENTS, CONTACTS.
   - Committee login: BILLING, COMMITTEE, FLATS, REPORTS, ADMIN, MY FLAT (when the login is linked to a flat), and the society screens. Each opens the full screen of that tab.
   - PASSWORD and LOG OUT are at the top of the home screen. On a computer (or a phone turned sideways on a wide screen) the tabs are shown as before.
@@ -91,7 +91,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - More than one nominee is allowed; the shares must add up to **100%** (the app shows how much is left).
 - Nominee under 18: the guardian's name is needed.
 - **PRINT FORM TO SIGN** (once the shares add up to 100%): sign it with two witnesses and give it to the society office. The committee then ticks "signed form received". Changing a nominee later needs a new signed form.
-- Seen only by the flat's owner and the committee. In a rented flat the tenant's login does not show the owner's nominee; the owner gives the details to the committee.
+- Seen only by the flat's owner and the committee. The owner of a rented flat fills it in from the flat (owner) login; the tenant's own login never shows the owner's nominee.
 
 ## Tenant login (rented flats)
 - The flat login (flat number, e.g. A-101) is the OWNER's. A rented flat can also have a separate TENANT login: the flat number followed by T, e.g. **A-101-T**. The committee creates it on the flat's page (TENANT LOGIN → CREATE TENANT LOGIN) and gives the first password; the tenant sets their own at first login.
