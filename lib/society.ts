@@ -62,9 +62,6 @@ export const ownerText = (f: Flat) => f.owner_name?.trim() || "Owner not recorde
 /** Committee designations, in display order. Anything else is typed in under "Other". */
 export const COMMITTEE_ROLES = ["Chairman", "Secretary", "Treasurer", "Committee Member", "Co-opted Member", "Social Committee"];
 const roleRank = (r?: string | null) => { const i = COMMITTEE_ROLES.findIndex((x) => x.toLowerCase() === (r || "").toLowerCase()); return i < 0 ? (r ? COMMITTEE_ROLES.length : 99) : i; };
-/** Office bearers shown first, in this order; everyone else follows in flat order. */
-export const OFFICE_BEARERS = ["Chairman", "Secretary", "Treasurer"];
-const officeRank = (r?: string | null) => { const i = OFFICE_BEARERS.findIndex((x) => x.toLowerCase() === (r || "").trim().toLowerCase()); return i < 0 ? OFFICE_BEARERS.length : i; };
 type FlatKey = { committee_role?: string | null; tower?: string | null; id?: string | null; flat_no?: string | null };
 /** Natural flat order (A-101 … A-1201, B-101 … B-1004); rows with no flat number go last. */
 export const byFlatKey = (a: FlatKey, b: FlatKey) => {
@@ -73,9 +70,9 @@ export const byFlatKey = (a: FlatKey, b: FlatKey) => {
   const t = (f: FlatKey) => ((f.flat_no || f.id || "").trim().match(/^[A-Za-z]/)?.[0] || (f.tower || "").trim()).toUpperCase();
   return Number(!t(a)) - Number(!t(b)) || t(a).localeCompare(t(b)) || Number(!n(a)) - Number(!n(b)) || n(a) - n(b) || (a.id || "").localeCompare(b.id || "");
 };
-/** Sort committee flats: Chairman, Secretary, Treasurer first; then every other committee flat in flat order
- *  (A101 … A1201, B101 …). Two flats with the same office (e.g. two Secretaries) also go in flat order. */
-export const byCommitteeRole = (a: FlatKey, b: FlatKey) => officeRank(a.committee_role) - officeRank(b.committee_role) || byFlatKey(a, b);
+/** Sort committee flats by designation (Chairman, Secretary, Treasurer, Committee Member, Co-opted Member, …),
+ *  and within one designation by flat number (A-101 … A-1201, B-101 … B-1004). */
+export const byCommitteeRole = (a: FlatKey, b: FlatKey) => roleRank(a.committee_role) - roleRank(b.committee_role) || byFlatKey(a, b);
 export type CommitteePerson = { name: string; role: string };
 export type RosterEntry = CommitteePerson & { flat: Flat };
 type CF = Pick<Flat, "is_committee" | "committee_role" | "owner_name"> & { committee_person?: string | null; committee_members?: CommitteePerson[] | null };
@@ -87,11 +84,11 @@ export function committeePeople(f: CF): CommitteePerson[] {
   if (!f.is_committee) return [];
   return [{ name: f.committee_person?.trim() || f.owner_name?.trim() || "Owner not recorded", role: f.committee_role?.trim() || "Committee Member" }];
 }
-/** Everyone on the committee, one row per person: Chairman, Secretary, Treasurer first, then all others in flat order
- *  (within one flat, by designation). Co-opted members keep their designation so they can be shown as such. */
+/** Everyone on the committee, one row per person, by designation (Chairman, Secretary, Treasurer, Committee Member,
+ *  Co-opted Member, …) and within one designation by flat number. */
 export function committeeRoster(flats: Flat[]): RosterEntry[] {
   const rows = flats.filter((f) => f.is_committee).flatMap((f) => committeePeople(f).map((p) => ({ ...p, flat: f })));
-  return rows.sort((a, b) => officeRank(a.role) - officeRank(b.role) || byFlatKey(a.flat, b.flat) || roleRank(a.role) - roleRank(b.role));
+  return rows.sort((a, b) => roleRank(a.role) - roleRank(b.role) || byFlatKey(a.flat, b.flat));
 }
 export const isCoopted = (role?: string | null) => /co-?\s?opted/i.test(role || "");
 /** Highest designation in a list (for the flat's own designation). */
