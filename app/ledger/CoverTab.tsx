@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { SOCIETY, label, ownerText, committeeRoster, isCoopted } from "@/lib/society";
+import { SOCIETY, label, ownerText, committeeRoster } from "@/lib/society";
 import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
@@ -73,7 +73,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
                   {committee.map((p, i) => (
                     <button key={`${p.flat.id}:${i}`} onClick={() => { if (ctx.isCommittee) { selectFlat(p.flat.id); go("DETAIL"); } }} className="w-full flex justify-between gap-2 hover:underline text-left py-0.5">
-                      <span className="min-w-0 truncate">{p.name} <span className="opacity-70">({p.role})</span>{isCoopted(p.role) && <span className="ml-1 px-1 border border-[var(--gold)] text-[9px] align-middle">CO-OPTED</span>}</span><span className="shrink-0">{label(p.flat)}</span>
+                      <span className="min-w-0 truncate">{p.name} <span className="opacity-70">({p.role})</span></span><span className="shrink-0">{label(p.flat)}</span>
                     </button>
                   ))}
                 </div>
