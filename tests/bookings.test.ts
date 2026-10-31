@@ -28,6 +28,7 @@ test("notice wording and taken slots", () => {
   assert.match(noticeText({ areas: ["TOWER-A"], flat_id: "A503", book_date: "2026-11-01", slot: "evening" }, 3), /remove vehicles parked in TOWER-A/);
   assert.match(noticeText({ areas: ["COMMON", "TOWER-A", "TOWER-B"], flat_id: "A503", book_date: "2026-11-01", slot: "morning" }, 3), /parked outside the premises/);
   const t = [{ area_id: "a1", book_date: "2026-11-01", slot: "evening" as const, status: "approved" as const, flat_id: "A503" }];
-  assert.ok(takenBy(t, "a1", "2026-11-01", "evening"));
-  assert.equal(takenBy(t, "a1", "2026-11-01", "morning"), null);
+  assert.ok(takenBy(t, "a1", "2026-11-01"));            // the whole day is taken
+  assert.equal(takenBy(t, "a1", "2026-11-02"), null);
+  assert.equal(takenBy(t, "a2", "2026-11-01"), null);
 });

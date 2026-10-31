@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, sortFlats, type MemberLite } from "@/lib/society";
 import {
-  addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
+  addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, tenantBookingDue, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
   OTHER_PRESETS, periodOf, periodOptions, maintenanceCharge, rentMultiplier, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
 } from "@/lib/billing";
 import type { Ctx } from "../ctx";
@@ -264,10 +264,15 @@ function OtherBill({ ctx, flats, settings, signatories, pc, pays, bills, onDone 
 // ---------- Dues list ----------
 function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills: Bill[]; pays: Payment[]; mobileOf: (id: string) => string | null; open: (id: string) => void; pc: PrintCtx }) {
   const [tower, setTower] = useState("ALL");
-  const rows = flats.filter((f) => tower === "ALL" || f.tower === tower).map((f) => {
+  const rows = flats.filter((f) => tower === "ALL" || f.tower === tower).flatMap((f) => {
     const fb = bills.filter((b) => b.flat_id === f.id && b.status === "active");
-    const open_ = fb.filter((b) => billBalance(b, pays).balance > 0);
-    return { f, due: flatTotals(fb, pays).due, count: open_.length, oldest: open_.map((b) => b.due_date || b.bill_date).sort()[0] };
+    const ob = fb.filter((b) => !b.tenant_bill), tb = fb.filter((b) => b.tenant_bill);
+    const open_ = ob.filter((b) => billBalance(b, pays).balance > 0);
+    const topen = tb.filter((b) => billBalance(b, pays).balance > 0);
+    const out: { f: any; due: number; count: number; oldest: string | undefined; tenant?: boolean }[] = [{ f, due: flatTotals(ob, pays).due, count: open_.length, oldest: open_.map((b) => b.due_date || b.bill_date).sort()[0] }];
+    // a tenant's common plot booking invoice stays with the tenant: its own line, marked, never added to the owner's due
+    if (topen.length) out.push({ f: { ...f, owner_name: `${tb[0].bill_to || "Tenant"} (Tenant – booking)` }, due: tenantBookingDue(tb, pays), count: topen.length, oldest: topen.map((b) => b.due_date || b.bill_date).sort()[0], tenant: true });
+    return out;
   }).filter((r) => r.due > 0).sort((a, b) => b.due - a.due);
   const total = rows.reduce((n, r) => n + r.due, 0);
   const overdue = (d?: string) => !!d && d < today();
@@ -276,7 +281,7 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
     w.document.write(`<html><head><title>Dues list</title><style>body{font-family:Inter,Arial;margin:24px;color:#1a1a18}h1{color:#0f1d3d;font-size:17px;margin:0}.s{font-size:11px;color:#6f6a5d;margin:4px 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0f1d3d;color:#fff;text-align:left;padding:6px}td{padding:5px 6px;border-bottom:1px solid #e8e2d1}.r{text-align:right}tfoot td{font-weight:800;background:#f7f2e4}@page{size:A4;margin:12mm}</style></head><body>${backBar()}
       <h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — DUES LIST</h1><div class="s">${esc(tower === "ALL" ? "All towers" : "Tower " + tower)} • as on ${dmy(today())} • ${rows.length} flats</div>
       <table><thead><tr><th>Flat</th><th>Owner</th><th>Mobile</th><th>Unpaid bills</th><th>Oldest due date</th><th class="r">Amount due ₹</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr><td><b>${esc(label(r.f))}</b></td><td>${esc(r.f.owner_name || "")}</td><td>${esc(mobileOf(r.f.id) || "")}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>
+      ${rows.map((r) => `<tr><td><b>${esc(label(r.f))}</b></td><td>${esc(r.f.owner_name || "")}</td><td>${esc(r.tenant ? "" : mobileOf(r.f.id) || "")}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL</td><td class="r">${inr(total)}</td></tr></tfoot></table><script>setTimeout(()=>print(),400)</script></body></html>`);
     w.document.close();
   }
@@ -303,16 +308,16 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
       <div className="border border-[var(--border)] overflow-x-auto">
         <table className="w-full text-[12px] min-w-[700px]">
           <thead><tr className="bg-[var(--navy)] text-white text-left mono text-[10px]"><th className="px-2.5 py-2">FLAT</th><th className="px-2.5 py-2">OWNER</th><th className="px-2.5 py-2">MOBILE</th><th className="px-2.5 py-2">UNPAID BILLS</th><th className="px-2.5 py-2">OLDEST DUE</th><th className="px-2.5 py-2 text-right">DUE ₹</th><th className="px-2.5 py-2">SEND TO MEMBER</th></tr></thead>
-          <tbody>{rows.map((r) => { const m = mobileOf(r.f.id); return (
-            <tr key={r.f.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
+          <tbody>{rows.map((r) => { const m = r.tenant ? null : mobileOf(r.f.id); return (
+            <tr key={r.f.id + (r.tenant ? "-t" : "")} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
               <td className="px-2.5 py-2"><button onClick={() => open(r.f.id)} className="font-bold underline text-[var(--navy)]">{label(r.f)}</button></td>
               <td className="px-2.5 py-2">{r.f.owner_name || "—"}</td><td className="px-2.5 py-2">{m || <span className="opacity-40">—</span>}</td>
               <td className="px-2.5 py-2">{r.count}</td><td className={`px-2.5 py-2 ${overdue(r.oldest) ? "text-red-700 font-bold" : ""}`}>{dmy(r.oldest)}{overdue(r.oldest) ? " • overdue" : ""}</td>
               <td className="px-2.5 py-2 text-right font-bold text-amber-700">{inr(r.due)}</td>
               <td className="px-2.5 py-2"><div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap">
-                {m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}title="Opens WhatsApp to this member with an itemised reminder and bank details">📲 Reminder text</a> : <span className="opacity-40">no mobile</span>}
-                <SharePdfButton label="📄 Statement PDF" className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
-                  text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />
+                {r.tenant ? <span className="opacity-60">see the flat's ledger</span> : m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}title="Opens WhatsApp to this member with an itemised reminder and bank details">📲 Reminder text</a> : <span className="opacity-40">no mobile</span>}
+                {!r.tenant && <SharePdfButton label="📄 Statement PDF" className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
+                  text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />}
               </div></td>
             </tr>); })}
             {rows.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center opacity-60">No dues. Every bill is paid.</td></tr>}

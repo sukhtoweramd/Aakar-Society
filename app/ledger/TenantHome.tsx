@@ -9,6 +9,7 @@ import { loadAreas, type Area } from "@/lib/committee";
 import MembersPanel from "./MembersPanel";
 import ComplaintsPanel from "./ComplaintsPanel";
 import BookingPanel from "./BookingPanel";
+import MyBills from "./billing/MyBills";
 import WhoToContact from "./WhoToContact";
 import { EmergencyPanel, VehiclesPanel } from "./flatLists";
 import type { Ctx } from "./ctx";
@@ -41,7 +42,7 @@ export default function TenantHome({ ctx, only }: { ctx: Ctx; only?: Section | n
       vehicles: [<VehiclesPanel key="v" flatId={flatId} rented />, ""],
       emergency: [<EmergencyPanel key="e" flatId={flatId} />, ""],
       complaints: [<ComplaintsPanel key="c" mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} />, "Complaints are not switched on yet."],
-      booking: [<BookingPanel key="b" mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} />, "Bookings are not switched on yet."],
+      booking: [<div key="b" className="space-y-4"><BookingPanel mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} />{f && <MyBills flat={f} flats={ctx.flats} email={ctx.email} />}</div>, "Bookings are not switched on yet."],
       contacts: [areas.length > 0 ? <div key="w" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4"><WhoToContact flats={ctx.flats} isCommittee={false} areas={areas} /></div> : null, "The committee has not set up who to contact yet."],
     };
     const [body, empty] = one[only] || [null, "This is not available for a tenant login."];
@@ -54,7 +55,7 @@ export default function TenantHome({ ctx, only }: { ctx: Ctx; only?: Section | n
         <div className="mono text-[10px] tracking-[0.16em] opacity-60">TENANT • MY FLAT</div>
         <div className="serif text-[34px] md:text-[44px] font-[800] leading-none mt-1">{f ? label(f) : flatId}</div>
         <div className="mono text-[12px] mt-2 opacity-80">{f?.tenant_name ? `${f.tenant_name} • ` : ""}Tower {f?.tower || flatId[0]}</div>
-        <div className="mono text-[11px] mt-2 opacity-60 max-w-[640px]">This is the tenant's login for this flat. Bills, receipts and the flat's documents are handled by the owner and the committee.</div>
+        <div className="mono text-[11px] mt-2 opacity-60 max-w-[640px]">This is the tenant's login for this flat. Maintenance bills, receipts and the flat's documents are handled by the owner and the committee. You see only your own common plot booking invoices.</div>
         <div className="mt-4 flex flex-wrap gap-2">
           {[["sec-family", "FAMILY ↓"], ["sec-vehicles", "VEHICLES ↓"], ["sec-emergency", "EMERGENCY ↓"], ["sec-complaints", "COMPLAINTS ↓"], ["sec-booking", "BOOK COMMON PLOT ↓"]].map(([id, t]) => (
             <button key={id} onClick={() => jump(id)} className="btn-line mono text-[11px] px-3 min-h-[44px] font-bold">{t}</button>))}
@@ -69,6 +70,7 @@ export default function TenantHome({ ctx, only }: { ctx: Ctx; only?: Section | n
       <div id="sec-emergency" className="scroll-mt-28"><EmergencyPanel flatId={flatId} /></div>
       <div id="sec-complaints" className="scroll-mt-28"><ComplaintsPanel mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} /></div>
       <div id="sec-booking" className="scroll-mt-28"><BookingPanel mode="flat" flats={ctx.flats} flatId={flatId} isCommittee={false} /></div>
+      {f && <MyBills flat={f} flats={ctx.flats} email={ctx.email} />}
       {areas.length > 0 && (
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4 md:p-5">
           <WhoToContact flats={ctx.flats} isCommittee={false} areas={areas} />

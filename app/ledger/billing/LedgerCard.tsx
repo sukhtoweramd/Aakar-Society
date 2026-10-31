@@ -161,7 +161,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
                     <td className="px-2.5 py-2 whitespace-nowrap">{dmy(b.bill_date)}</td>
                     <td className="px-2.5 py-2 whitespace-nowrap"><button onClick={() => printBill(b)} title="Print bill" className={`font-bold underline ${b.status === "cancelled" ? "line-through" : "text-[var(--navy)]"}`}>{b.bill_no}</button>
                       {editable && b.status === "active" && mobile && <a href={waBill(b)} target="_blank" rel="noopener noreferrer" title="Send bill on WhatsApp" className="ml-1.5">📲</a>}</td>
-                    <td className="px-2.5 py-2">{b.kind === "other" && <span className="tag bg-[var(--bg-soft)] mr-1.5">OTHER</span>}{desc}{b.status === "cancelled" && b.cancel_reason && <div className="mono text-[10px] text-red-700">Cancelled: {b.cancel_reason}</div>}</td>
+                    <td className="px-2.5 py-2">{b.kind === "other" && <span className="tag bg-[var(--bg-soft)] mr-1.5">OTHER</span>}{b.tenant_bill && <span className="tag bg-amber-100 text-amber-900 mr-1.5" title="Raised to the tenant; not part of the owner's balance">TENANT – BOOKING</span>}{desc}{b.status === "cancelled" && b.cancel_reason && <div className="mono text-[10px] text-red-700">Cancelled: {b.cancel_reason}</div>}</td>
                     <td className="px-2.5 py-2 text-right font-semibold tabular-nums">{inr(b.amount)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums">{first ? <span className={first.status === "cancelled" ? "line-through text-red-700" : ""}>{inr(first.amount)}</span> : <span className="opacity-40">—</span>}</td>
                     <td className="px-2.5 py-2 whitespace-nowrap">
