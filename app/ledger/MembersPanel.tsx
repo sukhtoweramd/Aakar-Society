@@ -1,24 +1,26 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { ageFromDob, ageOf, birthdayText, fullDob, validDob } from "@/lib/dob";
 import { byFamilyOrder, committeePeople, COMMITTEE_ROLES, topRole, type CommitteePerson, type Flat } from "@/lib/society";
 
 export type Member = {
-  id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
+  id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; dob?: string | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; business_category?: string | null; office_address?: string | null; office_phone?: string | null;
 };
 
-const BLANK = { name: "", relation: "", mobile: "", email: "", age: "", is_head: false, occupation: "", business_name: "", business_category: "", office_address: "", office_phone: "" };
+const BLANK = { name: "", relation: "", mobile: "", email: "", age: "", dob: "", is_head: false, occupation: "", business_name: "", business_category: "", office_address: "", office_phone: "" };
 type Form = typeof BLANK;
 const CATEGORIES = ["Medical", "Legal", "Finance / CA", "IT / Software", "Engineering", "Education", "Retail / Shop", "Food", "Real Estate", "Manufacturing", "Government", "Service / Job", "Home Business", "Other"];
 
 const toForm = (m: Member): Form => ({
-  name: m.name || "", relation: m.relation || "", mobile: m.mobile || "", email: m.email || "", age: m.age?.toString() || "", is_head: !!m.is_head,
+  name: m.name || "", relation: m.relation || "", mobile: m.mobile || "", email: m.email || "", age: m.age?.toString() || "", dob: m.dob || "", is_head: !!m.is_head,
   occupation: m.occupation || "", business_name: m.business_name || "", business_category: m.business_category || "", office_address: m.office_address || "", office_phone: m.office_phone || "",
 });
 const toRow = (f: Form) => ({
   name: f.name.trim(), relation: f.relation.trim() || null, mobile: f.mobile.trim() || null, email: f.email.trim() || null,
-  age: f.age === "" ? null : parseInt(f.age, 10) || null, is_head: f.is_head,
+  // a date of birth replaces the age (the app works the age out); without one the old typed age stays as it was
+  dob: f.dob || null, age: f.dob ? null : f.age === "" ? null : parseInt(f.age, 10) || null, is_head: f.is_head,
   occupation: f.occupation.trim() || null, business_name: f.business_name.trim() || null, business_category: f.business_category || null,
   office_address: f.office_address.trim() || null, office_phone: f.office_phone.trim() || null,
 });
@@ -63,8 +65,11 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
   }
   async function save() {
     if (!form.name.trim()) { setError("Enter the member's name"); return; }
+    if (form.dob && !validDob(form.dob)) { setError("Check the date of birth: it must be a real date, not in the future."); return; }
     setBusy(true); setError("");
-    const row = toRow(form);
+    const row: any = toRow(form);
+    // no date of birth anywhere: leave the column out, so saving still works before DOB.sql has been run
+    if (!form.dob && !(editId !== "new" && members.find((m) => m.id === editId)?.dob)) delete row.dob;
     const res = editId === "new"
       ? await supabase.from("members").insert([{ ...row, flat_id: flatId }])
       : await supabase.from("members").update(row).eq("id", editId!);
@@ -110,7 +115,10 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <input className="field" placeholder="Full name *" disabled={editingHead} title={editingHead ? "Only the committee can change the head of family's name" : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} />
           <input className="field" placeholder="Relation (Self, Wife, Son…)" value={form.relation} onChange={(e) => set("relation", e.target.value)} />
-          <input className="field" type="number" placeholder="Age" value={form.age} onChange={(e) => set("age", e.target.value)} />
+          <label className="block"><span className="text-[10px] opacity-60">DATE OF BIRTH (optional)</span>
+            <input className="field mt-0.5" type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={form.dob} onChange={(e) => set("dob", e.target.value)} />
+            {form.dob ? <span className="block mt-0.5 opacity-80">Age {ageFromDob(form.dob) ?? "—"}. <b>Birthday ({birthdayText(form.dob) || "—"}, not the year) will be shown to all members and on the birthday banner.</b> Clear the date if you do not want to share.</span>
+              : <span className="block mt-0.5 opacity-70">{form.age ? `Old age on record: ${form.age}. ` : ""}Entering a date of birth means you agree to share the birthday (day and month only) with all members. Leave empty if you do not want to share.</span>}</label>
           <input className="field" placeholder="Mobile" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
           <input className="field" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
           <label className="flex items-center gap-2 px-1"><input type="checkbox" disabled={headBoxLocked} checked={form.is_head} onChange={(e) => set("is_head", e.target.checked)} /> Head of family / {who}</label>
@@ -164,7 +172,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0">
                 <div className="serif text-[14px] font-bold">{m.name}{m.is_head && <span className="mono text-[9px] ml-2 bg-[var(--navy)] text-white px-1.5 py-0.5 align-middle">HEAD</span>}{isCp(m.name) && <span className="mono text-[9px] ml-2 bg-[var(--gold)] text-black px-1.5 py-0.5 align-middle">★ {roleOf(m.name)}</span>}</div>
-                <div className="mono text-[10px] opacity-70">{[m.relation, m.age ? `${m.age} yrs` : null, m.mobile, m.email].filter(Boolean).join(" • ") || "—"}</div>
+                <div className="mono text-[10px] opacity-70">{[m.relation, ageOf(m) != null ? `${ageOf(m)} yrs` : null, m.dob ? `🎂 ${fullDob(m.dob)}` : null, m.mobile, m.email].filter(Boolean).join(" • ") || "—"}</div>
                 {(m.occupation || m.business_name) && (
                   <div className="mono text-[10px] mt-1.5 border-l-2 border-[var(--gold)] pl-2">
                     <span className="font-semibold">{[m.occupation, m.business_name].filter(Boolean).join(" • ")}</span>
