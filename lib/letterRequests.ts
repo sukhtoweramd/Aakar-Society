@@ -4,7 +4,7 @@ export type LetterRequest = {
   status: "requested" | "approved" | "issued" | "declined" | "withdrawn"; letter_id: string | null; reason: string | null;
   decided_by: string | null; decided_at: string | null; created_by: string | null; created_at: string;
   // LETTER_TEMPLATES.sql
-  template_id?: string | null; approved_by?: string | null; approved_at?: string | null;
+  template_id?: string | null; details?: Record<string, string> | null; approved_by?: string | null; approved_at?: string | null;
   history?: { at: string; by: string | null; status: string; note: string | null }[] | null;
 };
 

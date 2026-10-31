@@ -1,6 +1,7 @@
 "use client";
 // BILLING → LETTERS: every letter issued to every flat (committee). Search, view / print, open the flat,
 // and issue a new letter by choosing the flat (the same form as on the flat's page). Phone first: one card per letter.
+import { fillFields, fieldLabel } from "@/lib/letterFields";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { label, ownerText, type Flat } from "@/lib/society";
@@ -25,14 +26,14 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
   const [forReq, setForReq] = useState<LetterRequest | null>(null);         // request being issued
   const [templates, setTemplates] = useState<LetterTemplate[] | null>(null);   // null = LETTER_TEMPLATES.sql not run
   const [canApprove, setCanApprove] = useState(true);                       // Chairman / Secretary / main admin (database decides)
-  const [draftBody, setDraftBody] = useState<{ key: string; subject: string; to: string; body: string; unsigned: boolean; requestId: string } | null>(null);
+  const [draftBody, setDraftBody] = useState<{ key: string; subject: string; to: string; body: string; unsigned: boolean; requestId: string; templateId?: string; typed?: Record<string, string> } | null>(null);
   async function loadTemplates() {
     const { data, error } = await supabase.from("letter_templates").select("*").order("sort").order("name");
     setTemplates(error ? null : (data as LetterTemplate[]) || []);
     const r = await supabase.rpc("can_approve_letters"); setCanApprove(r.error ? true : !!r.data);
   }
   useEffect(() => { loadTemplates(); }, []);
-  const tplOf = (r: LetterRequest) => (templates || []).find((t) => t.id === r.template_id) || (templates || []).find((t) => t.name === r.letter_type) || null;
+  const tplOf = (r: LetterRequest) => (templates || []).find((t) => t.id === r.template_id) || (templates || []).find((t) => t.name === r.letter_type || (t.request_name || "") === r.letter_type) || null;
   async function loadRequests() {
     const { data, error } = await supabase.from("letter_requests").select("*").order("created_at", { ascending: true });
     const list = error ? null : (data as LetterRequest[]) || [];
@@ -51,7 +52,9 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
       }
       body = fillTemplate(t.body, letterData(f, { addressee: r.addressee || t.addressee, purpose: r.purpose, dues, society: SOCIETY.full, building: SOCIETY.building }));
     }
-    setDraftBody({ key: `${r.id}-${Date.now()}`, subject: t?.subject || subjectFor(r), to: r.addressee || t?.addressee || "", body, unsigned: t?.kind === "bank", requestId: r.id });
+    setDraftBody({ key: `${r.id}-${Date.now()}`, subject: t?.subject || subjectFor(r), to: r.addressee || t?.addressee || "", body, unsigned: t?.kind === "bank", requestId: r.id,
+      // a resolution (or any format with fill-in boxes) opens with its boxes, the member's details already in them
+      ...(t && fillFields(t.body).length ? { templateId: t.id, typed: r.details || {} } : {}) });
     setForReq(r); setIssueFor(r.flat_id);
     setTimeout(() => document.getElementById("letter-issue-box")?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
   }
@@ -111,6 +114,7 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
                 <div className="flex justify-between gap-2"><b>{r.letter_type}</b><span className={`shrink-0 border px-2 py-0.5 text-[10px] font-bold ${REQ_STATUS[r.status].cls}`}>{REQ_STATUS[r.status].text}</span></div>
                 <div className="mt-0.5"><b className="text-[var(--navy)]">Flat {f ? label(f) : r.flat_id}</b>{f ? ` • ${ownerText(f)}` : ""} <span className="opacity-60">• asked {dmy(r.created_at.slice(0, 10))}</span></div>
                 <div className="text-[11px] opacity-80">To: {r.addressee ? r.addressee.split("\n").join(", ") : "whomsoever it may concern"}</div>
+                {r.details && Object.keys(r.details).length > 0 && <div className="text-[12px] mt-1 border border-[var(--border)] bg-white p-2">{Object.entries(r.details).map(([k, v]) => <div key={k}>{fieldLabel(k)}: <b>{v}</b></div>)}</div>}
                 {r.purpose && <div className="text-[12px] mt-1 whitespace-pre-wrap">{r.purpose}</div>}
                 {tplOf(r)?.kind === "bank" && <div className="text-[11px] mt-1 text-red-700">Bank letter: issued unsigned; signed by hand by the Chairman / Secretary.</div>}
                 {r.status === "approved" && <div className="text-[11px] mt-1 text-sky-800">Approved{r.approved_by ? ` by ${r.approved_by}` : ""}{r.approved_at ? ` on ${dmy(r.approved_at.slice(0, 10))}` : ""}</div>}
