@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/ledgerClient";
 import { label, type Flat } from "@/lib/society";
 
@@ -13,6 +13,12 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [cred, setCred] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const credRef = useRef<HTMLDivElement>(null);
+  // The password box is above the list and the ADD form: on a phone it appeared off-screen (31 Oct). Bring it into view.
+  useEffect(() => { if (cred) { setCopied(false); credRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); } }, [cred]);
+  const credText = cred ? `Aakar society app (committee login)\nhttps://aakarsociety.vercel.app\nEmail: ${cred.email}\nPassword: ${cred.password}\nPlease change the password after logging in.` : "";
+  async function copyCred() { try { await navigator.clipboard.writeText(credText); setCopied(true); } catch { setCopied(false); } }
 
   async function load() {
     try { setMembers((await api("/api/committee")).members); setError(""); } catch (e: any) { setError(e.message); }
@@ -75,10 +81,14 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
       {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
       {staleCount > 0 && <div className="mt-4 border-2 border-red-300 bg-red-50 text-red-800 p-3 mono text-[11px] font-bold">⚠ {staleCount} committee login{staleCount > 1 ? "s belong" : " belongs"} to someone no longer marked as committee. Remove {staleCount > 1 ? "them" : "it"} below.</div>}
       {cred && (
-        <div className="mt-4 border-2 border-[var(--gold)] bg-[#fffdf5] p-4 mono text-[12px] flex flex-wrap gap-3 items-center justify-between">
-          <div>NEW PASSWORD • SHOWN ONLY NOW<br /><b>{cred.email}</b> &nbsp; <span className="font-mono text-[14px]">{cred.password}</span>
-            <div className="text-[10px] opacity-60 mt-1">Give this to them personally. They should change it with the PASSWORD button after logging in.</div></div>
-          <button onClick={() => setCred(null)} className="btn-line px-3 py-1.5 text-[11px]">HIDE</button>
+        <div ref={credRef} className="mt-4 border-2 border-[var(--gold)] bg-[#fffdf5] p-4 mono text-[12px] flex flex-wrap gap-3 items-center justify-between">
+          <div className="min-w-0 break-all">NEW PASSWORD • SHOWN ONLY NOW<br /><b>{cred.email}</b> &nbsp; <span className="font-mono text-[16px] font-bold">{cred.password}</span>
+            <div className="text-[10px] opacity-60 mt-1 break-normal">Give this to them personally. They should change it with the PASSWORD button after logging in.</div></div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={copyCred} className="btn-gold px-3 py-2.5 text-[11px] min-h-[44px]">{copied ? "COPIED ✓" : "COPY"}</button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(credText)}`} target="_blank" rel="noopener noreferrer" className="btn-line px-3 py-2.5 text-[11px] min-h-[44px] inline-flex items-center">WHATSAPP</a>
+            <button onClick={() => setCred(null)} className="btn-line px-3 py-2.5 text-[11px] min-h-[44px]">HIDE</button>
+          </div>
         </div>
       )}
       <div className="mt-4 border border-[var(--border)]">
