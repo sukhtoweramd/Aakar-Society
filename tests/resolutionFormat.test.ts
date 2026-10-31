@@ -64,6 +64,8 @@ test("screens: committee issues it from a format, members cannot ask for it, pri
   assert.match(panel, /START FROM A FORMAT/);
   assert.match(panel, /formats\.filter\(\(t\) => t\.kind !== "resolution" \|\| canApprove\)/);
   assert.match(panel, /can_approve_letters/);
+  assert.match(panel, /owner_name: owner \|\| flat\.owner_name/);          // the existing member comes from the OWNER NAME box (joint owners can be corrected)
+  assert.match(panel, /Existing member \(transferor\)/);
   assert.match(readFileSync("app/ledger/billing/LetterRequestPanel.tsx", "utf8"), /t\.kind !== "resolution"/);
   const billing = readFileSync("lib/billing.ts", "utf8");
   assert.match(billing, /if \(l\.layout === "resolution"\) return resolutionHtml\(l, c\)/);

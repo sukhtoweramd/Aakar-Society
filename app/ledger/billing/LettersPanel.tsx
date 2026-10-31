@@ -51,8 +51,9 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
     }
   }
   const chairman = () => pc.signatories.find((g) => g.active && /^chairman$/i.test(g.designation.trim())) || pc.signatories.find((g) => g.active && /chairman/i.test(g.designation));
-  const fillBody = (t: LetterTemplate, values: Record<string, string>, d: number | null) =>
-    fillTemplate(t.body, { ...letterData(flat, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, date: form.letter_date }), ...customData(t.body, values) });
+  // the existing member's name is the one in the OWNER NAME box (the committee can correct it, e.g. joint owners)
+  const fillBody = (t: LetterTemplate, values: Record<string, string>, d: number | null, owner = form.owner_name) =>
+    fillTemplate(t.body, { ...letterData({ ...flat, owner_name: owner || flat.owner_name }, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, date: form.letter_date }), ...customData(t.body, values) });
   async function pickFormat(id: string) {
     const t = formats.find((x) => x.id === id) || null;
     setFmt(t); setTyped({}); setEdited(false); setError("");
@@ -156,6 +157,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
           {fmt && fillFields(fmt.body).length > 0 && (
             <div className="border border-[var(--border)] bg-white p-3 space-y-2">
               <div className="text-[10px] font-bold tracking-[0.1em]">FILL IN</div>
+              <div className="text-[12px] border border-[var(--border)] bg-[#fafaf5] p-2">{isRes ? "Existing member (transferor)" : "Member"}: <b>{form.owner_name || "—"}</b> • Flat <b>{label(flat)}</b> <span className="opacity-60">— from the society's records; correct the OWNER NAME above if needed (for example joint owners).</span></div>
               <div className="grid sm:grid-cols-2 gap-2">
                 {fillFields(fmt.body).map((f) => (
                   <label key={f.key} className="text-[10px] opacity-80 min-w-0">{f.label.toUpperCase()}
@@ -167,7 +169,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
           {isRes && !canApprove && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Only the Chairman or the Secretary (from their own committee login) can issue a resolution.</div>}
           <div className="grid sm:grid-cols-[160px_1fr] gap-3">
             <label className="text-[10px] opacity-80">DATE<input type="date" className="field mt-1" value={form.letter_date} onChange={(e) => setForm({ ...form, letter_date: e.target.value })} /></label>
-            <label className="text-[10px] opacity-80">OWNER NAME (AS ON LETTER)<input className="field mt-1" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
+            <label className="text-[10px] opacity-80">OWNER NAME (AS ON LETTER)<input className="field mt-1" value={form.owner_name} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, owner_name: v, body: fmt && !edited ? fillBody(fmt, typed, dues, v) : f.body })); }} /></label>
           </div>
           {!isRes && <div className="text-[10px] opacity-80">ADDRESSED TO
             <div className="flex flex-wrap gap-4 mt-1.5 text-[12px]">
