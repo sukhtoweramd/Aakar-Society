@@ -5,11 +5,14 @@
 //   • if the deleted number was the last one issued, the series steps back so the number is used again
 //   • every delete is written to the access log
 // POST { action: "clear_test", last: {bill, other, rcpt, letter} } → before GO LIVE only: a backup is saved first,
-//   then ALL bills, receipts and letters are removed and the numbers set to the last paper numbers given
+//   then ALL test activity is removed (bills, receipts, letters, payment reports, letter requests, events, minutes,
+//   complaints, bookings, notices, AMC, nominees — sql-security/12) and its files in R2 (lib/testClear.ts);
+//   numbers are set to the last paper numbers given
 // POST { action: "go_live" } → locks test clearing for ever (one row in society_live that cannot be changed)
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { allUsers, buildBackup, isCommitteeUser, logAccess, mainAdminId, storeBackup } from "@/lib/backup";
+import { deleteTestFiles } from "@/lib/r2Clear";
 
 export const dynamic = "force-dynamic";
 
@@ -69,9 +72,15 @@ export async function POST(req: NextRequest) {
       if (!key) return NextResponse.json({ error: "Clearing needs file storage (R2) to keep a backup first. R2 is not configured." }, { status: 500 });
       const { data, error } = await admin.rpc("clear_test_documents", { p_bill: n(L.bill), p_other: n(L.other), p_rcpt: n(L.rcpt), p_letter: n(L.letter) });
       if (error) throw new Error(/clear_test_documents/.test(error.message) ? "Run BACKUP_RESTORE.sql in Supabase first." : error.message);
-      await logAccess(admin, me.email, "test_documents_cleared", `${data.bills} bills, ${data.receipts} receipts, ${data.letters} letters`,
-        `numbers set to bill ${n(L.bill)}, other ${n(L.other)}, receipt ${n(L.rcpt)}, letter ${n(L.letter)}; backup saved first`);
-      return NextResponse.json({ ok: true, cleared: data });
+      // Files only when the database step cleared everything (script 12 run); with the old function, rows such as
+      // events and complaints still point at their files, so the files must stay.
+      const all = data && typeof data === "object" && "events" in data;
+      const files = all ? await deleteTestFiles().catch(() => null) : null;
+      const counts = Object.entries(data || {}).filter(([k]) => !(all && k === "receipts")).map(([k, v]) => `${v} ${k}`).join(", "); // "receipts" = payments
+      await logAccess(admin, me.email, "test_documents_cleared", counts.slice(0, 500),
+        `numbers set to bill ${n(L.bill)}, other ${n(L.other)}, receipt ${n(L.rcpt)}, letter ${n(L.letter)}; backup saved first; `
+        + (all ? (files ? `${files.deleted} files deleted${files.failed ? `, ${files.failed} failed` : ""}` : "files NOT deleted (storage error)") : "old clear (run sql-security/12)"));
+      return NextResponse.json({ ok: true, cleared: data, all, files });
     } catch (e: any) { return NextResponse.json({ error: e.message || "Failed" }, { status: 500 }); }
   }
   const k = KINDS[body.kind as keyof typeof KINDS];
