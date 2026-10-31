@@ -229,8 +229,10 @@ function ChargesBox({ areas, onDone }: { areas: Area[]; onDone: () => void }) {
       <button onClick={() => setOpen(!open)} className="w-full text-left p-3 min-h-[44px] font-bold flex justify-between"><span>BOOKING CHARGES (per area, per day)</span><span>{open ? "▲" : "▼"}</span></button>
       {open && <div className="p-3 pt-0 space-y-2">
         {areas.map((a) => (
-          <label key={a.id} className="flex items-center gap-3"><span className="flex-1 min-w-0 font-bold">{a.name}</span>
-            <span>₹</span><input inputMode="decimal" className="field w-28" value={vals[a.id] ?? ""} onChange={(e) => setVals({ ...vals, [a.id]: e.target.value.replace(/[^0-9.]/g, "") })} /></label>))}
+          <label key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--border)] pb-2">
+            <span className="basis-full sm:basis-56 sm:flex-none min-w-0 font-bold">{a.name}</span>
+            <span className="flex items-center gap-1.5"><span>₹</span>
+              <input inputMode="decimal" className="field !w-36" value={vals[a.id] ?? ""} onChange={(e) => setVals({ ...vals, [a.id]: e.target.value.replace(/[^0-9.]/g, "") })} /><span className="opacity-60">per day</span></span></label>))}
         {err && <div className="text-red-700">{err}</div>}{ok && <div className="text-emerald-700">✓ {ok}</div>}
         <button onClick={save} disabled={busy} className="btn-navy px-5 min-h-[44px] font-bold">{busy ? "SAVING…" : "SAVE CHARGES"}</button>
         {hist.length > 0 && <div className="pt-2 border-t border-[var(--border)]"><div className="font-bold text-[11px] mb-1">CHANGES</div>
