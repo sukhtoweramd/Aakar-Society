@@ -150,7 +150,10 @@ export default function Home() {
       </div>
     </div>
   ) : <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
-  const mustChange = !isCommittee && !(session.user.user_metadata as any)?.password_changed;
+  // Flat / tenant logins: must change the first password. Committee logins: only when ADD / RESET marked it
+  // (password_changed === false, from 31 Oct 2026); older committee logins without the mark are not forced.
+  const pwChanged = (session.user.user_metadata as any)?.password_changed;
+  const mustChange = isCommittee ? pwChanged === false : !pwChanged;
   if (mustChange || showPassword) return <ChangePassword forced={mustChange} who={myFlat ? `Flat ${myFlat}` : session.user.email || ""} onDone={() => setShowPassword(false)} />;
   const visibleTabs = isCommittee ? [...TABS] : residentAllowed;
   const who = myFlat ? `FLAT ${label({ id: myFlat, flat_no: myFlat } as any)}` : tenantFlat ? `TENANT • FLAT ${label({ id: tenantFlat, flat_no: tenantFlat } as any)}` : session.user.email;

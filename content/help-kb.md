@@ -12,6 +12,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 ## Logging in and passwords
 - Log in with your flat number (for example A-101) and your password. Committee members log in with their email.
 - No password yet, or forgot it? Ask the society committee. They create a new one-time password for the flat; you set your own password at the next login.
+- Committee logins: the main admin adds the login (or presses RESET) in ADMIN → committee logins and gives the one-time password with COPY or WHATSAPP. At the first login with it, you must set your own password.
 - The eye button in the password box shows the password for 20 seconds.
 - To change your password: tap **PASSWORD** at the top of the screen, enter the new password twice, SAVE PASSWORD.
 - To log out: the gold button at the top right.

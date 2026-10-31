@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       if (!EMAIL.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
       if (email.endsWith("@flats.aakarsociety.app")) return NextResponse.json({ error: "That is a flat login address." }, { status: 400 });
       const password = newPassword();
-      const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email } });
+      const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email, password_changed: false } });
       if (error) return NextResponse.json({ error: /already/i.test(error.message) ? "A login with this email already exists." : error.message }, { status: 400 });
       await logAccess(admin, me.email, "login_added", email, flatId ? `own flat ${flatId}` : "");
       return NextResponse.json({ ok: true, email, password });
@@ -98,7 +98,8 @@ export async function POST(req: NextRequest) {
     if (!target) return NextResponse.json({ error: "Committee login not found." }, { status: 404 });
     if (body.action === "reset") {
       const password = newPassword();
-      const { error } = await admin.auth.admin.updateUserById(target.id, { password });
+      // first login after a reset must choose a new password (31 Oct 2026)
+      const { error } = await admin.auth.admin.updateUserById(target.id, { password, user_metadata: { ...(target.user_metadata || {}), password_changed: false } });
       if (error) throw error;
       await logAccess(admin, me.email, "password_reset", target.email || target.id);
       return NextResponse.json({ ok: true, email: target.email, password });
