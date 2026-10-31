@@ -1,11 +1,12 @@
 "use client";
 // Printable one-page A4 "Flat profile card" built from live data.
+import { ageOf } from "./dob";
 import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
 import { byFamilyOrder, committeePeople, label, SOCIETY, sortFlats, type Flat } from "./society";
 import { backButton, pdfButton } from "./printBack";
 
-type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; is_head: boolean | null;
+type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; dob?: string | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; office_address?: string | null; office_phone?: string | null };
 type Vehicle = { flat_id: string; vtype: string; model: string | null; plate: string | null; created_at?: string };
 type Contact = { flat_id: string; name: string; relation: string | null; phone: string; location: string | null; created_at?: string };
@@ -78,7 +79,7 @@ function card(c: CardData, printed: string): string {
     <tr><th style="width:27%">NAME</th><th style="width:12%">RELATION</th><th style="width:7%">AGE</th><th style="width:16%">MOBILE</th><th>PROFESSION / BUSINESS</th></tr>
     ${c.members.map((m) => {
       const sub = [m.business_name, m.office_address, m.office_phone].filter(Boolean).join(" • ");
-      return `<tr><td class="n">${esc(m.name)}${roleOf(m.name) && key(m.name) !== key(f.owner_name) ? ` ${tag(roleOf(m.name))}` : ""}</td><td>${esc(m.relation || "—")}</td><td>${m.age ?? "—"}</td><td>${esc(m.mobile || "—")}</td><td>${esc(m.occupation || (sub ? "" : "—"))}${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</td></tr>`;
+      return `<tr><td class="n">${esc(m.name)}${roleOf(m.name) && key(m.name) !== key(f.owner_name) ? ` ${tag(roleOf(m.name))}` : ""}</td><td>${esc(m.relation || "—")}</td><td>${ageOf(m) ?? "—"}</td><td>${esc(m.mobile || "—")}</td><td>${esc(m.occupation || (sub ? "" : "—"))}${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</td></tr>`;
     }).join("")}</table>`) : "";
   const veh = c.vehicles.length ? sec("VEHICLES", `<table><tr><th style="width:30%">TYPE</th><th style="width:33%">MODEL</th><th>NUMBER</th></tr>
     ${c.vehicles.map((v) => `<tr><td style="white-space:nowrap">${esc(v.vtype.replace("4-wheeler", "4W").replace("2-wheeler", "2W"))}</td><td>${esc(v.model || "—")}</td><td>${v.plate ? `<span class="plate">${esc(v.plate)}</span>` : "—"}</td></tr>`).join("")}</table>`) : "";

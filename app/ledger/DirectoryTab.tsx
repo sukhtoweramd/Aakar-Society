@@ -1,11 +1,12 @@
 "use client";
+import { birthdayText } from "@/lib/dob";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import { backButton, pdfButton } from "@/lib/printBack";
 
-type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
+type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; birth_day?: number | null; birth_month?: number | null; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
 type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; role: string | null; consent: boolean; tenant: string | null; members: Row[] };
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -75,9 +76,9 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
         : e.owner_name ? `<b>${esc(cut(e.owner_name))}</b>` : `<span class="muted">Owner not recorded</span>`;
       const role = e.is_committee ? ` <span class="gold">${esc(badgeOf(e))}</span>` : "";
       const note = e.consent ? (e.members.length ? "" : ' <span class="muted">· no family members added yet</span>') : ' <span class="muted">· details not shared</span>';
-      const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(cut(m.member_name))}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td></tr>`).join("");
+      const fam = e.members.map((m) => `<tr class="fam"><td></td><td>${esc(cut(m.member_name))}</td><td>${esc(m.relation)}</td><td>${esc(m.mobile)}</td><td>${esc(birthdayText(m.birth_day, m.birth_month))}</td></tr>`).join("");
       // one <tbody> per flat so a family is never split across two pages
-      return `<tbody class="grp"><tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="3">${name}${role}${note}</td></tr>${fam}</tbody>`;
+      return `<tbody class="grp"><tr class="flat"><td><b>${esc(flatLabel(e.flat_id))}</b></td><td colspan="4">${name}${role}${note}</td></tr>${fam}</tbody>`;
     };
     // Committee filter: one "COMMITTEE" section ordered Chairman, Secretary, Treasurer …; otherwise one section per tower.
     const committeeOnly = towerFilter === "COMMITTEE";
@@ -87,11 +88,11 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const docTitle = committeeOnly ? "COMMITTEE DIRECTORY" : "MEMBER DIRECTORY";
     const sections = groups.map(([t, list], i) => {
       return `<table class="${i ? "newpage" : ""}"><thead>
-        <tr class="title"><td colspan="4"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — ${docTitle}</h1>
+        <tr class="title"><td colspan="5"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — ${docTitle}</h1>
           <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • ${esc(scope)} • Family details only for flats that gave consent</div></div>
           <div class="tower">${esc(t)}</div></div></td></tr>
-        <tr class="gap"><td colspan="4"></td></tr>
-        <tr><th style="width:13%">Flat</th><th style="width:47%">Resident / family member</th><th style="width:17%">Relation</th><th style="width:23%">Mobile</th></tr>
+        <tr class="gap"><td colspan="5"></td></tr>
+        <tr><th style="width:12%">Flat</th><th style="width:36%">Resident / family member</th><th style="width:14%">Relation</th><th style="width:22%">Mobile</th><th style="width:16%">Birthday</th></tr>
       </thead>${list.map(flatBlock).join("")}</table>`;
     }).join("");
     w.document.write(`<html><head><title>Aakar Co-op - ${committeeOnly ? "Committee" : "Member"} Directory ${esc(today)}</title><style>
@@ -162,7 +163,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
                 {e.members.length === 0 && <div className="mono text-[11px] opacity-50 py-1">No family members added yet</div>}
                 {e.members.map((m) => (
                   <div key={m.member_id} className="py-1.5 flex justify-between gap-2 text-[13px]">
-                    <span>{m.member_name}{m.relation && <span className="opacity-60 text-[11px]"> · {m.relation}</span>}</span>
+                    <span>{m.member_name}{m.relation && <span className="opacity-60 text-[11px]"> · {m.relation}</span>}{birthdayText(m.birth_day, m.birth_month) && <span className="opacity-60 text-[11px]"> · 🎂 {birthdayText(m.birth_day, m.birth_month)}</span>}</span>
                     {m.mobile && <a href={`tel:${m.mobile.replace(/\s/g, "")}`} className="mono text-[12px] underline shrink-0">{m.mobile}</a>}
                   </div>
                 ))}

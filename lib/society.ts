@@ -1,4 +1,5 @@
 // Shared types and helpers for the Society Ledger app.
+import { ageOf } from "./dob";
 
 export type Flat = {
   id: string;
@@ -103,8 +104,8 @@ export const committeeBadge = (f: Pick<Flat, "is_committee" | "committee_role">)
 /** Family order everywhere: head first, then self, spouse, children, parents, others; oldest first within a group. */
 const REL_ORDER = [/^self$/i, /^(wife|husband|spouse)$/i, /^(son|daughter)$/i, /^(father|mother)$/i];
 export const relationRank = (r?: string | null) => { const i = REL_ORDER.findIndex((x) => x.test((r || "").trim())); return i < 0 ? REL_ORDER.length : i; };
-export const byFamilyOrder = (a: { is_head?: boolean | null; relation?: string | null; age?: number | null; name?: string | null }, b: typeof a) =>
-  Number(!!b.is_head) - Number(!!a.is_head) || relationRank(a.relation) - relationRank(b.relation) || (b.age ?? 0) - (a.age ?? 0) || (a.name || "").localeCompare(b.name || "");
+export const byFamilyOrder = (a: { is_head?: boolean | null; relation?: string | null; age?: number | null; dob?: string | null; name?: string | null }, b: typeof a) =>
+  Number(!!b.is_head) - Number(!!a.is_head) || relationRank(a.relation) - relationRank(b.relation) || (ageOf(b) ?? 0) - (ageOf(a) ?? 0) || (a.name || "").localeCompare(b.name || "");
 export const isRented = (f: Pick<Flat, "occupancy">) => f.occupancy === "tenant";
 /** Who lives in the flat: the tenant when rented out, otherwise the owner. */
 export const residentName = (f: Flat) => (isRented(f) ? f.tenant_name?.trim() || "" : f.owner_name?.trim() || "");

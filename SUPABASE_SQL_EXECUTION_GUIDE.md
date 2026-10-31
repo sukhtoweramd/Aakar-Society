@@ -17,6 +17,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
 | 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
 | 11 | `sql-security/12_CLEAR_TEST_ALL.sql` | CLEAR TEST DOCUMENTS clears all test data (PR #40) | run before GO LIVE |
+| 13 | `DOB.sql` | Date of birth instead of age (31 Oct 2026) | **not run yet** |
 | 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
 
@@ -263,3 +264,13 @@ contacts kept, numbers reset), undo, and refused after a `society_live` row. **N
 Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
 
 **Undo:** `BOOKING_CHARGES_UNDO.sql` (morning / evening again, no charge; data kept).
+
+---
+
+## 13. `DOB.sql` — date of birth instead of age (31 Oct 2026)
+
+**What it changes:** `members.dob` (optional date). The member directory view gets `birth_day` and `birth_month` for flats that share their family details (never the year). The full date is read only through the members table rules (that flat and the committee). No new table; backups carry the column.
+**Meaning for families:** entering a date of birth = agreeing to share the birthday (day and month) with all members; empty = not shared. The old typed age stays until a date of birth is entered.
+**Prerequisites:** COMMITTEE_ROLES.sql (the directory view) and the DOB app update live.
+**Expected check result:** `dob column 1` • `directory birthday columns (expect 2) 2` • `directory has no full date (expect 0) 0` • `dates of birth entered 0` (more after families fill it in).
+**Undo:** `DOB_UNDO.sql` (directory back to before; entered dates are kept in the column).
