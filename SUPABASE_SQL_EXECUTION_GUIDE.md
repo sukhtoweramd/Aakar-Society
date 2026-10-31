@@ -17,6 +17,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
 | 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
 | 11 | `sql-security/12_CLEAR_TEST_ALL.sql` | CLEAR TEST DOCUMENTS clears all test data (PR #40) | run before GO LIVE |
+| 15 | `RESOLUTION_REQUESTS.sql` | Members ask for "Request for transfer of flat" and give the new member's name (31 Oct 2026) | **not run yet** |
 | 14 | `RESOLUTION_FORMAT.sql` | Committee resolution as a letter format: transfer of flat (31 Oct 2026) | **not run yet** |
 | 13 | `DOB.sql` | Date of birth instead of age (31 Oct 2026) | **not run yet** |
 | 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
@@ -284,3 +285,12 @@ Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
 **Prerequisites:** LETTERS.sql, LETTER_TEMPLATES.sql and the resolution app update live.
 **Expected check result:** `resolution kind allowed true` • `letters.layout column 1` • `issue guard on true` • `transfer-of-flat format 1` • `letters issued as resolution 0`.
 **Undo:** `RESOLUTION_FORMAT_UNDO.sql` (resolution formats switched off; issued resolutions stay on record).
+
+---
+
+## 15. `RESOLUTION_REQUESTS.sql` — a member asks for the resolution (31 Oct 2026)
+
+**What it changes:** `letter_templates.request_name` (what members pick: "Request for transfer of flat") and `member_fields` (which fill-in fields the member gives: the new member's name); `letter_requests.details` (what the member typed). The database keeps only the fields the format asks for (each at most 200 characters) and refuses a request with one empty. The Chairman or Secretary approves the request after the committee meeting and issues the resolution (the existing member from the records, the new member from the request; the committee fills in the rest). No new table.
+**Prerequisites:** RESOLUTION_FORMAT.sql (the format must exist) and the resolution-request app update live.
+**Expected check result:** `new columns (expect 3) 3` • `request insert check on true` • `members ask for Request for transfer of flat` • `and are asked transferee_name`.
+**Undo:** `RESOLUTION_REQUESTS_UNDO.sql` (members are no longer asked; sent requests keep their details).

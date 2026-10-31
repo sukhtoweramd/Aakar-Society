@@ -6,9 +6,10 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { fillTemplate, letterData, TEMPLATE_FIELDS, type LetterTemplate } from "@/lib/letterTemplates";
 import { SOCIETY } from "@/lib/society";
+import { fillFields, fieldLabel } from "@/lib/letterFields";
 
-type Form = { id?: string; name: string; kind: "general" | "bank" | "resolution"; subject: string; addressee: string; body: string; sort: string };
-const BLANK: Form = { name: "", kind: "general", subject: "", addressee: "", body: "", sort: "100" };
+type Form = { id?: string; name: string; kind: "general" | "bank" | "resolution"; subject: string; addressee: string; body: string; sort: string; request_name: string; member_fields: string[] };
+const BLANK: Form = { name: "", kind: "general", subject: "", addressee: "", body: "", sort: "100", request_name: "", member_fields: [] };
 const SAMPLE = { id: "A101", tower: "A", floor: 1, owner_name: "SAMPLE OWNER", share_cert_no: "123", member_since: "2001-04-01" };
 
 export default function LetterFormats({ list, email, onChanged }: { list: LetterTemplate[]; email: string; onChanged: () => void }) {
@@ -21,7 +22,12 @@ export default function LetterFormats({ list, email, onChanged }: { list: Letter
     if (form.name.trim().length < 2 || !form.subject.trim() || !form.body.trim()) { setError("Name, subject and letter text are needed."); return; }
     setBusy(true); setError("");
     const row = { name: form.name.trim(), kind: form.kind, subject: form.subject.trim(), addressee: form.addressee.trim() || null, body: form.body,
-      sort: parseInt(form.sort, 10) || 100, updated_by: email, updated_at: new Date().toISOString() };
+      sort: parseInt(form.sort, 10) || 100, updated_by: email, updated_at: new Date().toISOString() } as Record<string, any>;
+    // RESOLUTION_REQUESTS.sql run: what members pick when asking, and what they are asked
+    if (list.some((t) => "member_fields" in t)) {
+      row.request_name = form.request_name.trim() || null;
+      row.member_fields = form.member_fields.filter((k) => fillFields(form.body).some((f) => f.key === k));
+    }
     const { error } = form.id ? await supabase.from("letter_templates").update(row).eq("id", form.id) : await supabase.from("letter_templates").insert({ ...row, created_by: email });
     setBusy(false);
     if (error) { setError(/duplicate|unique/i.test(error.message) ? "A format with this name already exists." : error.message); return; }
@@ -54,6 +60,15 @@ export default function LetterFormats({ list, email, onChanged }: { list: Letter
               <label className="text-[10px] opacity-80 min-w-0">USUALLY ADDRESSED TO (blank = to whomsoever it may concern)<input className="field mt-1" value={form.addressee} onChange={(e) => setForm({ ...form, addressee: e.target.value })} /></label>
               <label className="text-[10px] opacity-80 min-w-0">ORDER<input className="field mt-1 !w-[90px]" inputMode="numeric" value={form.sort} onChange={(e) => setForm({ ...form, sort: e.target.value.replace(/\D/g, "") })} /></label>
             </div>
+            {list.some((t) => "member_fields" in t) && (
+              <div className="border border-[var(--border)] bg-white p-2 space-y-2">
+                <label className="text-[10px] opacity-80 block">NAME MEMBERS PICK WHEN THEY ASK <span className="opacity-60">(blank = the name above; a committee resolution is asked for only if this is filled, e.g. "Request for transfer of flat")</span>
+                  <input className="field mt-1" value={form.request_name} onChange={(e) => setForm({ ...form, request_name: e.target.value })} /></label>
+                {fillFields(form.body).length > 0 && <div className="text-[11px]"><div className="text-[10px] opacity-80 mb-1">ASKED FROM THE MEMBER IN THEIR REQUEST <span className="opacity-60">(the rest the committee fills in when issuing)</span></div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">{fillFields(form.body).map((f) => (
+                    <label key={f.key} className="flex items-center gap-1.5 min-h-[32px]"><input type="checkbox" checked={form.member_fields.includes(f.key)}
+                      onChange={(e) => setForm({ ...form, member_fields: e.target.checked ? [...form.member_fields, f.key] : form.member_fields.filter((k) => k !== f.key) })} /> {fieldLabel(f.key)}</label>))}</div></div>}
+              </div>)}
             <label className="text-[10px] opacity-80 block">LETTER TEXT * <span className="opacity-60">(empty line between paragraphs; fields in double braces are filled in)</span>
               <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={8} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} /></label>
             <div className="text-[10.5px] opacity-80 mb-1">Any other word in double braces (for example <b>{"{{transferee_name}}"}</b>, <b>{"{{meeting_date}}"}</b>, <b>{"{{fee_amount}}"}</b>) becomes a box to fill in when the letter is issued: a name ending <b>_date</b> gets a date box, <b>_amount</b> an amount box, and <b>_words</b> is worked out from the matching <b>_amount</b>.</div>
@@ -70,8 +85,9 @@ export default function LetterFormats({ list, email, onChanged }: { list: Letter
               <div className="flex justify-between gap-2"><b className="break-words">{t.name}</b>
                 <span className={`shrink-0 border px-2 py-0.5 text-[10px] font-bold ${t.kind === "bank" ? "border-red-200 bg-red-50 text-red-700" : t.kind === "resolution" ? "border-sky-200 bg-sky-50 text-sky-800" : "border-[var(--border)]"}`}>{t.kind === "bank" ? "BANK • UNSIGNED" : t.kind === "resolution" ? "RESOLUTION" : "GENERAL"}</span></div>
               <div className="text-[11px] opacity-70 mt-0.5 break-words">Subject: {t.subject}{t.addressee ? ` • To: ${t.addressee}` : ""}</div>
+              {t.request_name && <div className="text-[11px] opacity-70 break-words">Members ask for: <b>{t.request_name}</b>{t.member_fields?.length ? ` • they give: ${t.member_fields.map(fieldLabel).join(", ")}` : ""}</div>}
               <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
-                <button onClick={() => { setForm({ id: t.id, name: t.name, kind: t.kind, subject: t.subject, addressee: t.addressee || "", body: t.body, sort: String(t.sort) }); setError(""); }} className="underline min-h-[32px]">edit</button>
+                <button onClick={() => { setForm({ id: t.id, name: t.name, kind: t.kind, subject: t.subject, addressee: t.addressee || "", body: t.body, sort: String(t.sort), request_name: t.request_name || "", member_fields: t.member_fields || [] }); setError(""); }} className="underline min-h-[32px]">edit</button>
                 {t.active ? <button onClick={() => setActive(t, false)} className="underline text-red-700 min-h-[32px]">switch off</button>
                   : <button onClick={() => setActive(t, true)} className="underline text-emerald-700 min-h-[32px]">switch on</button>}
               </div>

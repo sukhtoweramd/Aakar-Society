@@ -2,7 +2,12 @@
 export type LetterTemplate = {
   id: string; name: string; kind: "general" | "bank" | "resolution"; subject: string; addressee: string | null; body: string;
   sort: number; active: boolean; updated_at?: string; updated_by?: string | null;
+  // RESOLUTION_REQUESTS.sql: the name members pick when asking, and the fill-in fields asked from the member
+  request_name?: string | null; member_fields?: string[] | null;
 };
+
+/** What a member sees and picks when asking for this letter (blank request name = the format's own name). */
+export const askName = (t: Pick<LetterTemplate, "name" | "request_name">) => (t.request_name || "").trim() || t.name;
 
 /** Fields a format may use, with what fills them. Shown to the committee when editing a format. */
 export const TEMPLATE_FIELDS: { key: string; what: string }[] = [

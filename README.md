@@ -37,7 +37,7 @@ button opens one function with a HOME bar, and the phone's back button returns t
 1. Run the SQL scripts in the Supabase SQL Editor, in the order they were added (each is safe to re-run and ends with a
    check). The old `SUPABASE_SETUP.sql` was removed (security audit, Oct 2026): it gave every login full access.
    Added 25 Oct 2026: `MEMBER_SCREENS.sql`, `COMPLAINTS.sql`, `NOMINEES.sql`, `BOOKINGS.sql`.
-   Added 31 Oct 2026: `BOOKING_CHARGES.sql` (common plot: four areas, full day, a charge per area, invoice on approval; undo `BOOKING_CHARGES_UNDO.sql`), `DOB.sql` (date of birth instead of age; undo `DOB_UNDO.sql`), `RESOLUTION_FORMAT.sql` (committee resolution format, first: transfer of flat; undo `RESOLUTION_FORMAT_UNDO.sql`).
+   Added 31 Oct 2026: `BOOKING_CHARGES.sql` (common plot: four areas, full day, a charge per area, invoice on approval; undo `BOOKING_CHARGES_UNDO.sql`), `DOB.sql` (date of birth instead of age; undo `DOB_UNDO.sql`), `RESOLUTION_FORMAT.sql` (committee resolution format, first: transfer of flat; undo `RESOLUTION_FORMAT_UNDO.sql`), `RESOLUTION_REQUESTS.sql` (members ask for a flat transfer resolution; undo `RESOLUTION_REQUESTS_UNDO.sql`).
    Security scripts are in `sql-security/` (numbered, each with an `_UNDO`).
 2. Vercel → Settings → Environment Variables: the list (names only) is in `CLAUDE.md` → Handover document.
 3. Never commit real keys or residents' data to this repo – it is public.

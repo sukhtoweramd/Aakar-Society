@@ -15,7 +15,7 @@ const TO_ALL = "TO WHOMSOEVER IT MAY CONCERN";
 /** prefill: open the form already filled in (from a member's letter request); onIssued: told the new letter after it is issued. */
 export default function LettersPanel({ flat, flats, isCommittee, email, onChanged, prefill, onIssued }: {
   flat: Flat; flats: Flat[]; isCommittee: boolean; email: string; onChanged?: () => void;
-  prefill?: { key: string; subject: string; to: string; body?: string; unsigned?: boolean; requestId?: string }; onIssued?: (l: Letter) => void }) {
+  prefill?: { key: string; subject: string; to: string; body?: string; unsigned?: boolean; requestId?: string; templateId?: string; typed?: Record<string, string> }; onIssued?: (l: Letter) => void }) {
   const [letters, setLetters] = useState<Letter[] | null>(null);
   const [missing, setMissing] = useState(false);
   const [pc, setPc] = useState<PrintCtx>({ settings: null, signatories: [], flats });
@@ -54,9 +54,9 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   // the existing member's name is the one in the OWNER NAME box (the committee can correct it, e.g. joint owners)
   const fillBody = (t: LetterTemplate, values: Record<string, string>, d: number | null, owner = form.owner_name) =>
     fillTemplate(t.body, { ...letterData({ ...flat, owner_name: owner || flat.owner_name }, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, date: form.letter_date }), ...customData(t.body, values) });
-  async function pickFormat(id: string) {
+  async function pickFormat(id: string, initial: Record<string, string> = {}) {
     const t = formats.find((x) => x.id === id) || null;
-    setFmt(t); setTyped({}); setEdited(false); setError("");
+    setFmt(t); setTyped(initial); setEdited(false); setError("");
     if (!t) { setForm((f) => ({ ...f, subject: "", body: "", to: "", kind: "all" })); return; }
     let d: number | null = null;
     if (/\{\{\s*dues\s*\}\}/.test(t.body)) {
@@ -64,19 +64,25 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
       if (!b.error && !p.error) d = flatTotals((b.data as any[]) || [], (p.data as any[]) || []).due;
     }
     setDues(d);
-    setForm((f) => ({ ...f, subject: t.subject, kind: t.addressee?.trim() && t.kind !== "resolution" ? "third" : "all", to: t.addressee || "", body: fillBody(t, {}, d),
+    setForm((f) => ({ ...f, subject: t.subject, kind: t.addressee?.trim() && t.kind !== "resolution" ? "third" : "all", to: t.addressee || "", body: fillBody(t, initial, d),
       signer: t.kind === "resolution" ? chairman()?.id || f.signer : f.signer }));
   }
   function setBox(key: string, v: string) {
     const next = { ...typed, [key]: v }; setTyped(next);
     if (fmt && !edited) setForm((f) => ({ ...f, body: fillBody(fmt, next, dues) }));
   }
-  useEffect(() => { load(); setOpen(false); setForm(blank()); }, [flat.id]);
+  useEffect(() => { load(); setOpen(false); setForm(blank()); setFmt(null); setTyped({}); setEdited(false); }, [flat.id]);
   useEffect(() => {
     if (!prefill || !isCommittee) return;
     setOpen(true); setError("");
     setForm((f) => ({ ...f, subject: prefill.subject, kind: prefill.to.trim() ? "third" : "all", to: prefill.to, body: prefill.body ?? f.body, signer: prefill.unsigned ? "" : f.signer }));
   }, [prefill?.key]);
+
+  // issuing a requested resolution: open its format with the member's details already in the boxes
+  useEffect(() => {
+    if (!prefill?.templateId || !isCommittee || !formats.length) return;
+    pickFormat(prefill.templateId, prefill.typed || {});
+  }, [prefill?.key, formats.length, pc.signatories.length]);
 
   const signers = pc.signatories.filter((g) => g.active);
   const draft = (ref: string): Letter => {
@@ -109,7 +115,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
       if (error) throw error;
       openPrint(`Letter ${ref}`, [letterHtml(data as Letter, pc)], w);
       onIssued?.(data as Letter);
-      setOpen(false); setForm(blank()); await load(); onChanged?.();
+      setOpen(false); setForm(blank()); setFmt(null); setTyped({}); setEdited(false); await load(); onChanged?.();
     } catch (err: any) { w?.close(); setError(/letter/i.test(err.message || "") && /column|function|series/i.test(err.message) ? "Run LETTERS.sql in Supabase first." : err.message); }
     setBusy(false);
   }
@@ -191,7 +197,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
               <option value="">— no signature —</option>{signers.map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>}
             <button onClick={preview} className="btn-line px-4 py-2">PREVIEW</button>
             <button onClick={issue} disabled={busy} className="btn-navy px-4 py-2 font-bold">{busy ? "ISSUING…" : "ISSUE & PRINT"}</button>
-            <button onClick={() => { setOpen(false); setError(""); }} className="underline px-2 py-2">Cancel</button>
+            <button onClick={() => { setOpen(false); setError(""); setFmt(null); setTyped({}); setEdited(false); }} className="underline px-2 py-2">Cancel</button>
           </div>
           <div className="opacity-60">{form.kind === "all"
             ? <>Prints: reference no. and date, flat number and owner, &quot;{TO_ALL}&quot;, subject, your text, then Yours faithfully, signature, stamp, place and date.</>
