@@ -32,13 +32,19 @@ export default function TestDataPanel() {
   const c = info.counts;
   async function clear() {
     setError(""); setMsg("");
-    const typed = prompt(`CLEAR ALL TEST DOCUMENTS?\n\nThis removes ALL ${c.bills ?? 0} bills, ${c.receipts ?? 0} receipts and ${c.letters ?? 0} letters for every flat, and sets the numbers to:\n` +
-      `maintenance bills ${last.bill}, other bills ${last.other}, receipts ${last.rcpt}${hasLetters ? `, letters ${last.letter}` : ""}.\n\nFlats, members, logins and settings are NOT touched. A backup is saved first.\n\nType CLEAR to confirm:`);
+    const typed = prompt(`CLEAR ALL TEST DATA?\n\nThis removes for every flat: ALL ${c.bills ?? 0} bills, ${c.receipts ?? 0} receipts, ${c.letters ?? 0} letters, and all "I have paid" reports, letter requests, events (team, accounts, registrations, gate scans), meetings and minutes, complaints, common plot bookings, notices and banners, AMC contracts and nominees, with their photos and files. Numbers are set to:\n` +
+      `maintenance bills ${last.bill}, other bills ${last.other}, receipts ${last.rcpt}${hasLetters ? `, letters ${last.letter}` : ""}.\n\nKEPT: flats, owners, family, vehicles, flat documents, businesses, committee, areas, contacts, templates, logins and settings. A backup of the data is saved first (deleted photos and files cannot be brought back).\n\nType CLEAR to confirm:`);
     if (typed?.trim().toUpperCase() !== "CLEAR") return;
     setBusy("clear");
     try {
       const j = await api("/api/docs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clear_test", last }) });
-      setMsg(`Cleared ${j.cleared.bills} bills, ${j.cleared.receipts} receipts and ${j.cleared.letters} letters. A backup of what was there is in the backups list above.`); await load();
+      const cl = j.cleared || {}, num = (k: string) => Number(cl[k] || 0);
+      setMsg(j.all
+        ? `Cleared ${num("bills")} bills, ${num("payments")} receipts, ${num("letters")} letters, ${num("events")} events, ${num("meetings")} meetings, ${num("complaints")} complaints, ${num("bookings")} bookings, ${num("notices")} notices, ${num("amc_contracts")} AMC contracts, ${num("nominees")} nominees`
+          + (j.files ? ` and ${j.files.deleted} files${j.files.failed ? ` (${j.files.failed} files could not be deleted)` : ""}` : " (files were NOT deleted: storage error)")
+          + ". A backup of the data is in the backups list above."
+        : `Cleared ${num("bills")} bills, ${num("receipts")} receipts and ${num("letters")} letters only. Run sql-security/12_CLEAR_TEST_ALL.sql in Supabase to clear events, minutes, complaints and the rest, then clear again.`);
+      await load();
     } catch (e: any) { setError(e.message); }
     setBusy("");
   }
@@ -60,7 +66,7 @@ export default function TestDataPanel() {
       <div className="flex flex-wrap gap-2 items-center"><span className="tag bg-amber-100 text-amber-800 font-bold">TESTING</span><span className="font-bold tracking-[0.12em]">TEST DOCUMENTS • BEFORE GOING LIVE</span></div>
       <div className="opacity-70 mt-2 max-w-[760px] leading-relaxed">
         Now: {c.bills ?? 0} bills, {c.receipts ?? 0} receipts{c.letters != null ? `, ${c.letters} letters` : ""} in the app.
-        While testing, the main admin can clear all of them in one go and set the numbers to the last ones used on paper; flats, members, logins and settings stay.
+        While testing, the main admin can clear all test data in one go — bills, receipts, letters, "I have paid" reports, letter requests, events, minutes, complaints, bookings, notices, AMC contracts and nominees, with their photos and files — and set the numbers to the last ones used on paper. Flats, owners, family, vehicles, flat documents, committee, contacts, logins and settings stay.
         This can be done as often as needed until you press GO LIVE. After GO LIVE it is locked for ever.
       </div>
       {info.needsSql && <div className="mt-3 border border-amber-200 bg-amber-50 p-2.5">Run BACKUP_RESTORE.sql in Supabase to turn this on.</div>}

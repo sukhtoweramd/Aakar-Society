@@ -16,7 +16,8 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) (PR #31) | **run 30 Oct 2026, check OK** |
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
 | 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
-| 11 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
+| 11 | `sql-security/12_CLEAR_TEST_ALL.sql` | CLEAR TEST DOCUMENTS clears all test data (PR #40) | run before GO LIVE |
+| 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
 
 ---
@@ -229,9 +230,25 @@ Adds `letter_templates` to the restore list just before `letter_requests`. **Exp
 asks; a plain committee login cannot approve and cannot issue before approval; the Chairman approves, then issuing works;
 history has 3 lines; a tenant login cannot ask. **Not yet run on live.**
 
+## 11. `sql-security/12_CLEAR_TEST_ALL.sql` — CLEAR TEST DOCUMENTS clears all test data (31 Oct 2026)
+
+Replaces `clear_test_documents()` (same name and inputs). Running the script changes **no data**; it only changes what
+ADMIN → TEST DOCUMENTS → CLEAR removes later: bills, receipts, letters, "I have paid" reports, letter requests, events
+(team, accounts, registrations, gate check-ins), meetings / minutes / action points, complaints, bookings, notices,
+AMC contracts and visits, nominees and nomination status. Kept: flats, owners, family, vehicles, emergency contacts,
+flat documents, businesses, committee, areas, contacts, booking areas, letter templates, signatories, settings, logins.
+After the database step the app deletes the test files in R2 folders `notices/ events/ eventdocs/ minutes/
+complaints/ amc/ payproofs/` (never `flats/ vault/ floor-plans/ backups/`). Still refused after GO LIVE; server only.
+**Expected:** one row: `clears_all = true`, `members_can_run = false`, `society_live = 0`. **Undo:** `sql-security/12_UNDO.sql`
+(back to bills / receipts / letters only). Run this script **before** pressing CLEAR; with the old function the app
+clears only bills / receipts / letters and deletes no files.
+
+**Tested:** local PostgreSQL 16 with sample tables: run, second run, clear (every listed table emptied, flats / members /
+contacts kept, numbers reset), undo, and refused after a `society_live` row. **Not yet run on live.**
+
 ---
 
-## 11. `BOOKING_CHARGES.sql` — common plot booking charges (31 Oct 2026)
+## 12. `BOOKING_CHARGES.sql` — common plot booking charges (31 Oct 2026)
 
 **What it changes:**
 - Areas become **Tower A area, Center area (new), Tower B area, Main common area**; a **charge per day** on each area. Bookings are **full day** (old morning / evening bookings stay as history).
