@@ -59,21 +59,8 @@ export const monthsIn = (from: string, to: string) => { const a = new Date(from)
 // Annual maintenance / rented-flat maths live in ./maintenance (no database code, so tests can load it).
 export { DEFAULT_RENT_MULTIPLIER, rentMultiplier, maintenanceCharge } from "./maintenance";
 
-/** Indian-style amount in words: 21000 -> "Rupees Twenty-One Thousand Only" */
-export function inWords(amount: number): string {
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-  const two = (n: number) => (n < 20 ? ones[n] : tens[Math.floor(n / 10)] + (n % 10 ? "-" + ones[n % 10] : ""));
-  const three = (n: number) => [Math.floor(n / 100) ? ones[Math.floor(n / 100)] + " Hundred" : "", n % 100 ? two(n % 100) : ""].filter(Boolean).join(" ");
-  let r = Math.floor(amount); const p = Math.round((amount - r) * 100);
-  if (r === 0 && p === 0) return "Rupees Zero Only";
-  const parts: string[] = [];
-  const cr = Math.floor(r / 10000000); r %= 10000000;
-  const la = Math.floor(r / 100000); r %= 100000;
-  const th = Math.floor(r / 1000); r %= 1000;
-  if (cr) parts.push(three(cr) + " Crore"); if (la) parts.push(two(la) + " Lakh"); if (th) parts.push(two(th) + " Thousand"); if (r) parts.push(three(r));
-  return `Rupees ${parts.join(" ") || "Zero"}${p ? ` and ${two(p)} Paise` : ""} Only`;
-}
+import { inWords } from "./words";
+export { inWords };
 
 // ---------- data ----------
 export async function loadSettings(): Promise<Settings | null> {
@@ -293,8 +280,28 @@ export type Letter = {
   status: "active" | "cancelled"; cancel_reason: string | null; created_by: string | null; created_at: string;
   // LETTER_TEMPLATES.sql: bank letters are issued unsigned and signed by hand; handed_over_at = signed copy given
   request_id?: string | null; unsigned?: boolean | null; handed_over_at?: string | null; handed_over_by?: string | null;
+  // RESOLUTION_FORMAT.sql: "resolution" prints the committee resolution layout (signature table), not a letter
+  layout?: "letter" | "resolution" | null;
 };
+/** Committee resolution (e.g. transfer of flat): title, the resolution text, then the committee's signature table. Signed by hand. */
+function resolutionHtml(l: Letter, c: PrintCtx): string {
+  const f = c.flats.find((x) => x.id === l.flat_id);
+  const paras = l.body.trim().split(/\n\s*\n/).map((para) => `<p style="margin:0 0 2.4mm">${esc(para).replace(/\n/g, "<br>")}</p>`).join("");
+  const cell = "border:.3mm solid #444;padding:1.5mm 3mm;";
+  const rows = ["Chairman", "Secretary", "Committee Member", "Date"].map((r) => `<tr style="height:11mm"><td style="${cell}width:42mm;font-weight:700">${r}</td><td style="${cell}"></td></tr>`).join("");
+  return `${frameStart}${header("RESOLUTION", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
+  <div style="margin-top:4mm;text-align:center;font-size:12.5pt;font-weight:800;letter-spacing:.06em;color:var(--navy);text-decoration:underline;text-underline-offset:1.2mm">${esc(l.subject.toUpperCase())}</div>
+  <div style="margin-top:2mm;font-size:9.5pt;color:#2a2822">Ref. No.: <b style="color:var(--navy)">${esc(l.ref_no)}</b> • Flat <b style="color:var(--navy)">${esc(f ? label(f) : l.flat_id)}</b></div>
+  <div style="margin-top:3.5mm;font-size:10pt;line-height:1.5;color:#1f1d18;text-align:justify">${paras}</div>
+  ${l.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
+  <div style="margin-top:3mm;font-size:10.5pt;font-weight:700;color:var(--navy)">For, ${esc(SOCIETY.full)}</div>
+  <table style="margin-top:2mm;width:100%;border-collapse:collapse;font-size:10pt"><tr><th style="${cell}background:#eef0f6;color:var(--navy);text-align:left">Designation</th><th style="${cell}background:#eef0f6;color:var(--navy);text-align:left">Name and Signature</th></tr>${rows}</table>
+  <div style="margin-top:2mm;font-size:8.5pt;color:#555">Valid only when signed by hand by the Chairman, the Secretary and a Committee Member.${l.signer_name ? ` Issued by ${esc(l.signer_name)}, ${esc(l.signer_designation || "")}.` : ""}</div>
+  <div class="grow"></div>
+  <div class="foot"><div>Generated from the society app • ${dmy(today())}</div><div>Ref. ${esc(l.ref_no)} • Flat ${esc(f ? label(f) : l.flat_id)}</div></div>${frameEnd}`;
+}
 export function letterHtml(l: Letter, c: PrintCtx): string {
+  if (l.layout === "resolution") return resolutionHtml(l, c);
   const f = c.flats.find((x) => x.id === l.flat_id);
   const paras = l.body.trim().split(/\n\s*\n/).map((para) => `<p style="margin:0 0 4mm">${esc(para).replace(/\n/g, "<br>")}</p>`).join("");
   const general = l.addressee.trim().toUpperCase() === "TO WHOMSOEVER IT MAY CONCERN";

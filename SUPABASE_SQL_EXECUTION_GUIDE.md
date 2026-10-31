@@ -17,6 +17,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
 | 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
 | 11 | `sql-security/12_CLEAR_TEST_ALL.sql` | CLEAR TEST DOCUMENTS clears all test data (PR #40) | run before GO LIVE |
+| 14 | `RESOLUTION_FORMAT.sql` | Committee resolution as a letter format: transfer of flat (31 Oct 2026) | **not run yet** |
 | 13 | `DOB.sql` | Date of birth instead of age (31 Oct 2026) | **not run yet** |
 | 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
@@ -274,3 +275,12 @@ Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
 **Prerequisites:** COMMITTEE_ROLES.sql (the directory view) and the DOB app update live.
 **Expected check result:** `dob column 1` • `directory birthday columns (expect 2) 2` • `directory has no full date (expect 0) 0` • `dates of birth entered 0` (more after families fill it in).
 **Undo:** `DOB_UNDO.sql` (directory back to before; entered dates are kept in the column).
+
+---
+
+## 14. `RESOLUTION_FORMAT.sql` — resolution for transfer of flat (31 Oct 2026)
+
+**What it changes:** letter formats get a third kind, **resolution**. `letters.layout` (letter / resolution) makes a resolution print with the committee's signature table. A database rule lets only the **Chairman or the Secretary** (committee login linked to their flat, or the main admin) issue a resolution. The society's "Resolution for transfer of flat" format is added if it is not there yet (wording as in the society's Word template). No new table; backups carry the new column.
+**Prerequisites:** LETTERS.sql, LETTER_TEMPLATES.sql and the resolution app update live.
+**Expected check result:** `resolution kind allowed true` • `letters.layout column 1` • `issue guard on true` • `transfer-of-flat format 1` • `letters issued as resolution 0`.
+**Undo:** `RESOLUTION_FORMAT_UNDO.sql` (resolution formats switched off; issued resolutions stay on record).

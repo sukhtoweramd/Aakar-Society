@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { label, type Flat } from "@/lib/society";
-import { dmy, letterHtml, letterPdf, loadSettings, loadSignatories, openPrint, reserveNumbers, today, type Letter, type PrintCtx } from "@/lib/billing";
+import { dmy, flatTotals, letterHtml, letterPdf, loadSettings, loadSignatories, openPrint, reserveNumbers, today, type Letter, type PrintCtx } from "@/lib/billing";
+import { fillTemplate, letterData, type LetterTemplate } from "@/lib/letterTemplates";
+import { customData, fillFields } from "@/lib/letterFields";
+import { SOCIETY } from "@/lib/society";
 import SharePdfButton from "./SharePdfButton";
 import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
@@ -23,6 +26,14 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   const blank = () => ({ letter_date: today(), owner_name: flat.owner_name || "", kind: "all" as "all" | "third", to: "", subject: "", body: "", signer: "" });
   const [form, setForm] = useState(blank());
   const canDelete = useMainAdmin(isCommittee);
+  // Standard formats (LETTER_TEMPLATES.sql / RESOLUTION_FORMAT.sql): start a letter from one; boxes for the fields the records do not know
+  const [formats, setFormats] = useState<LetterTemplate[]>([]);
+  const [canApprove, setCanApprove] = useState(false);          // Chairman / Secretary / main admin: only they issue a resolution
+  const [fmt, setFmt] = useState<LetterTemplate | null>(null);
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const [edited, setEdited] = useState(false);                  // the text was changed by hand: the boxes no longer rewrite it
+  const [dues, setDues] = useState<number | null>(null);
+  const isRes = fmt?.kind === "resolution";
 
   async function load() {
     const [l, s, sg] = await Promise.all([
@@ -34,6 +45,30 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
     setPc({ settings: s, signatories: sg, flats });
     const sec = sg.find((g) => g.active && /secretary/i.test(g.designation)) || sg.find((g) => g.active && g.id === s?.bill_signer) || sg.find((g) => g.active);
     setForm((f) => ({ ...f, signer: f.signer || sec?.id || "" }));
+    if (isCommittee) {
+      const [t, a] = await Promise.all([supabase.from("letter_templates").select("*").eq("active", true).order("sort").order("name"), supabase.rpc("can_approve_letters")]);
+      setFormats(t.error ? [] : (t.data as LetterTemplate[]) || []); setCanApprove(!a.error && !!a.data);
+    }
+  }
+  const chairman = () => pc.signatories.find((g) => g.active && /^chairman$/i.test(g.designation.trim())) || pc.signatories.find((g) => g.active && /chairman/i.test(g.designation));
+  const fillBody = (t: LetterTemplate, values: Record<string, string>, d: number | null) =>
+    fillTemplate(t.body, { ...letterData(flat, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, date: form.letter_date }), ...customData(t.body, values) });
+  async function pickFormat(id: string) {
+    const t = formats.find((x) => x.id === id) || null;
+    setFmt(t); setTyped({}); setEdited(false); setError("");
+    if (!t) { setForm((f) => ({ ...f, subject: "", body: "", to: "", kind: "all" })); return; }
+    let d: number | null = null;
+    if (/\{\{\s*dues\s*\}\}/.test(t.body)) {
+      const [b, p] = await Promise.all([supabase.from("bills").select("*").eq("flat_id", flat.id), supabase.from("payments").select("*").eq("flat_id", flat.id)]);
+      if (!b.error && !p.error) d = flatTotals((b.data as any[]) || [], (p.data as any[]) || []).due;
+    }
+    setDues(d);
+    setForm((f) => ({ ...f, subject: t.subject, kind: t.addressee?.trim() && t.kind !== "resolution" ? "third" : "all", to: t.addressee || "", body: fillBody(t, {}, d),
+      signer: t.kind === "resolution" ? chairman()?.id || f.signer : f.signer }));
+  }
+  function setBox(key: string, v: string) {
+    const next = { ...typed, [key]: v }; setTyped(next);
+    if (fmt && !edited) setForm((f) => ({ ...f, body: fillBody(fmt, next, dues) }));
   }
   useEffect(() => { load(); setOpen(false); setForm(blank()); }, [flat.id]);
   useEffect(() => {
@@ -45,12 +80,13 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   const signers = pc.signatories.filter((g) => g.active);
   const draft = (ref: string): Letter => {
     const g = signers.find((x) => x.id === form.signer);
-    const unsigned = !!prefill?.unsigned;
+    const unsigned = !!prefill?.unsigned || fmt?.kind === "bank" || isRes;
     return { id: "draft", ref_no: ref, flat_id: flat.id, unsigned, request_id: prefill?.requestId || null, letter_date: form.letter_date, owner_name: form.owner_name.trim() || null, addressee: form.kind === "third" ? form.to.trim() : TO_ALL,
-      subject: form.subject.trim(), body: form.body, signer_id: unsigned ? null : g?.id || null, signer_name: unsigned ? null : g?.name || null, signer_designation: unsigned ? null : g?.designation || null,
+      subject: form.subject.trim(), body: form.body, signer_id: unsigned && !isRes ? null : g?.id || null, signer_name: unsigned && !isRes ? null : g?.name || null, signer_designation: unsigned && !isRes ? null : g?.designation || null,
+      layout: isRes ? "resolution" : null,
       status: "active", cancel_reason: null, created_by: email, created_at: new Date().toISOString() };
   };
-  const check = () => (form.kind === "third" && !form.to.trim() ? "Enter who the letter is addressed to (name and address)." : !form.subject.trim() ? "Enter the subject." : !form.body.trim() ? "Type the letter text." : !form.letter_date ? "Choose the date." : "");
+  const check = () => (form.kind === "third" && !form.to.trim() ? "Enter who the letter is addressed to (name and address)." : !form.subject.trim() ? "Enter the subject." : !form.body.trim() ? "Type the letter text." : !form.letter_date ? "Choose the date." : isRes && !canApprove ? "Only the Chairman or the Secretary (from their own login) can issue a resolution." : isRes && !form.signer ? "Choose who issues it (Chairman, or Secretary in the Chairman's absence)." : "");
 
   function preview() {
     const e = check(); if (e) { setError(e); return; } setError("");
@@ -58,7 +94,8 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   }
   async function issue() {
     const e = check(); if (e) { setError(e); return; }
-    if (!confirm(`Issue this letter to ${label(flat)}? It gets the next letter number and appears in the member's MY FLAT.`)) return;
+    const blanks = isRes && form.body.includes("______") ? "\n\nSome blanks (______) are still empty: they will print as blanks to fill in by hand." : "";
+    if (!confirm(`Issue this ${isRes ? "resolution" : "letter"} to ${label(flat)}? It gets the next letter number and appears in the member's MY FLAT.${blanks}`)) return;
     setBusy(true); setError("");
     const w = window.open("", "_blank");
     try {
@@ -66,6 +103,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
       const { id, ...row } = draft(ref) as any;
       if (!row.unsigned) { delete row.unsigned; }               // older database (LETTER_TEMPLATES.sql not run): plain letter as before
       if (!row.request_id) { delete row.request_id; }
+      if (!row.layout) { delete row.layout; }                   // older database (RESOLUTION_FORMAT.sql not run)
       const { data, error } = await supabase.from("letters").insert([row]).select().single();
       if (error) throw error;
       openPrint(`Letter ${ref}`, [letterHtml(data as Letter, pc)], w);
@@ -108,25 +146,46 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
 
       {isCommittee && open && (
         <div className="mx-5 mb-5 border-2 border-[var(--gold)] bg-[#fffdf5] p-4 space-y-3">
-          <div className="font-bold tracking-[0.1em] text-[#8a6d14]">NEW LETTER • {label(flat)}</div>
+          <div className="font-bold tracking-[0.1em] text-[#8a6d14]">NEW {isRes ? "RESOLUTION" : "LETTER"} • {label(flat)}</div>
+          {!prefill && formats.length > 0 && (
+            <label className="text-[10px] opacity-80 block">START FROM A FORMAT <span className="opacity-60">(optional: the text is filled from the flat's records)</span>
+              <select className="field mt-1" value={fmt?.id || ""} onChange={(e) => pickFormat(e.target.value)}>
+                <option value="">— write the letter myself —</option>
+                {formats.filter((t) => t.kind !== "resolution" || canApprove).map((t) => <option key={t.id} value={t.id}>{t.name}{t.kind === "resolution" ? " (resolution)" : t.kind === "bank" ? " (bank, unsigned)" : ""}</option>)}
+              </select></label>)}
+          {fmt && fillFields(fmt.body).length > 0 && (
+            <div className="border border-[var(--border)] bg-white p-3 space-y-2">
+              <div className="text-[10px] font-bold tracking-[0.1em]">FILL IN</div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {fillFields(fmt.body).map((f) => (
+                  <label key={f.key} className="text-[10px] opacity-80 min-w-0">{f.label.toUpperCase()}
+                    <input className="field mt-1" type={f.kind === "date" ? "date" : "text"} inputMode={f.kind === "amount" ? "decimal" : undefined} value={typed[f.key] || ""}
+                      onChange={(e) => setBox(f.key, f.kind === "amount" ? e.target.value.replace(/[^0-9.,]/g, "") : e.target.value)} /></label>))}
+              </div>
+              <div className="text-[10.5px] opacity-70">Empty boxes print as ______ so they can be filled in by hand.{edited && <> The text was edited by hand, so the boxes no longer change it. <button type="button" className="underline" onClick={() => { setEdited(false); setForm((f) => ({ ...f, body: fillBody(fmt, typed, dues) })); }}>Refill the text from the boxes</button></>}</div>
+            </div>)}
+          {isRes && !canApprove && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Only the Chairman or the Secretary (from their own committee login) can issue a resolution.</div>}
           <div className="grid sm:grid-cols-[160px_1fr] gap-3">
             <label className="text-[10px] opacity-80">DATE<input type="date" className="field mt-1" value={form.letter_date} onChange={(e) => setForm({ ...form, letter_date: e.target.value })} /></label>
             <label className="text-[10px] opacity-80">OWNER NAME (AS ON LETTER)<input className="field mt-1" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} /></label>
           </div>
-          <div className="text-[10px] opacity-80">ADDRESSED TO
+          {!isRes && <div className="text-[10px] opacity-80">ADDRESSED TO
             <div className="flex flex-wrap gap-4 mt-1.5 text-[12px]">
               <label className="flex items-center gap-1.5"><input type="radio" checked={form.kind === "all"} onChange={() => setForm({ ...form, kind: "all" })} /> To whomsoever it may concern</label>
               <label className="flex items-center gap-1.5"><input type="radio" checked={form.kind === "third"} onChange={() => setForm({ ...form, kind: "third" })} /> To a third party (bank, authority, builder…)</label>
-            </div></div>
-          {form.kind === "third" && <label className="text-[10px] opacity-80 block">TO (NAME AND ADDRESS) * <span className="opacity-60">— one line each</span>
+            </div></div>}
+          {!isRes && form.kind === "third" && <label className="text-[10px] opacity-80 block">TO (NAME AND ADDRESS) * <span className="opacity-60">— one line each</span>
             <textarea className="field mt-1 !h-auto font-sans text-[13px]" rows={4} value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder={"The Branch Manager\nHDFC Bank Ltd.\nNaranpura Branch\nAhmedabad – 380013"} /></label>}
-          <label className="text-[10px] opacity-80 block">SUBJECT *<input className="field mt-1" placeholder="e.g. No Objection Certificate for home loan" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>
+          <label className="text-[10px] opacity-80 block">{isRes ? "TITLE" : "SUBJECT"} *<input className="field mt-1" placeholder="e.g. No Objection Certificate for home loan" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>
           <label className="text-[10px] opacity-80 block">LETTER TEXT * <span className="opacity-60">(leave an empty line between paragraphs)</span>
-            <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={9} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
+            <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={9} value={form.body} onChange={(e) => { setEdited(true); setForm({ ...form, body: e.target.value }); }}
               placeholder={"This is to certify that Shri / Smt. … is the owner of Flat … in Sukh Tower, a member of the society …\n\nThe society has no objection to …"} /></label>
-          {prefill?.unsigned && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Bank letter: it is issued as an <b>UNSIGNED</b> copy (no signature or stamp printed). Print it; the Chairman or Secretary signs and stamps it by hand and hands it over; then tick SIGNED COPY HANDED OVER in the list below.</div>}
+          {isRes && <div className="border border-sky-300 bg-sky-50 text-sky-900 p-2">Committee resolution: issued by the Chairman, or the Secretary in the Chairman's absence. It prints with the committee's signature table; the Chairman, the Secretary and a Committee Member sign it by hand, and you then tick SIGNED COPY HANDED OVER.</div>}
+          {(prefill?.unsigned || fmt?.kind === "bank") && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Bank letter: it is issued as an <b>UNSIGNED</b> copy (no signature or stamp printed). Print it; the Chairman or Secretary signs and stamps it by hand and hands it over; then tick SIGNED COPY HANDED OVER in the list below.</div>}
           <div className="flex flex-wrap gap-2 items-end">
-            {!prefill?.unsigned && <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[240px]" value={form.signer} onChange={(e) => setForm({ ...form, signer: e.target.value })}>
+            {isRes ? <label className="text-[10px] opacity-80">ISSUED BY<select className="field mt-1 !w-[240px]" value={form.signer} onChange={(e) => setForm({ ...form, signer: e.target.value })}>
+              {signers.filter((g) => /chairman|secretary/i.test(g.designation)).map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>
+            : !prefill?.unsigned && fmt?.kind !== "bank" && <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[240px]" value={form.signer} onChange={(e) => setForm({ ...form, signer: e.target.value })}>
               <option value="">— no signature —</option>{signers.map((g) => <option key={g.id} value={g.id}>{g.designation} – {g.name}</option>)}</select></label>}
             <button onClick={preview} className="btn-line px-4 py-2">PREVIEW</button>
             <button onClick={issue} disabled={busy} className="btn-navy px-4 py-2 font-bold">{busy ? "ISSUING…" : "ISSUE & PRINT"}</button>
