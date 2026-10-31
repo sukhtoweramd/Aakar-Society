@@ -44,3 +44,7 @@ h1, h2, h3 { font-family: var(--font-heading); font-weight: 700; letter-spacing:
 
 /* Phones: 16px text in boxes stops iPhones zooming in when a box is tapped */
 @media (max-width: 640px) { .field { font-size: 16px; } }
+
+/* iPhone: a date box has its own minimum width and stuck out past the card. Fit it to the box like any other. */
+input.field[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; min-height: 2.75rem; box-sizing: border-box; text-align: left; }
+input.field[type="date"]::-webkit-date-and-time-value { text-align: left; }

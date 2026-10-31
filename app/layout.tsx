@@ -15,6 +15,7 @@ export const viewport: Viewport = {
   themeColor: "#0f1d3d",
   width: "device-width",
   initialScale: 1,
+  minimumScale: 1, // iPhone Safari zooms the whole page OUT to fit anything wider than the screen; this stops that (pinch-zoom in still works)
   viewportFit: "cover",
 };
 
