@@ -1,6 +1,6 @@
 // Standard letter formats (LETTER_TEMPLATES.sql, 30 Oct 2026). No database code here, so tests can load it.
 export type LetterTemplate = {
-  id: string; name: string; kind: "general" | "bank"; subject: string; addressee: string | null; body: string;
+  id: string; name: string; kind: "general" | "bank" | "resolution"; subject: string; addressee: string | null; body: string;
   sort: number; active: boolean; updated_at?: string; updated_by?: string | null;
 };
 

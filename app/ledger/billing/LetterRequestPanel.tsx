@@ -13,7 +13,7 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [done, setDone] = useState("");
   // the society's standard formats (LETTER_TEMPLATES.sql); before that script, the fixed list
   const [formats, setFormats] = useState<{ id: string; name: string; kind: string }[] | null>(null);
-  useEffect(() => { supabase.from("letter_templates").select("id, name, kind").eq("active", true).order("sort").order("name").then(({ data, error }) => setFormats(error ? null : (data as any[]) || [])); }, []);
+  useEffect(() => { supabase.from("letter_templates").select("id, name, kind").eq("active", true).order("sort").order("name").then(({ data, error }) => setFormats(error ? null : ((data as any[]) || []).filter((t) => t.kind !== "resolution"))); }, []);
   const types = formats ? [...formats.map((f) => f.name), "Other"] : LETTER_TYPES;
 
   async function load() {
