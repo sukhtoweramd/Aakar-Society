@@ -5,6 +5,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthedClient } from "@/lib/serverAuth";
+import { pickGuide } from "@/lib/helpSections";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
   const body: any = await req.json().catch(() => ({}));
   const question = String(body?.question || "").trim().slice(0, 600);
   if (!question) return NextResponse.json({ error: "Type a question." }, { status: 400 });
+  // Send only the parts of the guide that match the question (plus the overview); the earlier questions help pick them too.
+  const lastUser = (Array.isArray(body?.history) ? body.history : []).filter((m: any) => m?.role === "user").slice(-1)[0]?.text || "";
+  const guide = pickGuide(KB, `${question} ${question.length < 40 ? String(lastUser).slice(0, 200) : ""}`);
   const history = (Array.isArray(body?.history) ? body.history : []).slice(-4)
     .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.text === "string")
     .map((m: any) => ({ role: m.role, content: String(m.text).slice(0, 1200) }));
@@ -60,8 +64,8 @@ You cannot see the member's bills, payments or data; if they ask about their own
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
 
-HELP GUIDE:
-${KB}`;
+HELP GUIDE (the parts that match the question):
+${guide}`;
 
   const errors: string[] = [];
   for (const model of MODELS) {
