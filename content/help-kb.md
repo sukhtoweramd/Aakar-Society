@@ -74,16 +74,19 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Only your flat, the responsible committee member(s) and the committee see a complaint.
 
 ## Booking the common plot
-- Areas: **TOWER-A**, **TOWER-B** and **COMMON**. Each can be booked for a date, **MORNING** or **EVENING**. No charge is taken in the app.
+- Four areas: **Tower A area**, **Center area**, **Tower B area** and **Main common area**. A booking is for the **full day** (no morning / evening). One booking per area per date.
+- Each area has a **charge per day**, set by the Chairman, the Secretary or the main admin (COMMITTEE → BOOKINGS → BOOKING CHARGES; every change is logged). No deposit.
 - MY FLAT → **BOOK COMMON PLOT ↓** → **+ BOOK AN AREA**.
   1. DATE: from tomorrow up to 90 days ahead.
-  2. TIME: MORNING or EVENING.
-  3. AREA: tick one or more. Areas already booked or requested for that date and time are greyed out, with the flat number. SELECT ALL FREE AREAS ticks every free area.
-  4. PURPOSE (optional), then SEND REQUEST.
+  2. AREA: tick one or more. Areas already booked or requested for that date are greyed out, with the flat number. Each area shows its charge; the **total** is shown below. SELECT ALL FREE AREAS ticks every free area.
+  3. PURPOSE (optional), then SEND REQUEST.
+- Whoever books pays: the **owner** from a flat login, or the **tenant** from the tenant login (in a rented flat the tenant normally books). The charge is copied onto the booking, so a later change of charge does not affect it.
 - The request goes to the **Chairman and the Secretary**; approval by either one is enough (they approve from their own committee login). MY BOOKINGS shows WAITING FOR APPROVAL, then **CONFIRMED**, or NOT APPROVED with the reason.
-- When a booking is confirmed, the app posts a notice and a login banner for everyone: "<area> is booked by Flat … on … (morning/evening). Please remove vehicles parked in <area>." If all three areas are booked: "All vehicles should be parked outside the premises."
-- **Cancel**: MY BOOKINGS → CANCEL BOOKING, up to the day before. On the day itself, ask the committee. The notice then shows CANCELLED and the banner goes off.
-- Chairman / Secretary: log in with your committee (email) login. Requests appear in your MY FLAT under REQUESTS TO APPROVE, and in COMMITTEE → **BOOKINGS** (WAITING, CONFIRMED, PAST). APPROVE ✓, or NOT APPROVE with a reason. 📲 SHARE NOTICE sends the notice text to the society WhatsApp group; PRINT LIST prints confirmed bookings (for the security guard).
+- **When it is approved** the society raises one **invoice** (OTHER BILL series) in the name of whoever booked, with a line for each area and date. The member (or tenant) sees it under MY BILLS & RECEIPTS and can tap **I HAVE PAID**, as for any bill. A tenant sees only their own booking invoice. A tenant's invoice is not added to the owner's maintenance balance; the committee sees it in the dues list marked "Tenant – booking". If the total is ₹0, no invoice is made. The committee can send the invoice number and amount on WhatsApp (📲 SEND INVOICE).
+- The app also posts a notice and a login banner for everyone: "<area> is booked by Flat … on …. Please remove vehicles parked in <area>." If all areas are booked: "All vehicles should be parked outside the premises."
+- **Society events**: the committee books with the **Society event** tick: no charge and no invoice (the event collects through its own passes).
+- **Cancel**: MY BOOKINGS → CANCEL BOOKING, up to the day before. The invoice is cancelled too, **no charge**. If the invoice is already paid, only the committee can cancel; the booking card then shows **REFUND DUE** and the committee refunds the member outside the app (the app keeps no refund entry). The notice shows CANCELLED and the banner goes off.
+- Chairman / Secretary: log in with your committee (email) login. Requests appear in your MY FLAT under REQUESTS TO APPROVE, and in COMMITTEE → **BOOKINGS** (WAITING, CONFIRMED, PAST). APPROVE ✓, or NOT APPROVE with a reason. 📲 SHARE NOTICE sends the notice text to the society WhatsApp group; PRINT LIST prints confirmed bookings with their charge (for the security guard).
 
 ## Nominee
 - MY FLAT → **NOMINEE ↓** → **+ ADD NOMINEE**: the person(s) the flat's share and interest go to. The nominee need not live in the society.

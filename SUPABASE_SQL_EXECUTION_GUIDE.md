@@ -16,6 +16,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 8 | `EVENT_ASSISTING.sql` | Step 7: event role Assisting (also for tenants) (PR #31) | **run 30 Oct 2026, check OK** |
 | 9 | `LETTER_TEMPLATES.sql` | Step 8: letter formats, approval, unsigned bank letters (PR #32) | **run 30 Oct 2026, letters tested live** |
 | 10 | `sql-security/10_RESTORE_letter_templates.sql` | Step 8: restores bring formats back | run? (confirm with 00c check) |
+| 11 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
 
 ---
@@ -227,3 +228,21 @@ Adds `letter_templates` to the restore list just before `letter_requests`. **Exp
 **Tested (9, 10):** local PostgreSQL 16 with simulated logins: run, second run, undo, re-run; a member sees the 6 formats and
 asks; a plain committee login cannot approve and cannot issue before approval; the Chairman approves, then issuing works;
 history has 3 lines; a tenant login cannot ask. **Not yet run on live.**
+
+---
+
+## 11. `BOOKING_CHARGES.sql` — common plot booking charges (31 Oct 2026)
+
+**What it changes:**
+- Areas become **Tower A area, Center area (new), Tower B area, Main common area**; a **charge per day** on each area. Bookings are **full day** (old morning / evening bookings stay as history).
+- Charges are set only by the Chairman, the Secretary or the main admin (`set_booking_charge`, also a guard on direct edits); every change goes to the access log.
+- On approval (`decide_booking`) one invoice is raised in the OTHER BILL series for whoever booked (owner, or tenant with `bills.tenant_bill`); ₹0 and society events make none; approving twice makes one. Cancelling cancels the invoice.
+- Tenant invoices: the tenant login reads its flat's booking invoices, payments and reports "I have paid" for them only; the owner login does not see them.
+- No new table (so no change to `BACKUP_TABLES`); new columns come back with a restore.
+
+**Prerequisites:** BOOKINGS.sql, BILLING.sql, LETTERS.sql, TENANT_LOGINS.sql, AREAS_BACKUPS.sql, sql-security/05 run earlier, and the booking-charges app update live.
+
+**Expected check result:** `areas` lists the four names with ₹0 • `new columns 6` • `bill rules (owner + tenant) 2` • `payment rules (owner + tenant) 2` • `charge guards (expect 2) 2` • `functions 5` • `request_booking versions (expect 1) 1`.
+Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
+
+**Undo:** `BOOKING_CHARGES_UNDO.sql` (morning / evening again, no charge; data kept).

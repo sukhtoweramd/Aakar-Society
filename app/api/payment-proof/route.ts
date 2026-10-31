@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
     if (!/^[A-Z]\d{1,5}$/.test(flat)) return NextResponse.json({ error: "Bad flat" }, { status: 400 });
-    if (!me.isCommittee && me.flatId !== flat) return NextResponse.json({ error: "Not your flat." }, { status: 403 });
+    if (!me.isCommittee && me.flatId !== flat && me.tenantFlatId !== flat) return NextResponse.json({ error: "Not your flat." }, { status: 403 });
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (!TYPES[ext]) return NextResponse.json({ error: "Please attach a photo (JPG, PNG) or a PDF." }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is larger than 4 MB." }, { status: 400 });

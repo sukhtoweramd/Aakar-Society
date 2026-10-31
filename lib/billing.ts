@@ -20,6 +20,7 @@ export type Bill = {
   bill_date: string; due_date: string | null; period_from: string | null; period_to: string | null;
   lines: Line[]; amount: number; signer_id: string | null; signer_name: string | null; signer_designation: string | null;
   status: "active" | "cancelled"; cancel_reason: string | null; created_at: string; created_by: string | null;
+  tenant_bill?: boolean | null;   // common plot booking invoice raised to the tenant (BOOKING_CHARGES.sql): not part of the owner's balance
 };
 export type Payment = {
   id: string; receipt_no: string; bill_id: string; flat_id: string; amount: number; paid_on: string;
@@ -93,12 +94,8 @@ export function billBalance(b: Bill, pays: Payment[]) {
   const paid = pays.filter((p) => p.bill_id === b.id && p.status === "active").reduce((n, p) => n + num(p.amount), 0);
   return { paid, balance: b.status === "cancelled" ? 0 : Math.round((num(b.amount) - paid) * 100) / 100 };
 }
-export function flatTotals(bills: Bill[], pays: Payment[]) {
-  const live = bills.filter((b) => b.status === "active");
-  const billed = live.reduce((n, b) => n + num(b.amount), 0);
-  const received = pays.filter((p) => p.status === "active" && live.some((b) => b.id === p.bill_id)).reduce((n, p) => n + num(p.amount), 0);
-  return { billed, received, due: Math.round((billed - received) * 100) / 100 };
-}
+import { flatTotals } from "./billTotals";
+export { flatTotals, tenantBookingDue } from "./billTotals";
 
 // ---------- signatures & stamp ----------
 /** Make a photo of a signature/stamp on white paper into a cropped transparent PNG (data URL). */
@@ -266,7 +263,7 @@ export function receiptHtml(p: Payment, b: Bill, c: PrintCtx, allPays: Payment[]
 }
 
 export function statementHtml(f: Flat, bills: Bill[], pays: Payment[], c: PrintCtx): string {
-  const live = bills.filter((b) => b.status === "active").sort((a, b) => a.bill_date.localeCompare(b.bill_date) || a.bill_no.localeCompare(b.bill_no));
+  const live = bills.filter((b) => b.status === "active" && !b.tenant_bill).sort((a, b) => a.bill_date.localeCompare(b.bill_date) || a.bill_no.localeCompare(b.bill_no));   // the tenant's booking invoices are not the owner's
   const t = flatTotals(live, pays);
   const rows = live.map((b) => {
     const ps = pays.filter((p) => p.bill_id === b.id && p.status === "active").sort((a, z) => a.paid_on.localeCompare(z.paid_on));
@@ -374,7 +371,7 @@ export async function duesListPdf(rows: { f: Flat; due: number; count: number; o
 
 /** Itemised WhatsApp text of a flat's unpaid bills, with bank details when set. */
 export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | null): string {
-  const open = bills.filter((b) => b.flat_id === f.id && b.status === "active")
+  const open = bills.filter((b) => b.flat_id === f.id && b.status === "active" && !b.tenant_bill)
     .map((b) => ({ b, ...billBalance(b, pays) })).filter((x) => x.balance > 0)
     .sort((a, z) => a.b.bill_date.localeCompare(z.b.bill_date));
   const total = open.reduce((n, x) => n + x.balance, 0);
