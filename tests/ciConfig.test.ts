@@ -22,5 +22,5 @@ test("Dependabot: monthly, grouped small updates, major versions ignored, few op
   assert.match(dep, /interval:\s*monthly/);
   assert.match(dep, /semver-major/);
   assert.match(dep, /groups:/);
-  for (const m of dep.matchAll(/open-pull-requests-limit:\s*(\d+)/g)) assert.ok(Number(m[1]) <= 2);
+  for (const m of Array.from(dep.matchAll(/open-pull-requests-limit:\s*(\d+)/g))) assert.ok(Number(m[1]) <= 2);
 });
