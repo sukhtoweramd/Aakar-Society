@@ -26,6 +26,9 @@ const SECURITY_HEADERS = [
 
 module.exports = {
   reactStrictMode: true,
+  // The app never uses next/image, so switch the built-in image optimizer (/_next/image) off: it had several
+  // critical advisories on Next 14 (audit PR-8). Pictures are served as they are, as they always were.
+  images: { unoptimized: true },
   async headers() {
     return [{ source: "/(.*)", headers: SECURITY_HEADERS }];
   },
