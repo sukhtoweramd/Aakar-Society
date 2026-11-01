@@ -1,0 +1,21 @@
+# Dependabot (audit PR-7): at most ONE grouped pull request per month for small updates (minor + patch).
+# Big version jumps (e.g. Next.js 14 -> 15) are ignored here and done by hand, one at a time.
+# Security alerts / security-fix pull requests come from GitHub's own settings, not from this file.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      small-updates:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1

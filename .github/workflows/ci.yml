@@ -1,5 +1,7 @@
 # Checks every pull request and every push to main: tests, type check and a full production build.
 # Uses placeholder settings only — no real keys are needed or stored here.
+# The dependency audit at the end only REPORTS (it shows a warning, it never blocks a merge): several known
+# issues have no fix yet (e.g. xlsx), so a blocking check would stop every pull request.
 name: CI
 on:
   pull_request:
@@ -28,3 +30,6 @@ jobs:
         run: npx tsc --noEmit -p .
       - name: Build
         run: npm run build
+      - name: Dependency audit (report only)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
