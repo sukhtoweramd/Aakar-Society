@@ -1,6 +1,6 @@
 // Backup & restore of all society records.
-// GET  → list of stored backups (committee), or ?key=… to download one, ?log=1 for the access log.
-// POST {action:"backup"}            → make a backup now: saved in R2 and returned for download (committee).
+// GET  → list of stored backups (committee), or ?id=… to download one (MAIN ADMIN only), ?log=1 for the access log.
+// POST {action:"backup"}            → make a backup now: saved in R2 and returned for download (MAIN ADMIN only).
 // POST {action:"restore", backup|key} → replace all records with the backup (MAIN ADMIN only); a backup of the
 //                                     current records is taken first.
 import { NextRequest, NextResponse } from "next/server";
@@ -19,6 +19,14 @@ async function guard(req: NextRequest) {
   return { me, admin };
 }
 
+// A backup holds every resident's records, so downloading one (or making one that is handed to the browser) is
+// for the main admin login only (audit PR-5). Other committee logins can still see the list and the access log.
+async function isMainAdminLogin(admin: any, userId: string) {
+  const committee = (await allUsers(admin)).filter(isCommitteeUser);
+  return mainAdminId(committee) === userId;
+}
+const MAIN_ADMIN_ONLY = () => NextResponse.json({ error: "Only the main admin login can download a backup." }, { status: 403 });
+
 export async function GET(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
@@ -26,6 +34,7 @@ export async function GET(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get("id");
     if (id) {
+      if (!(await isMainAdminLogin(admin, me.userId))) return MAIN_ADMIN_ONLY();
       const key = await keyForId(id);
       if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 });
       const b = await readStoredBackup(key);
@@ -52,6 +61,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   try {
     if (body.action === "backup") {
+      if (!(await isMainAdminLogin(admin, me.userId))) return MAIN_ADMIN_ONLY();
       const b = await buildBackup(admin, me.email, "manual");
       const key = await storeBackup(b);
       await logAccess(admin, me.email, "backup", key ? "saved in file storage + downloaded" : "downloaded only (R2 not set up)", Object.entries(b.counts).map(([t, n]) => `${t} ${n}`).join(", "));

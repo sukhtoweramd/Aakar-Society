@@ -99,7 +99,11 @@ export default function BackupPanel() {
           <div className="serif text-[22px] font-bold">BACKUP &amp; RESTORE</div>
           <div className="opacity-60 mt-1 max-w-[680px]">A backup holds all society records: flats, families, vehicles, contacts, notices, events, bills, receipts and settings. Logins and passwords are not in it, and uploaded documents stay in file storage.</div>
         </div>
-        <button onClick={backupNow} disabled={!!busy} className="btn-navy px-5 py-2.5 tracking-[0.08em]">{busy === "backup" ? "MAKING BACKUP…" : "⬇ DOWNLOAD FULL BACKUP"}</button>
+        {info?.isMainAdmin ? (
+          <button onClick={backupNow} disabled={!!busy} className="btn-navy px-5 py-2.5 tracking-[0.08em]">{busy === "backup" ? "MAKING BACKUP…" : "⬇ DOWNLOAD FULL BACKUP"}</button>
+        ) : info && (
+          <div className="opacity-70 max-w-[300px]">Only the main admin login{info.mainAdminEmail ? ` (${info.mainAdminEmail})` : ""} can download a backup.</div>
+        )}
       </div>
 
       {info && <div className={`mt-4 p-3 border font-bold ${overdue ? "border-amber-300 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
@@ -120,7 +124,7 @@ export default function BackupPanel() {
                 <td className="p-2">{s.kind === "pre-restore" ? <span className="text-amber-700">Safety copy (before a restore)</span> : "Backup"}</td>
                 <td className="p-2">{fmtSize(s.size)}</td>
                 <td className="p-2 text-right whitespace-nowrap">{busy === s.id ? "…" : <>
-                  <button onClick={() => download(s)} className="underline mr-3">Download</button>
+                  {info.isMainAdmin && <button onClick={() => download(s)} className="underline mr-3">Download</button>}
                   {info.isMainAdmin && <button onClick={() => chooseStored(s)} className="text-red-700 underline">Restore…</button>}
                 </>}</td>
               </tr>))}</tbody>
