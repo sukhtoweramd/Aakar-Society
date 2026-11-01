@@ -3,6 +3,7 @@
 // and the member still checks and sends the form. Needs CLOUDFLARE_AI_TOKEN (+ the account id already used for R2) in Vercel.
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthedClient } from "@/lib/serverAuth";
+import { makeLimiter } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -21,6 +22,8 @@ Reply with ONLY one JSON object, no other text, with these keys:
 "paid_to": the payee name or UPI ID.
 Use null for anything that is not clearly visible. Never guess or invent a value.`;
 
+// Each reading calls Cloudflare Workers AI: at most 8 per minute per login (soft guard, per server instance).
+const allowRead = makeLimiter(8, 60_000);
 const clean = (v: unknown) => (typeof v === "string" ? v.trim() : v);
 function firstJson(text: string): any {
   const m = text.match(/\{[\s\S]*\}/);
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
       const j: any = await r.json().catch(() => ({}));
       return NextResponse.json({ ok: r.ok, answer: j?.result?.response || j?.errors?.[0]?.message || `status ${r.status}` });
     }
+    if (!allowRead(me.userId)) return NextResponse.json({ error: "Too many readings in a minute. Please wait a little, or fill in the details by hand." }, { status: 429 });
     let dataUrl = "";
     if (isJson) {
       const img = String(body?.image || "");
