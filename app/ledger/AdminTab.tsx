@@ -62,22 +62,6 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
     setMsg({ ok: true, text: "Default society rates filled in. Review, then click APPLY TO FLATS to save." });
   }
 
-  async function handleExcel(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!confirm(`Add/update flats from "${file.name}"? Flats with the same ID are updated; nothing is deleted.`)) return;
-    setBusy("excel"); setMsg(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const j = await api("/api/upload", { method: "POST", body: fd });
-      await reloadFlats();
-      setMsg({ ok: true, text: `Excel import: ${j.count} flats saved.` });
-    } catch (err: any) { setMsg({ ok: false, text: err.message }); }
-    setBusy(null);
-  }
-
   const annual = flats.reduce((n, f) => n + (f.maintenance || 0), 0);
   const terraceCount = categories.filter((c) => c.terrace).reduce((n, c) => n + c.ids.length, 0);
   const preview = categories.reduce((n, c) => n + (Number(rows[c.key]?.maint) || 0) * c.ids.length, 0);
@@ -154,17 +138,6 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
       <AiReadPanel />
       <HelpGuidePanel email={ctx.email} />
       <StoragePanel />
-
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 flex flex-wrap justify-between gap-4 items-center">
-        <div>
-          <div className="mono text-[11px] font-bold tracking-[0.12em]">IMPORT FROM EXCEL</div>
-          <div className="mono text-[10px] opacity-60 mt-1 max-w-[560px]">Columns: Tower, Floor, Flat No, Owner Name, BHK, Maintenance, Email, Committee, Status. Flats are matched by number (A1001); blank cells keep existing values; nothing is deleted.</div>
-        </div>
-        <label className="btn-navy mono text-[12px] tracking-[0.08em] px-5 py-2.5 cursor-pointer">
-          {busy === "excel" ? "IMPORTING…" : "📤 UPLOAD EXCEL"}
-          <input type="file" hidden accept=".xlsx,.xls" disabled={!!busy} onChange={handleExcel} />
-        </label>
-      </div>
     </div>
   );
 }
