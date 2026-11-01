@@ -28,11 +28,12 @@ async function compressImage(file: File): Promise<Compressed> {
   return { file: new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }), before: file.size, after: blob.size, changed: true };
 }
 
+// isEvalSupported:false = the vendor's workaround for CVE-2024-4367 (script in a crafted PDF) on pdfjs-dist <= 4.1.392.
 async function compressPdf(file: File): Promise<Compressed> {
   if (file.size < 500 * 1024) return keep(file);
   const pdfjs: any = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
   if (doc.numPages > PDF_MAX_PAGES) return keep(file);
   const { jsPDF } = await import("jspdf");
   let out: any = null;
