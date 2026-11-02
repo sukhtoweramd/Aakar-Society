@@ -35,7 +35,7 @@ async function compressPdf(file: File): Promise<Compressed> {
   const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
-  if (doc.numPages > PDF_MAX_PAGES) return keep(file);
+  if (doc.numPages > PDF_MAX_PAGES) { console.info("[compress] kept the original:", doc.numPages, "pages"); return keep(file); }
   const { jsPDF } = await import("jspdf");
   let out: any = null;
   for (let p = 1; p <= doc.numPages; p++) {
@@ -58,7 +58,7 @@ async function compressPdf(file: File): Promise<Compressed> {
   await doc.destroy();
   if (!out) return keep(file);
   const blob: Blob = out.output("blob");
-  if (blob.size > file.size * 0.75) return keep(file);
+  if (blob.size > file.size * 0.75) { console.info("[compress] kept the original: result", blob.size, "not under 75% of", file.size); return keep(file); }
   return { file: new File([blob], file.name, { type: "application/pdf" }), before: file.size, after: blob.size, changed: true };
 }
 
@@ -68,7 +68,7 @@ export async function compressForUpload(file: File): Promise<Compressed> {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) || ["jpg", "jpeg", "png", "webp", "heic"].includes(ext)) return await compressImage(file);
     if (file.type === "application/pdf" || ext === "pdf") return await compressPdf(file);
-  } catch { /* phone could not read it: upload the original */ }
+  } catch (e) { console.warn("[compress] could not compress, uploading the original:", e); /* phone could not read it: upload the original */ }
   return keep(file);
 }
 
