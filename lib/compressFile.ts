@@ -28,11 +28,11 @@ async function compressImage(file: File): Promise<Compressed> {
   return { file: new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }), before: file.size, after: blob.size, changed: true };
 }
 
-// isEvalSupported:false = the vendor's workaround for CVE-2024-4367 (script in a crafted PDF) on pdfjs-dist <= 4.1.392.
+// isEvalSupported:false = the vendor's workaround for CVE-2024-4367 (script in a crafted PDF); kept as a second safeguard on pdfjs-dist 6.x (fixed in 4.2.67).
 async function compressPdf(file: File): Promise<Compressed> {
   if (file.size < 500 * 1024) return keep(file);
   const pdfjs: any = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
   if (doc.numPages > PDF_MAX_PAGES) return keep(file);
   const { jsPDF } = await import("jspdf");
@@ -46,7 +46,7 @@ async function compressPdf(file: File): Promise<Compressed> {
     canvas.width = Math.ceil(vp.width); canvas.height = Math.ceil(vp.height);
     const g = canvas.getContext("2d")!;
     g.fillStyle = "#fff"; g.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: g, viewport: vp }).promise;
+    await page.render({ canvasContext: g, canvas, viewport: vp }).promise;
     const jpg = new Uint8Array(await (await canvasToJpeg(canvas, 0.7)).arrayBuffer());
     const orient = base.width > base.height ? "l" : "p";
     if (!out) out = new jsPDF({ orientation: orient, unit: "pt", format: [base.width, base.height], compress: true });
