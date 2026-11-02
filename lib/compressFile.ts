@@ -28,13 +28,15 @@ async function compressImage(file: File): Promise<Compressed> {
   return { file: new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }), before: file.size, after: blob.size, changed: true };
 }
 
+// Uses the "legacy" build: the standard pdfjs-dist 6 build needs very new browser features (Map.getOrInsertComputed) and failed silently on current Chrome (PR-11 rolled back).
 // isEvalSupported:false = the vendor's workaround for CVE-2024-4367 (script in a crafted PDF); kept as a second safeguard on pdfjs-dist 6.x (fixed in 4.2.67).
 async function compressPdf(file: File): Promise<Compressed> {
   if (file.size < 500 * 1024) return keep(file);
-  const pdfjs: any = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
-  if (doc.numPages > PDF_MAX_PAGES) return keep(file);
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false });   // pdfjs 6: destroy() lives on the loading task, not on the document
+  const doc = await task.promise;
+  if (doc.numPages > PDF_MAX_PAGES) { console.info("[compress] kept the original:", doc.numPages, "pages"); await task.destroy(); return keep(file); }
   const { jsPDF } = await import("jspdf");
   let out: any = null;
   for (let p = 1; p <= doc.numPages; p++) {
@@ -54,10 +56,10 @@ async function compressPdf(file: File): Promise<Compressed> {
     out.addImage(jpg, "JPEG", 0, 0, base.width, base.height);
     page.cleanup();
   }
-  await doc.destroy();
+  await task.destroy();
   if (!out) return keep(file);
   const blob: Blob = out.output("blob");
-  if (blob.size > file.size * 0.75) return keep(file);
+  if (blob.size > file.size * 0.75) { console.info("[compress] kept the original: result", blob.size, "not under 75% of", file.size); return keep(file); }
   return { file: new File([blob], file.name, { type: "application/pdf" }), before: file.size, after: blob.size, changed: true };
 }
 
@@ -67,7 +69,7 @@ export async function compressForUpload(file: File): Promise<Compressed> {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) || ["jpg", "jpeg", "png", "webp", "heic"].includes(ext)) return await compressImage(file);
     if (file.type === "application/pdf" || ext === "pdf") return await compressPdf(file);
-  } catch { /* phone could not read it: upload the original */ }
+  } catch (e) { console.warn("[compress] could not compress, uploading the original:", e); /* phone could not read it: upload the original */ }
   return keep(file);
 }
 

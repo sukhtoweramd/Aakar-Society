@@ -12,9 +12,21 @@ test("pdfjs-dist is pinned to a 6.x release", () => {
   assert.match(pkg.dependencies["pdfjs-dist"], /^6\.\d+\.\d+$/);
 });
 
+test("compressFile.ts uses the legacy PDF.js build (works on browsers without the newest JS features)", () => {
+  const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
+  assert.match(src, /import\("pdfjs-dist\/legacy\/build\/pdf\.mjs"\)/);
+  assert.match(src, /pdfjs-dist\/legacy\/build\/pdf\.worker\.min\.mjs/);
+});
+
 test("the worker file named in compressFile.ts exists in pdfjs-dist", () => {
   const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
   const m = src.match(/new URL\("pdfjs-dist\/([^"]+)"/);
   assert.ok(m, "worker path not found");
   assert.ok(existsSync(join(root, "node_modules/pdfjs-dist", m![1])), `missing ${m![1]}`);
+});
+
+test("compressFile.ts closes PDF.js through the loading task (doc.destroy() was removed in pdfjs-dist 6)", () => {
+  const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
+  assert.doesNotMatch(src, /\bdoc\.destroy\(/);
+  assert.match(src, /task\.destroy\(\)/);
 });
