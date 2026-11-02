@@ -89,7 +89,7 @@ function card(c: CardData, printed: string): string {
   const docs = c.docs.length ? sec("DOCUMENTS WITH THE SOCIETY", `<table><tr><th style="width:34%">DOCUMENT TYPE</th><th>FILE</th><th style="width:18%">UPLOADED ON</th></tr>
     ${c.docs.map((x) => `<tr><td class="n">${esc(x.type)}</td><td>${esc(x.name)}</td><td>${d(x.date)}</td></tr>`).join("")}</table>`) : "";
   const consent = "directory_consent" in f ? sec("DIRECTORY CONSENT", f.directory_consent
-    ? `<div class="consent"><div class="tick">✓</div><div><b>Family details shared with society members.</b>${f.directory_consent_at ? ` Consent given on ${d(f.directory_consent_at)}.` : ""} Names, relations and mobiles appear in the Member Directory; vehicles, emergency contacts and documents stay with the committee.</div></div>`
+    ? `<div class="consent"><div class="tick">✓</div><div><b>Family details shared with society members.</b>${f.directory_consent_at ? ` Consent given on ${d(f.directory_consent_at)}.` : ""} Names, relations and mobiles appear in the Member Directory and business details in the Business Directory; vehicles, emergency contacts and documents stay with the committee.</div></div>`
     : `<div class="consent no"><div class="tick">–</div><div><b>Family details not shared.</b> Only the flat number and ${rented ? "tenant" : "owner"} name appear in the Member Directory.</div></div>`) : "";
   const occupancy = rented ? "Rented" : f.occupancy === "owner" || !("occupancy" in f) ? "Owner-occupied" : "—";
   const occupied = ["filled", "occupied", "sold", "approved"].includes((f.status || "").toLowerCase());

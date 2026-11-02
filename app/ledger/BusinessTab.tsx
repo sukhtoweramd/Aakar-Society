@@ -77,7 +77,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
         <div className="flex flex-wrap justify-between gap-3 items-start">
           <div>
             <div className="serif text-[24px] font-bold">Members&apos; Business & Profession Directory</div>
-            <div className="mono text-[11px] opacity-60">{list.length} listings • built automatically from each flat&apos;s family members</div>
+            <div className="mono text-[11px] opacity-60">{list.length} listings • built from the family members of flats that share their details (set in MY FLAT → directory consent)</div>
           </div>
           <div className="flex gap-2 flex-wrap">
             <select value={cat} onChange={(e) => setCat(e.target.value)} className="mono text-[12px] border border-[var(--border)] bg-[var(--bg)] px-2 py-2 rounded-[2px]">
