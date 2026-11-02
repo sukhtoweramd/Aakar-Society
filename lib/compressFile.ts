@@ -28,11 +28,12 @@ async function compressImage(file: File): Promise<Compressed> {
   return { file: new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }), before: file.size, after: blob.size, changed: true };
 }
 
+// Uses the "legacy" build: the standard pdfjs-dist 6 build needs very new browser features (Map.getOrInsertComputed) and failed silently on current Chrome (PR-11 rolled back).
 // isEvalSupported:false = the vendor's workaround for CVE-2024-4367 (script in a crafted PDF); kept as a second safeguard on pdfjs-dist 6.x (fixed in 4.2.67).
 async function compressPdf(file: File): Promise<Compressed> {
   if (file.size < 500 * 1024) return keep(file);
-  const pdfjs: any = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
   if (doc.numPages > PDF_MAX_PAGES) return keep(file);
   const { jsPDF } = await import("jspdf");

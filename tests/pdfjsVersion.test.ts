@@ -12,6 +12,12 @@ test("pdfjs-dist is pinned to a 6.x release", () => {
   assert.match(pkg.dependencies["pdfjs-dist"], /^6\.\d+\.\d+$/);
 });
 
+test("compressFile.ts uses the legacy PDF.js build (works on browsers without the newest JS features)", () => {
+  const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
+  assert.match(src, /import\("pdfjs-dist\/legacy\/build\/pdf\.mjs"\)/);
+  assert.match(src, /pdfjs-dist\/legacy\/build\/pdf\.worker\.min\.mjs/);
+});
+
 test("the worker file named in compressFile.ts exists in pdfjs-dist", () => {
   const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
   const m = src.match(/new URL\("pdfjs-dist\/([^"]+)"/);
