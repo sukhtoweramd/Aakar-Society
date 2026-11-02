@@ -34,8 +34,9 @@ async function compressPdf(file: File): Promise<Compressed> {
   if (file.size < 500 * 1024) return keep(file);
   const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
-  if (doc.numPages > PDF_MAX_PAGES) { console.info("[compress] kept the original:", doc.numPages, "pages"); return keep(file); }
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false });   // pdfjs 6: destroy() lives on the loading task, not on the document
+  const doc = await task.promise;
+  if (doc.numPages > PDF_MAX_PAGES) { console.info("[compress] kept the original:", doc.numPages, "pages"); await task.destroy(); return keep(file); }
   const { jsPDF } = await import("jspdf");
   let out: any = null;
   for (let p = 1; p <= doc.numPages; p++) {
@@ -55,7 +56,7 @@ async function compressPdf(file: File): Promise<Compressed> {
     out.addImage(jpg, "JPEG", 0, 0, base.width, base.height);
     page.cleanup();
   }
-  await doc.destroy();
+  await task.destroy();
   if (!out) return keep(file);
   const blob: Blob = out.output("blob");
   if (blob.size > file.size * 0.75) { console.info("[compress] kept the original: result", blob.size, "not under 75% of", file.size); return keep(file); }

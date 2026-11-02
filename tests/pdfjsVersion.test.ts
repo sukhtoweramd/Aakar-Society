@@ -24,3 +24,9 @@ test("the worker file named in compressFile.ts exists in pdfjs-dist", () => {
   assert.ok(m, "worker path not found");
   assert.ok(existsSync(join(root, "node_modules/pdfjs-dist", m![1])), `missing ${m![1]}`);
 });
+
+test("compressFile.ts closes PDF.js through the loading task (doc.destroy() was removed in pdfjs-dist 6)", () => {
+  const src = readFileSync(join(root, "lib/compressFile.ts"), "utf8");
+  assert.doesNotMatch(src, /\bdoc\.destroy\(/);
+  assert.match(src, /task\.destroy\(\)/);
+});
