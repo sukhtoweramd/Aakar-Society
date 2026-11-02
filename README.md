@@ -1,13 +1,13 @@
 # Aakar Sukh Tower – Society Management (Ahmedabad, 91 flats)
 
-Next.js 14 (App Router) · Supabase (database + login) · Cloudflare R2 (files) · Cloudflare Workers AI · Vercel (hosting)
+Next.js 15 (App Router) · Supabase (database + login) · Cloudflare R2 (files) · Cloudflare Workers AI · Vercel (hosting)
 Installable on phones (PWA). Built for phones first: most members use it on mobile.
 On phones (under 768 px) every login gets a home screen of buttons (`app/ledger/PhoneHome.tsx`, buttons in `lib/phoneMenu.ts`); each
 button opens one function with a HOME bar, and the phone's back button returns to the buttons. Computers keep the tabs.
 
 ## Features
 - **Flats** – grid of all flats by tower, MY FLAT page (family, vehicles, emergency contacts, directory consent),
-  Excel import (adds/updates, never deletes), flat profile cards
+  flat profile cards
 - **Flat documents** – fixed list (Index, Dastavej, Torrent Power bill, Property tax bill, Rent agreement, Share certificate,
   Allotment letter, Prathmik karar, Other), per-flat checklist, compression in the browser before upload,
   REPORTS → FLAT DOCUMENTS
@@ -44,7 +44,3 @@ button opens one function with a HOME bar, and the phone's back button returns t
 
 ## Checks
 `npm run typecheck` · `npm test` · `npm run build`
-
-## Excel import columns
-`Tower, Floor, Flat No, Owner Name, BHK, Maintenance, Email, Committee, Status` (Status: `filled` or `pending`) (only Tower and Flat No are required).
-Flat No can be written `1001`, `A1001` or `A-1001`; it is stored as `A1001` and matched to the existing flat; blank cells leave existing values unchanged.
