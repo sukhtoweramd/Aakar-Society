@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ageFromDob, ageOf, birthdayText, fullDob, validDob } from "@/lib/dob";
 import { byFamilyOrder, committeePeople, COMMITTEE_ROLES, topRole, type CommitteePerson, type Flat } from "@/lib/society";
+import { categoryOptions, normalizeCategory } from "@/lib/professions";
 
 export type Member = {
   id: string; flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; dob?: string | null; is_head: boolean | null;
@@ -11,11 +12,10 @@ export type Member = {
 
 const BLANK = { name: "", relation: "", mobile: "", email: "", age: "", dob: "", is_head: false, occupation: "", business_name: "", business_category: "", office_address: "", office_phone: "" };
 type Form = typeof BLANK;
-const CATEGORIES = ["Medical", "Legal", "Finance / CA", "IT / Software", "Engineering", "Education", "Retail / Shop", "Food", "Real Estate", "Manufacturing", "Government", "Service / Job", "Home Business", "Other"];
 
 const toForm = (m: Member): Form => ({
   name: m.name || "", relation: m.relation || "", mobile: m.mobile || "", email: m.email || "", age: m.age?.toString() || "", dob: m.dob || "", is_head: !!m.is_head,
-  occupation: m.occupation || "", business_name: m.business_name || "", business_category: m.business_category || "", office_address: m.office_address || "", office_phone: m.office_phone || "",
+  occupation: m.occupation || "", business_name: m.business_name || "", business_category: normalizeCategory(m.business_category), office_address: m.office_address || "", office_phone: m.office_phone || "",
 });
 const toRow = (f: Form) => ({
   name: f.name.trim(), relation: f.relation.trim() || null, mobile: f.mobile.trim() || null, email: f.email.trim() || null,
@@ -138,7 +138,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
           <input className="field" placeholder="Business / firm / employer" value={form.business_name} onChange={(e) => set("business_name", e.target.value)} />
           <select className="field" value={form.business_category} onChange={(e) => set("business_category", e.target.value)}>
             <option value="">Category</option>
-            {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+            {categoryOptions(form.business_category).map((c) => <option key={c}>{c}</option>)}
           </select>
           <input className="field sm:col-span-2" placeholder="Office address" value={form.office_address} onChange={(e) => set("office_address", e.target.value)} />
           <input className="field" placeholder="Office phone" value={form.office_phone} onChange={(e) => set("office_phone", e.target.value)} />
@@ -176,7 +176,7 @@ export default function MembersPanel({ flatId, ownerName, ownerEmail, tenant = f
                 {(m.occupation || m.business_name) && (
                   <div className="mono text-[10px] mt-1.5 border-l-2 border-[var(--gold)] pl-2">
                     <span className="font-semibold">{[m.occupation, m.business_name].filter(Boolean).join(" • ")}</span>
-                    {m.business_category && <span className="opacity-60"> • {m.business_category}</span>}
+                    {m.business_category && <span className="opacity-60"> • {normalizeCategory(m.business_category)}</span>}
                     {(m.office_address || m.office_phone) && <div className="opacity-70">{[m.office_address, m.office_phone].filter(Boolean).join(" • ")}</div>}
                   </div>
                 )}

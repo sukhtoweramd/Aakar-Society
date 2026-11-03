@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { label, SOCIETY } from "@/lib/society";
 import { backBar } from "@/lib/printBack";
 import type { Ctx } from "./ctx";
+import { directoryCategory } from "@/lib/professions";
 
 type Entry = { id: string; flat_id: string | null; name: string | null; occupation: string | null; business_name: string | null; business_category: string | null; office_address: string | null; office_phone: string | null; tower: string | null };
 
@@ -19,20 +20,20 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
   useEffect(() => {
     supabase.from("business_directory").select("*").then(({ data, error }) => {
       if (error) setError(/business_directory/.test(error.message) ? "The Business Directory needs the latest database step (RESIDENT_ACCESS.sql) to be run in Supabase." : error.message);
-      setList(((data as Entry[]) || []).sort((a, b) => (a.business_category || "zz").localeCompare(b.business_category || "zz") || (a.name || "").localeCompare(b.name || "")));
+      setList(((data as Entry[]) || []).sort((a, b) => (directoryCategory(a.business_category)).localeCompare(directoryCategory(b.business_category)) || (a.name || "").localeCompare(b.name || "")));
       setLoaded(true);
     });
   }, []);
 
   const flatLabel = (id: string | null) => (id ? label({ id, flat_no: id } as any) : "—");
-  const categories = Array.from(new Set(list.map((e) => e.business_category || "Other"))).sort();
+  const categories = Array.from(new Set(list.map((e) => directoryCategory(e.business_category)))).sort();
   const s = q.trim().toLowerCase();
   const flatKey = (id: string | null) => { const m = /^([A-Z])(\d+)$/.exec(id || ""); return m ? `${m[1]}${m[2].padStart(5, "0")}` : "ZZZZZZ"; };
   const byFlat = (a: Entry, b: Entry) => flatKey(a.flat_id).localeCompare(flatKey(b.flat_id)) || (a.name || "").localeCompare(b.name || "");
-  const byCat = (a: Entry, b: Entry) => (a.business_category || "Other").localeCompare(b.business_category || "Other") || byFlat(a, b);
+  const byCat = (a: Entry, b: Entry) => directoryCategory(a.business_category).localeCompare(directoryCategory(b.business_category)) || byFlat(a, b);
   const shown = list.filter((e) =>
-    (cat === "ALL" || (e.business_category || "Other") === cat) &&
-    (!s || [e.name, e.occupation, e.business_name, e.business_category, e.office_address, flatLabel(e.flat_id)].some((v) => (v || "").toLowerCase().includes(s)))).sort(sortBy === "FLAT" ? byFlat : byCat);
+    (cat === "ALL" || directoryCategory(e.business_category) === cat) &&
+    (!s || [e.name, e.occupation, e.business_name, e.business_category, directoryCategory(e.business_category), e.office_address, flatLabel(e.flat_id)].some((v) => (v || "").toLowerCase().includes(s)))).sort(sortBy === "FLAT" ? byFlat : byCat);
   const esc = (v: any) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
   function printDirectory() {
     const w = window.open("", "_blank");
@@ -40,9 +41,9 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     const scope = [cat === "ALL" ? "All categories" : cat, s ? `search "${q.trim()}"` : "", sortBy === "FLAT" ? "by flat number" : "by category"].filter(Boolean).join(" • ");
     const byF = sortBy === "FLAT";
-    const row = (e: Entry) => `<tr><td class="f">${esc(flatLabel(e.flat_id))}</td><td><b>${esc(e.name)}</b>${byF ? `<br><span class="m">${esc(e.business_category || "Other")}</span>` : ""}</td><td>${esc(e.business_name || "")}${e.business_name && e.occupation ? "<br>" : ""}<span class="m">${esc(e.occupation || "")}</span></td><td>${esc(e.office_address || "")}</td><td class="nw">${esc(e.office_phone || "")}</td></tr>`;
-    const groups = Array.from(new Set(shown.map((e) => e.business_category || "Other")));
-    const body = byF ? shown.map(row).join("") : groups.map((g) => `<tr class="grp"><td colspan="5">${esc(g)}</td></tr>` + shown.filter((e) => (e.business_category || "Other") === g).map(row).join("")).join("");
+    const row = (e: Entry) => `<tr><td class="f">${esc(flatLabel(e.flat_id))}</td><td><b>${esc(e.name)}</b>${byF ? `<br><span class="m">${esc(directoryCategory(e.business_category))}</span>` : ""}</td><td>${esc(e.business_name || "")}${e.business_name && e.occupation ? "<br>" : ""}<span class="m">${esc(e.occupation || "")}</span></td><td>${esc(e.office_address || "")}</td><td class="nw">${esc(e.office_phone || "")}</td></tr>`;
+    const groups = Array.from(new Set(shown.map((e) => directoryCategory(e.business_category))));
+    const body = byF ? shown.map(row).join("") : groups.map((g) => `<tr class="grp"><td colspan="5">${esc(g)}</td></tr>` + shown.filter((e) => directoryCategory(e.business_category) === g).map(row).join("")).join("");
     w.document.write(`<html><head><meta charset="utf-8"><title>Business Directory ${esc(today)}</title><style>
       @page{size:A4 portrait;margin:12mm 10mm 14mm;
         @bottom-left{content:"${esc(SOCIETY.full)} • Members' Business & Profession Directory • ${esc(today)} • For members only";font:8.5px Inter,Arial,sans-serif;color:#7a7568}
@@ -97,7 +98,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
           {shown.map((e) => (
             <button key={e.id} onClick={() => openFlat(e.flat_id)} className="text-left border border-[var(--border)] bg-[var(--bg)] p-4 hover:border-[var(--gold)]">
               <div className="flex justify-between gap-2 items-start">
-                <div className="mono text-[9px] tracking-[0.16em] bg-[var(--navy)] text-white inline-block px-2 py-0.5">{(e.business_category || "OTHER").toUpperCase()}</div>
+                <div className="mono text-[9px] tracking-[0.16em] bg-[var(--navy)] text-white inline-block px-2 py-0.5">{directoryCategory(e.business_category).toUpperCase()}</div>
                 <div className="mono text-[10px] opacity-60">{flatLabel(e.flat_id)}</div>
               </div>
               <div className="serif text-[15px] font-bold mt-2">{e.business_name || e.occupation || e.name}</div>
