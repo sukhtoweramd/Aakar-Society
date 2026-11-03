@@ -65,7 +65,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Rented flats: the tenant's family, vehicles and rent agreement date are recorded; the owner is marked "does not live here".
 
 ## Complaints
-- MY FLAT → **COMPLAINTS ↓** → **+ RAISE A COMPLAINT**.
+- To raise a complaint: on the home screen tap **COMPLAINTS** → **+ RAISE A COMPLAINT** (owners and tenants).
   1. PROBLEM AREA: choose the area (for example Lift, Water). The app shows which committee member it goes to.
   2. WHAT IS THE PROBLEM?: a few lines.
   3. PHOTO (optional): 📷 ADD PHOTO. It is made smaller before upload.
@@ -78,7 +78,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 ## Booking the common plot
 - Four areas: **Tower A area**, **Center area**, **Tower B area** and **Main common area**. A booking is for the **full day** (no morning / evening). One booking per area per date.
 - Each area has a **charge per day**, set by the Chairman, the Secretary or the main admin (COMMITTEE → BOOKINGS → BOOKING CHARGES; every change is logged). No deposit.
-- MY FLAT → **BOOK COMMON PLOT ↓** → **+ BOOK AN AREA**.
+- To book a common area (the common plot): on the home screen tap **BOOK PLOT** → **+ BOOK AN AREA** (owners and tenants).
   1. DATE: from tomorrow up to 90 days ahead.
   2. AREA: tick one or more. Areas already booked or requested for that date are greyed out, with the flat number. Each area shows its charge; the **total** is shown below. SELECT ALL FREE AREAS ticks every free area.
   3. PURPOSE (optional), then SEND REQUEST.
@@ -107,7 +107,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - When the committee marks TENANT MOVED OUT, the tenant login stops working at once. The committee can also RESET the tenant's password or REVOKE the login; the family list, vehicles and complaints are kept.
 
 ## Letters from the society (requests)
-- Members (owner's flat login) ask in MY FLAT → REQUEST A LETTER: choose the letter from the society's standard formats (NOC for bank loan, NOC for sale, NOC for renting / police verification, address proof, no-dues certificate, membership letter …) or "Other", who it is addressed to, and the purpose. Tenant logins cannot ask for letters.
+- Members (owner's flat login) ask on the home screen: **MY LETTERS** → **+ REQUEST A LETTER**, then SEND REQUEST. In the form: choose the letter from the society's standard formats (NOC for bank loan, NOC for sale, NOC for renting / police verification, address proof, no-dues certificate, membership letter …) or "Other", who it is addressed to, and the purpose. Tenant logins cannot ask for letters.
 - The request shows WAITING, then APPROVED • BEING PREPARED, then ISSUED (or NOT ISSUED with the reason). The issued letter is in MY LETTERS (view, print, share PDF).
 - Letters for a bank are issued as an UNSIGNED copy: the Chairman or Secretary signs and stamps the paper letter by hand. Until it is handed over MY LETTERS shows READY TO COLLECT; after that, "collected" with the date.
 - Committee: BILLING → LETTERS. The Chairman or the Secretary (from their own committee login) APPROVES or declines a request (NOT ISSUE, with a reason); then ISSUE LETTER opens a draft filled from the format and the flat's records (owner name, flat, share certificate, member since, dues …) to check and edit before ISSUE & PRINT. For an unsigned bank letter, tick SIGNED COPY HANDED OVER on the flat's letters list when it has been given. LETTER FORMATS: add or edit the society's formats (fields such as {{owner_name}}, {{flat_no}}, {{dues}}), switch a format off; formats are never deleted.
