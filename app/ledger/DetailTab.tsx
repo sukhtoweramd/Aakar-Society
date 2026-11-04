@@ -113,7 +113,8 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
       // Owner-occupied -> rented out: the owner's family no longer lives here.
       if (t && !rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
-        if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here; their vehicles and emergency contacts will be removed too. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
+        if (fam?.length && !(await amMainAdmin())) alert(NOT_MAIN);
+        else if (fam?.length && confirm(`Remove the ${fam.length} family member(s) now listed for ${label(f!)}? They are the owner's family and no longer live here; their vehicles and emergency contacts will be removed too. The tenant's family can then be added.\n\nOK = remove, Cancel = keep them`)) {
           const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
         }
         if ("directory_consent" in f!) personal.directory_consent = false; // the tenant decides on sharing
@@ -121,7 +122,8 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
       // Rented -> owner lives here again: the tenant's family has left.
       if (!t && rented) {
         const { data: fam } = await supabase.from("members").select("id").eq("flat_id", f!.id);
-        if (fam?.length && confirm(`The tenant has left ${label(f!)}. Remove the tenant's ${fam.length} family member(s), vehicles and emergency contacts?\n\nOK = remove, Cancel = keep them`)) {
+        if (fam?.length && !(await amMainAdmin())) alert(NOT_MAIN);
+        else if (fam?.length && confirm(`The tenant has left ${label(f!)}. Remove the tenant's ${fam.length} family member(s), vehicles and emergency contacts?\n\nOK = remove, Cancel = keep them`)) {
           const e = await clearFamily(); if (e) { setBusy(null); setError(e); return; }
         }
         if ("directory_consent" in f!) personal.directory_consent = false;
@@ -170,20 +172,18 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
 
   // Delete every family member of this flat (and the vehicles and emergency contacts of the people who lived there);
   // report if the database refused (0 rows removed).
+  // Removing everyone of a flat at once is for the main admin login only (PR-15; the server checks it too).
+  const NOT_MAIN = "Only the main admin login can remove everyone at once. Remove people one by one with ✕ in the family list, or ask the main admin.";
+  async function amMainAdmin(): Promise<boolean> {
+    try { const j = await api("/api/committee"); return !!(j.members || []).find((m: any) => m.self)?.main; } catch { return false; }
+  }
   async function clearFamily(): Promise<string | null> {
-    for (const t of ["vehicles", "emergency_contacts"]) {
-      const { error } = await supabase.from(t).delete().eq("flat_id", f!.id);
-      if (error && !/does not exist|could not find the table|schema cache/i.test(error.message)) return error.message;
-    }
-    const { data: before } = await supabase.from("members").select("id").eq("flat_id", f!.id);
-    if (!before?.length) return null;
-    const { data, error } = await supabase.from("members").delete().eq("flat_id", f!.id).select("id");
-    if (error) return error.message;
-    if ((data?.length || 0) < before.length) return "Some family members could not be removed. Please remove them with ✕ in the family list.";
-    return null;
+    try { await api("/api/flat-family", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ flat: f!.id }) }); return null; }
+    catch (e: any) { return e.message; }
   }
 
   async function tenantMovedOut() {
+    if (!(await amMainAdmin())) { alert(NOT_MAIN); return; }
     if (!confirm(`Tenant ${f!.tenant_name || ""} has moved out of ${label(f!)}?\n\nThis will:\n• remove the tenant, the tenant's family members, vehicles and emergency contacts\n• turn off directory sharing\n• mark the flat as owner-occupied (enter a new tenant with EDIT FLAT if it is rented again)`)) return;
     setBusy("out"); setError("");
     const famErr = await clearFamily();

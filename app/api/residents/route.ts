@@ -1,10 +1,13 @@
 // Committee-only: create / reset / remove flat (resident) logins, and tenant logins of rented flats (TENANT_LOGINS.sql).
+// Main admin only (PR-15): removing a flat login, revoking a tenant login, creating many flat logins in one go.
 // Uses the Supabase secret key on the server; it is never sent to the browser.
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { flatEmail, normaliseFlat, tenantEmail } from "@/lib/residents";
+import { isMainAdminUser } from "@/lib/mainAdmin";
+import { logAccess } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +97,9 @@ export async function GET(req: NextRequest) {
     const users = await residentUsers(g.admin);
     const tenants = await tenantUsers(g.admin);
     const { data: recs } = await g.admin.from("flat_tenant_logins").select("user_id, flat_id, active, created_at, revoked_at, revoke_reason");
+    const isMainAdmin = await isMainAdminUser(g.admin, g.me.userId);
     return NextResponse.json({
+      isMainAdmin,
       tenants: tenants.map((u) => { const r = (recs || []).find((x: any) => x.user_id === u.id); return {
         flat_id: (u.app_metadata as any).tenant_flat, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null,
         password_changed: !!(u.user_metadata as any)?.password_changed, active: !!r?.active, revoked_at: r?.revoked_at || null, revoke_reason: r?.revoke_reason || null }; }),
@@ -117,6 +122,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || "");
   try {
+    // PR-15: removing a flat login, revoking a tenant login and creating several flat logins at once are main admin only.
+    const manyAtOnce = action === "create" && Array.isArray(body.flats) && body.flats.length > 1;
+    if (["remove", "tenant_revoke"].includes(action) || manyAtOnce) {
+      if (!(await isMainAdminUser(admin, me.userId))) {
+        await logAccess(admin, me.email, "refused_" + (manyAtOnce ? "bulk_create" : action), String(body.flat || ""));
+        return NextResponse.json({ error: "Only the main admin login can do this." }, { status: 403 });
+      }
+    }
     if (action.startsWith("tenant_")) return await tenantAction(action, body, admin, me);
     const existing = await residentUsers(admin);
     const byFlat = new Map(existing.map((u) => [String((u.app_metadata as any).flat_id), u]));
