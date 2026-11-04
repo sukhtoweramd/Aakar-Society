@@ -10,7 +10,7 @@ export type BookingRow = {
 export type Area = { id: string; name: string; description: string | null; sort: number; active: boolean; charge?: number | null };
 export type Taken = { area_id: string; book_date: string; slot: Slot; status: "pending" | "approved"; flat_id: string };
 export type Group = { group_id: string; flat_id: string; book_date: string; slot: Slot; status: BookingRow["status"]; areas: string[]; purpose: string | null;
-  reason: string | null; decided_by: string | null; notice_id: string | null; created_at: string;
+  reason: string | null; decided_by: string | null; notice_id: string | null; created_at: string; created_by?: string | null;
   total: number; free_event: boolean; booked_by: string | null; bill_id: string | null; bill_name: string | null };
 
 /** "Full day" for new bookings; "Morning" / "Evening" for old ones. */
@@ -49,7 +49,7 @@ export function groupRows(rows: BookingRow[]): Group[] {
     const g = m.get(r.group_id);
     if (g) { g.areas.push(r.area_name); g.total += chargeOf(r); continue; }
     m.set(r.group_id, { group_id: r.group_id, flat_id: r.flat_id, book_date: r.book_date, slot: r.slot, status: r.status, areas: [r.area_name], purpose: r.purpose,
-      reason: r.reason, decided_by: r.decided_by, notice_id: r.notice_id, created_at: r.created_at,
+      reason: r.reason, decided_by: r.decided_by, notice_id: r.notice_id, created_at: r.created_at, created_by: r.created_by,
       total: chargeOf(r), free_event: !!r.free_event, booked_by: r.booked_by || null, bill_id: r.bill_id || null, bill_name: r.bill_name || null });
   }
   return Array.from(m.values()).map((g) => ({ ...g, areas: g.areas.sort() }));
