@@ -24,6 +24,10 @@
 - Head of family (`members.is_head`) is fill-once for flat logins too (`sql-security/06`): name, head flag and removal by committee only.
 - Committee flag + top designation are on the flat; `flats.committee_members` lists every person of the flat on the committee with their own designation (COMMITTEE_PEOPLE.sql; empty = `committee_person` or the owner). Use `committeePeople(f)` / `committeeText(f)`; members get the list via `committee_people()`.
 - Bookings are approved only by a committee login linked to the flat marked exactly "Chairman" or "Secretary".
+- Main admin only (server checks, not just hidden buttons): add / reset / link / remove committee logins (PR-14); remove a flat login,
+  revoke a tenant login, create several flat logins at once, clear a whole flat's family (`/api/flat-family`) (PR-15); backup download / restore;
+  delete bills, receipts, letters; GO LIVE / clear test. Server check: `lib/mainAdmin.ts` (follows MAIN_ADMIN_EMAIL). Committee logins are
+  created only for the Chairman and Secretaries.
 
 ## Files in R2 (Oct 2026)
 - Screens never show a file by its public R2 address. They ask `POST /api/file/link` (login checked) for a short-lived

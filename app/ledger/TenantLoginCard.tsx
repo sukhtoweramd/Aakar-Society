@@ -10,11 +10,12 @@ type TenantLogin = { flat_id: string; created_at: string; last_sign_in_at: strin
 export default function TenantLoginCard({ flat }: { flat: Flat }) {
   const [info, setInfo] = useState<TenantLogin | null | undefined>(undefined);
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  const [isMain, setIsMain] = useState(false); // revoking a tenant login: main admin only (the server checks too)
   const [cred, setCred] = useState<{ login: string; password: string } | null>(null);
   const day = (s: string | null) => (s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "never");
 
   async function load() {
-    try { const j = await api("/api/residents"); setInfo(((j.tenants || []) as TenantLogin[]).find((t) => t.flat_id === flat.id) || null); setError(""); }
+    try { const j = await api("/api/residents"); setIsMain(!!j.isMainAdmin); setInfo(((j.tenants || []) as TenantLogin[]).find((t) => t.flat_id === flat.id) || null); setError(""); }
     catch (e: any) { setError(e.message); setInfo(null); }
   }
   useEffect(() => { load(); }, [flat.id]);
@@ -45,7 +46,7 @@ export default function TenantLoginCard({ flat }: { flat: Flat }) {
       <div className="flex flex-wrap gap-2">
         {(!info || !info.active) && <button disabled={busy} onClick={() => act("tenant_create")} className="btn-navy px-3 min-h-[44px]">{busy ? "…" : "CREATE TENANT LOGIN"}</button>}
         {info?.active && <button disabled={busy} onClick={() => act("tenant_reset")} className="btn-line px-3 min-h-[44px]">RESET PASSWORD</button>}
-        {info?.active && <button disabled={busy} onClick={() => act("tenant_revoke")} className="btn-line px-3 min-h-[44px] text-red-700">REVOKE</button>}
+        {info?.active && isMain && <button disabled={busy} onClick={() => act("tenant_revoke")} className="btn-line px-3 min-h-[44px] text-red-700">REVOKE</button>}
       </div>
     </div>
   );

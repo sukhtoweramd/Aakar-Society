@@ -17,9 +17,10 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [creds, setCreds] = useState<Cred[]>([]);
   const [tower, setTower] = useState("ALL");
+  const [isMain, setIsMain] = useState(false); // removing logins and creating many at once: main admin only (the server checks too)
 
   async function load() {
-    try { setLogins((await api("/api/residents")).logins); setError(""); }
+    try { const j = await api("/api/residents"); setLogins(j.logins); setIsMain(!!j.isMainAdmin); setError(""); }
     catch (e: any) { setError(e.message); setNeedsKey(/SECRET_KEY/.test(e.message)); }
   }
   useEffect(() => { load(); }, []);
@@ -130,9 +131,9 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
             {["ALL", ...Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))) as string[]].map((t) => (
               <button key={t} onClick={() => setTower(t)} className={`mono text-[11px] px-3 py-1.5 border rounded-[2px] ${tower === t ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-white border-[var(--border)]"}`}>{t === "ALL" ? "ALL" : `TOWER ${t}`}</button>
             ))}
-            <button onClick={() => create(missing)} disabled={!missing.length || !!busy} className="btn-gold mono text-[11px] px-4 py-1.5 ml-auto disabled:opacity-50">
+            {isMain && <button onClick={() => create(missing)} disabled={!missing.length || !!busy} className="btn-gold mono text-[11px] px-4 py-1.5 ml-auto disabled:opacity-50">
               {busy === "bulk" ? "CREATING…" : `CREATE ${missing.length} MISSING LOGIN${missing.length === 1 ? "" : "S"}`}
-            </button>
+            </button>}
           </div>
           <div className="mt-3 border border-[var(--border)] max-h-[420px] overflow-auto">
             <table className="w-full mono text-[11px]">
@@ -147,7 +148,7 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
                     <td className="p-2">{status(f.id)}</td>
                     <td className="p-2 text-right whitespace-nowrap">
                       {busy === f.id ? "…" : byFlat.has(f.id) ? (
-                        <><button onClick={() => reset(f.id)} className="underline mr-3">Reset password</button><button onClick={() => remove(f.id)} className="text-red-600">Remove</button></>
+                        <><button onClick={() => reset(f.id)} className="underline mr-3">Reset password</button>{isMain && <button onClick={() => remove(f.id)} className="text-red-600">Remove</button>}</>
                       ) : <button onClick={() => create([f.id])} className="underline">Create login</button>}
                     </td>
                   </tr>
