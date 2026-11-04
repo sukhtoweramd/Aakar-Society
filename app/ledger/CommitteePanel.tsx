@@ -64,7 +64,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
     setBusy(null);
   }
 
-  // Only the main admin login may add logins, reset passwords or link flats (the server checks this too).
+  // Only the main admin login may add or remove logins, reset passwords or link flats (the server checks this too).
   const iAmMain = !!(members || []).find((m) => m.self)?.main;
   const flatOf = (id: string | null) => flats.find((f) => f.id === id);
   const stale = (m: Member) => !m.main && !!m.flat_id && !!flatOf(m.flat_id) && !flatOf(m.flat_id)!.is_committee;
@@ -77,7 +77,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
       <div className="mono text-[11px] opacity-60 mt-1 max-w-[680px]">
         Each committee member logs in with their own email and has full admin rights. Ticking ★ Committee on a flat only shows the star; it does not give admin rights. Link each login to the member&apos;s own flat: it gives them a MY FLAT button, and when that flat&apos;s ★ Committee tick is removed, their committee login is removed too. The main admin (the society&apos;s own login) cannot be removed.
       </div>
-      {members && !iAmMain && <div className="mt-4 border border-[var(--border)] bg-[var(--bg-soft)] p-3 mono text-[11px]">Adding logins, resetting passwords and linking flats can be done only from the main admin login.</div>}
+      {members && !iAmMain && <div className="mt-4 border border-[var(--border)] bg-[var(--bg-soft)] p-3 mono text-[11px]">Adding logins, resetting passwords, linking flats and removing logins can be done only from the main admin login.</div>}
       {error && <div className="mt-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[11px]">{error}</div>}
       {staleCount > 0 && <div className="mt-4 border-2 border-red-300 bg-red-50 text-red-800 p-3 mono text-[11px] font-bold">⚠ {staleCount} committee login{staleCount > 1 ? "s belong" : " belongs"} to someone no longer marked as committee. Remove {staleCount > 1 ? "them" : "it"} below.</div>}
       {cred && (
@@ -108,7 +108,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
                 <td className="p-2 text-right whitespace-nowrap">
                   {busy === m.id ? "…" : <>
                     {iAmMain && <button onClick={() => reset(m)} className="underline mr-3">Reset password</button>}
-                    {!m.self && !m.main && <button onClick={() => remove(m, stale(m) ? "no longer on the committee" : "removed from ADMIN")} className={stale(m) ? "bg-red-600 text-white px-2 py-1 font-bold" : "text-red-600"}>{stale(m) ? "REMOVE NOW" : "Remove"}</button>}
+                    {iAmMain && !m.self && !m.main && <button onClick={() => remove(m, stale(m) ? "no longer on the committee" : "removed from ADMIN")} className={stale(m) ? "bg-red-600 text-white px-2 py-1 font-bold" : "text-red-600"}>{stale(m) ? "REMOVE NOW" : "Remove"}</button>}
                   </>}
                 </td>
               </tr>
