@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, type Flat, type MemberLite } from "@/lib/society";
 import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
+import { enteredByLabel } from "@/lib/enteredBy";
+import { useCommitteeNames } from "./useCommitteeNames";
 import { addDays, chargeOf, dayText, flatLabel, groupRows, invoiceText, istToday, memberCanCancel, noticeText, rupees, slotName, sortAreas, STATUS, takenBy, totalFor, type Area, type BookingRow, type Group, type Taken } from "@/lib/bookings";
 
 type Props = { mode: "flat" | "committee"; flats: Flat[]; flatId: string | null; isCommittee: boolean; onCount?: (n: number) => void };
@@ -16,6 +18,7 @@ const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp
 const missing = (m: string) => /booking|schema cache|does not exist/i.test(m);
 
 export default function BookingPanel({ mode, flats, flatId, isCommittee, onCount }: Props) {
+  const names = useCommitteeNames(isCommittee);
   const [areas, setAreas] = useState<Area[] | null | undefined>(undefined);
   const [rows, setRows] = useState<BookingRow[]>([]);
   const [taken, setTaken] = useState<Taken[]>([]);
@@ -79,7 +82,8 @@ export default function BookingPanel({ mode, flats, flatId, isCommittee, onCount
     <div key={g.group_id} className="border border-[var(--border)] bg-white p-3 mono text-[12px]">
       <div className="flex justify-between gap-2 items-start">
         <div className="min-w-0"><div className="font-bold text-[13px]">{dayText(g.book_date)} • {slotName(g.slot)}</div>
-          <div className="mt-0.5"><b className="text-[var(--navy)]">{g.areas.length >= areas.length ? "ALL AREAS" : g.areas.join(", ")}</b> • Flat {flatLabel(g.flat_id)}</div></div>
+          <div className="mt-0.5"><b className="text-[var(--navy)]">{g.areas.length >= areas.length ? "ALL AREAS" : g.areas.join(", ")}</b> • Flat {flatLabel(g.flat_id)}</div>
+          <div className="mt-0.5 text-[11px] opacity-70">Entered by: {enteredByLabel(g.created_by, isCommittee, names)}</div></div>
         <span className={`shrink-0 border px-2 py-0.5 text-[10px] font-bold ${STATUS[g.status].cls}`}>{STATUS[g.status].text}</span>
       </div>
       {g.purpose && <div className="mt-1.5 text-[12.5px]">{g.purpose}</div>}

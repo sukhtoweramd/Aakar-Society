@@ -11,12 +11,15 @@ import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
 import { daysOpen, loadComplaints, moveArea, raiseComplaint, setStatus, STATUS, waDoneText, waNewText, when, type Complaint, isHandler } from "@/lib/complaints";
 import { FileLink, SecureImg } from "./SecureFile";
+import { enteredByLabel } from "@/lib/enteredBy";
+import { useCommitteeNames } from "./useCommitteeNames";
 
 type Props = { mode: "flat" | "committee"; flats: Flat[]; flatId: string | null; isCommittee: boolean; onCount?: (n: number) => void };
 const flatText = (flats: Flat[], id: string | null) => { const f = flats.find((x) => x.id === id); return f ? label(f) : id || "—"; };
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCount }: Props) {
+  const names = useCommitteeNames(isCommittee);
   const [list, setList] = useState<Complaint[] | null | undefined>(undefined);
   const [areas, setAreas] = useState<Area[]>([]);
   const [members, setMembers] = useState<MemberLite[]>([]);
@@ -51,7 +54,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
   }
 
   const card = (c: Complaint, canAct: boolean) => <ComplaintCard key={c.id} c={c} flats={flats} areas={areas} canAct={canAct} isCommittee={isCommittee}
-    mobile={mode === "committee" ? mobileOf(c.flat_id) : null} onChanged={load} onError={setError} />;
+    mobile={mode === "committee" ? mobileOf(c.flat_id) : null} names={names} onChanged={load} onError={setError} />;
 
   if (mode === "committee") {
     const counts = { active: list.filter((c) => c.status !== "closed").length, closed: list.filter((c) => c.status === "closed").length, all: list.length };
@@ -155,8 +158,8 @@ function RaiseForm({ flatId, flats, areas, onDone }: { flatId: string; flats: Fl
   );
 }
 
-function ComplaintCard({ c, flats, areas, canAct, isCommittee, mobile, onChanged, onError }:
-  { c: Complaint; flats: Flat[]; areas: Area[]; canAct: boolean; isCommittee: boolean; mobile: string | null; onChanged: () => void; onError: (m: string) => void }) {
+function ComplaintCard({ c, flats, areas, canAct, isCommittee, mobile, names, onChanged, onError }:
+  { c: Complaint; flats: Flat[]; areas: Area[]; canAct: boolean; isCommittee: boolean; mobile: string | null; names: Record<string, string>; onChanged: () => void; onError: (m: string) => void }) {
   const [act, setAct] = useState<"" | "progress" | "close" | "move">("");
   const [note, setNote] = useState(""); const [area, setArea] = useState(c.area_id || ""); const [busy, setBusy] = useState(false);
   const [showLog, setShowLog] = useState(false);
@@ -176,6 +179,7 @@ function ComplaintCard({ c, flats, areas, canAct, isCommittee, mobile, onChanged
         </div>
         <span className={`shrink-0 border px-2 py-0.5 text-[10px] font-bold ${STATUS[c.status].cls}`}>{STATUS[c.status].text}</span>
       </div>
+      <div className="mt-1 text-[11px] opacity-70">Entered by: {enteredByLabel(c.created_by, isCommittee, names)}</div>
       <div className="mt-2 text-[13px] whitespace-pre-wrap break-words" style={{ fontFamily: "inherit" }}>{c.description}</div>
       {c.photo_key && <FileLink file={c.photo_key} className="inline-block mt-2"><SecureImg src={c.photo_key} alt="Complaint photo" className="h-24 w-24 object-cover border border-[var(--border)]" /></FileLink>}
       <div className="mt-2 text-[11px] opacity-75">
