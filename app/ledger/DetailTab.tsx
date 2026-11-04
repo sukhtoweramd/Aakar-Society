@@ -154,7 +154,9 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
       try {
         const { members } = await api("/api/committee");
         const linked = (members || []).filter((m: any) => m.flat_id === f!.id && !m.main);
-        if (linked.length && confirm(`${label(f!)} is no longer on the committee.\n\nRemove the committee (admin) login of ${linked.map((m: any) => m.email).join(", ")} now? Their normal flat login is not affected.\n\nOK = remove now (recommended), Cancel = keep for now (ADMIN will show a warning)`)) {
+        const iAmMain = !!(members || []).find((m: any) => m.self)?.main;
+        if (linked.length && !iAmMain) alert(`${label(f!)} is no longer on the committee. Only the main admin login can remove the committee login of ${linked.map((m: any) => m.email).join(", ")}; ADMIN will show a warning until it is removed.`);
+        else if (linked.length && confirm(`${label(f!)} is no longer on the committee.\n\nRemove the committee (admin) login of ${linked.map((m: any) => m.email).join(", ")} now? Their normal flat login is not affected.\n\nOK = remove now (recommended), Cancel = keep for now (ADMIN will show a warning)`)) {
           const r = await api("/api/committee", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "revoke_flat", flat_id: f!.id }) });
           if (r.kept?.length) alert(`Not removed: ${r.kept.join(", ")}. Remove it from ADMIN using another committee login.`);
         }
