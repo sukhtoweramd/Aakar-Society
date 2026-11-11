@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
+import ScopeChips from "./ScopeChips";
 import VehicleReport from "./VehicleReport";
 import DocsReport from "./DocsReport";
 import NominationReport from "./NominationReport";
@@ -77,6 +78,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="space-y-4 fade-in">
+      <ScopeChips ctx={ctx} count={list.length} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[["FLATS", list.length], ["OCCUPIED", occupied], ["OWNERS RECORDED", withOwner], ["ANNUAL ₹", rupees(annual)]].map(([k, v]) => (
           <div key={k as string} className="bg-[var(--surface)] border border-[var(--border)] p-4">
@@ -87,7 +89,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
       </div>
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="serif text-[22px] font-bold">Directory Reports</div>
-        <div className="mono text-[11px] opacity-60 mt-1">Scope: {scope} • Click a tower or floor card in the sidebar to export only those flats</div>
+        <div className="mono text-[11px] opacity-60 mt-1">Scope: {scope} • Choose a tower above (or the sidebar on a computer) to export only those flats</div>
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 [&>*]:min-w-0">
           <div className="border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mono text-[11px] font-bold tracking-[0.12em]">CSV / EXCEL</div>
