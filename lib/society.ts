@@ -107,6 +107,12 @@ export const committeeNote = (f: CF): string => {
   if (!ps.length || (ps.length === 1 && ps[0].name.trim().toLowerCase() === own)) return `★ ${f.committee_role?.trim() || "Committee"}`;
   return "★ " + ps.map((p) => `${p.role}: ${p.name}`).join(" • ");
 };
+/** COMMITTEE printout: one row per committee person (by designation, then flat); `ownerNote` is set only when the flat owner is someone else. */
+export const committeePrintRows = (flats: Flat[]) => {
+  const key = (n?: string | null) => (n || "").trim().toLowerCase();
+  return committeeRoster(flats).map((r) => ({ flat: r.flat, name: r.name, role: r.role,
+    ownerNote: r.flat.owner_name?.trim() && key(r.flat.owner_name) !== key(r.name) ? r.flat.owner_name.trim() : "" }));
+};
 /** "★ Secretary" or "★ Committee" */
 export const committeeBadge = (f: Pick<Flat, "is_committee" | "committee_role">) => (f.is_committee ? `★ ${f.committee_role?.trim() || "Committee"}` : "");
 /** Family order everywhere: head first, then self, spouse, children, parents, others; oldest first within a group. */
