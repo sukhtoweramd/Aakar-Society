@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, committeeNote, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
+import { familySummary, committeeNote, committeePrintRows, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import VehicleReport from "./VehicleReport";
@@ -38,6 +38,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
     const today = new Date().toLocaleDateString("en-IN");
+    const isCom = towerFilter === "COMMITTEE";
     const html = `<html><head><title>Aakar Co-op - Directory ${esc(today)}</title><style>
       @page{size:A4 landscape;margin:12mm 10mm 14mm;
         @bottom-left{content:"Aakar Co-op Housing Society Ltd. • ${esc(SOCIETY.reg)} • Directory ${esc(today)}";font:9px Inter,Arial,sans-serif;color:#7a7568}
@@ -61,13 +62,15 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
         <thead>
           <tr class="title"><td colspan="6"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD.</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT • ${esc(scope.toUpperCase())}</div></div></td></tr>
           <tr class="gap"><td colspan="6"></td></tr>
-          <tr><th style="width:7%">Flat</th><th style="width:24%">Owner / Tenant</th><th style="width:22%">Profession / Business</th><th style="width:16%">Spouse</th><th style="width:11%">Mobile</th><th>Email</th></tr>
+          <tr><th style="width:7%">Flat</th><th style="width:24%">${isCom ? "Committee member" : "Owner / Tenant"}</th><th style="width:22%">Profession / Business</th><th style="width:16%">Spouse</th><th style="width:11%">Mobile</th><th>Email</th></tr>
         </thead>
         <tbody>
           <tr class="intro"><td colspan="6">
             <div class="meta">Date: ${esc(today)} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • On rent: ${list.filter((f) => f.occupancy === "tenant").length}</div>
           </td></tr>
-          ${list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ` <span class="gold">${esc(committeeNote(f))}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
+          ${isCom
+            ? committeePrintRows(list).map((r) => { const f = r.flat; const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(r.name)} <span class="gold">★ ${esc(r.role)}</span>${r.ownerNote ? `<br><span style="font-size:10px;color:#7a7568">Flat owner: ${esc(r.ownerNote)}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")
+            : list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ` <span class="gold">${esc(committeeNote(f))}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
         </tbody>
       </table></body></html>`;
     w.document.write(html);

@@ -44,3 +44,21 @@ test("directory printout: the committee badge names the family member, not the f
   assert.equal(committeeNote({ is_committee: true, committee_role: "Secretary", owner_name: "OWNER TWO" } as any), "★ Secretary");
   assert.equal(committeeNote({ is_committee: false, owner_name: "X" } as any), "");
 });
+
+import { committeePrintRows } from "../lib/society";
+test("committee printout: one row per committee person, owner shown only when someone else", () => {
+  const flats: any[] = [
+    { id: "A902", flat_no: "A-902", tower: "A", is_committee: true, committee_role: "Committee Member", owner_name: "OWNER ONE", committee_members: [{ name: "SON ONE", role: "Committee Member" }] },
+    { id: "A502", flat_no: "A-502", tower: "A", is_committee: true, committee_role: "Chairman", owner_name: "OWNER TWO" },
+  ];
+  const rows = committeePrintRows(flats);
+  assert.deepEqual(rows.map((r) => [r.name, r.role, r.ownerNote]), [["OWNER TWO", "Chairman", ""], ["SON ONE", "Committee Member", "OWNER ONE"]]);
+});
+test("ReportsTab: committee scope uses the committee person as the main name; other scopes keep the owner", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../app/ledger/ReportsTab.tsx", import.meta.url), "utf8");
+  assert.match(src, /towerFilter === "COMMITTEE"/);
+  assert.match(src, /Committee member/);
+  assert.match(src, /Flat owner: /);
+  assert.match(src, /Owner \/ Tenant/);
+});
