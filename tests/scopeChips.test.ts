@@ -20,3 +20,9 @@ test("Flat Index, Reports and Directory all use it", () => {
 test("Reports no longer sends phone users to the sidebar only", () => {
   assert.ok(!read("ReportsTab.tsx").includes("card in the sidebar"));
 });
+
+test("the chips wrap onto a second line instead of scrolling sideways (so the Committee chip is always visible)", () => {
+  const s = read("ScopeChips.tsx");
+  assert.ok(s.includes("flex flex-wrap gap-2"));
+  assert.ok(!s.includes("overflow-x-auto"));
+});

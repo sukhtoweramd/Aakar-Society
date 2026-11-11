@@ -9,12 +9,12 @@ export default function ScopeChips({ ctx, count }: { ctx: Ctx; count?: number })
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   return (
     <div className="lg:hidden space-y-1.5" data-testid="scope-chips">
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex flex-wrap gap-2">
         {["ALL", ...towers, "COMMITTEE"].map((t) => {
           const on = towerFilter === t;
           return (
             <button key={t} onClick={() => { setTowerFilter(t); setSearch(""); }}
-              className={`shrink-0 mono text-[12px] font-bold px-4 py-2.5 rounded-[3px] border ${on ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)]"}`}>
+              className={`mono text-[12px] font-bold px-3.5 py-2.5 rounded-[3px] border ${on ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)]"}`}>
               {t === "ALL" ? "ALL" : t === "COMMITTEE" ? "★ COMMITTEE" : `TOWER ${t}`}
             </button>
           );
