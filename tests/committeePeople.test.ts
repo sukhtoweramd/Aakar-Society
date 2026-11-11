@@ -36,3 +36,11 @@ test("committee order: designation first, then flat number", () => {
   assert.equal(isCoopted("Committee Member"), false);
   assert.deepEqual(committeeRoster([{ id: "A1", is_committee: true, committee_role: null, owner_name: null } as any]).map((p) => p.role), ["Committee Member"]);
 });
+
+import { committeeNote } from "../lib/society";
+test("directory printout: the committee badge names the family member, not the flat owner", () => {
+  const f: any = { is_committee: true, committee_role: "Committee Member", owner_name: "OWNER ONE", committee_members: [{ name: "SON ONE", role: "Committee Member" }] };
+  assert.equal(committeeNote(f), "★ Committee Member: SON ONE");
+  assert.equal(committeeNote({ is_committee: true, committee_role: "Secretary", owner_name: "OWNER TWO" } as any), "★ Secretary");
+  assert.equal(committeeNote({ is_committee: false, owner_name: "X" } as any), "");
+});

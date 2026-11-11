@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
+import { familySummary, committeeNote, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import VehicleReport from "./VehicleReport";
@@ -26,7 +26,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
   const fam = (f: (typeof flats)[number]) => familySummary(f, members);
   function exportCSV() {
     const headers = ["Flat", "Tower", "Floor", "Owner Name", "Lives here", "Tenant Name", "Rent agreement until", "Owner Mobile (if rented)", "Profession / Business", "Spouse", "Mobile", "Email", "Family Members", "Committee", "Status"];
-    const rows = list.map((f) => { const x = fam(f); return [label(f), f.tower ?? "", floorOf(f), f.owner_name ?? "", f.occupancy === "tenant" ? "Tenant" : "Owner", f.tenant_name ?? "", f.agreement_until ?? "", f.occupancy === "tenant" ? f.owner_mobile ?? "" : "", x.profession, x.spouse?.name ?? "", x.mobile, f.email ?? "", x.count || "", f.is_committee ? f.committee_role || "Yes" : "", f.status ?? ""]; });
+    const rows = list.map((f) => { const x = fam(f); return [label(f), f.tower ?? "", floorOf(f), f.owner_name ?? "", f.occupancy === "tenant" ? "Tenant" : "Owner", f.tenant_name ?? "", f.agreement_until ?? "", f.occupancy === "tenant" ? f.owner_mobile ?? "" : "", x.profession, x.spouse?.name ?? "", x.mobile, f.email ?? "", x.count || "", f.is_committee ? committeeNote(f).replace(/^★ /, "") || "Yes" : "", f.status ?? ""]; });
     const csv = "﻿" + [headers, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
@@ -67,7 +67,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
           <tr class="intro"><td colspan="6">
             <div class="meta">Date: ${esc(today)} • ${esc(scope)} • Flats: ${list.length} • Owners recorded: ${withOwner} • On rent: ${list.filter((f) => f.occupancy === "tenant").length}</div>
           </td></tr>
-          ${list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ` <span class="gold">★ ${esc(f.committee_role || "")}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
+          ${list.map((f) => { const x = fam(f); return `<tr class="r"><td><b>${esc(label(f))}</b></td><td>${esc(f.owner_name)}${f.is_committee ? ` <span class="gold">${esc(committeeNote(f))}</span>` : ""}${f.occupancy === "tenant" ? `<br><span style="font-size:10px">On rent to <b>${esc(f.tenant_name || "—")}</b></span>` : ""}</td><td>${esc(x.profession)}</td><td>${esc(x.spouse?.name)}</td><td>${esc(x.mobile)}</td><td>${esc(f.email || x.head?.email)}</td></tr>`; }).join("")}
         </tbody>
       </table></body></html>`;
     w.document.write(html);
