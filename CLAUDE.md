@@ -72,4 +72,7 @@
 - Current variables read by the code: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY, R2_ACCOUNT_ID / CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
   R2_BUCKET_NAME, R2_PUBLIC_URL / CLOUDFLARE_R2_PUBLIC_URL, MAIN_ADMIN_EMAIL, CLOUDFLARE_AI_TOKEN (Workers AI, reads "I have paid" screenshots; added 21 Oct 2026).
+- GitHub Actions secrets (Repository > Settings > Secrets and variables > Actions; not Vercel), used only by
+  `.github/workflows/supabase-keepalive.yml` (daily keep-alive, 11 Nov 2026): AAKAR_SUPABASE_URL, AAKAR_SUPABASE_PUBLISHABLE_KEY
+  (publishable / anon key only; never the secret or service-role key). It calls `public.keepalive()` (KEEPALIVE.sql, returns 1, reads no data).
 - Keep this list updated whenever a new variable is added.
