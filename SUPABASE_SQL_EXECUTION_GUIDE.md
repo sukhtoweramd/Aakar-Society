@@ -21,6 +21,7 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 14 | `RESOLUTION_FORMAT.sql` | Committee resolution as a letter format: transfer of flat (31 Oct 2026) | **not run yet** |
 | 13 | `DOB.sql` | Date of birth instead of age (31 Oct 2026) | **not run yet** |
 | 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
+| 16 | `KEEPALIVE.sql` | Daily GitHub keep-alive job (11 Nov 2026); independent of scripts 1–15 | **not run yet** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
 
 ---
@@ -294,3 +295,16 @@ Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
 **Prerequisites:** RESOLUTION_FORMAT.sql (the format must exist) and the resolution-request app update live.
 **Expected check result:** `new columns (expect 3) 3` • `request insert check on true` • `members ask for Request for transfer of flat` • `and are asked transferee_name`.
 **Undo:** `RESOLUTION_REQUESTS_UNDO.sql` (members are no longer asked; sent requests keep their details).
+
+---
+
+## 16. `KEEPALIVE.sql` — one harmless function for the daily keep-alive job (11 Nov 2026)
+
+**What it changes:** adds one function, `public.keepalive()`, that returns the number 1. It reads and changes no table, view or data. It is `SECURITY INVOKER` with an empty `search_path`, and only the not-logged-in role (`anon`, the website's public key) may run it; PUBLIC, logged-in members and `service_role` are revoked. No table, view, row-level rule, table grant, login or app code is touched.
+**Why:** the public key can read no table (by design), so the daily GitHub job (`.github/workflows/supabase-keepalive.yml`) needs one thing it may call to make a real, successful query reach the database.
+**Prerequisites:** none. Take a backup first only if you like; no data is touched.
+**How to run:** Supabase → SQL Editor → paste all of `KEEPALIVE.sql` → Run.
+**Expected check result:** every row `ok = true`: function exists `1`; `integer / sql / s`; security definer `false`; search_path fixed `true`; body `select1`; anon / authenticated / service_role `true / false / false`; PUBLIC may run `false`; calling it returns `1`; tables / views anon can read `0`.
+**Re-check any time (read only):** `KEEPALIVE_CHECK.sql`.
+**Undo:** `KEEPALIVE_UNDO.sql` (drops the function; expect `0` left). The GitHub job then fails visibly until it is switched off or the script is run again.
+**If the check shows a row not ok:** do not run anything else; send the result back.
