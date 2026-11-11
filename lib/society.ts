@@ -99,6 +99,14 @@ export const topRole = (people: CommitteePerson[]) => [...people].sort((a, b) =>
 export const committeeName = (f: CF) => committeePeople(f).map((p) => p.name).join(" & ") || f.owner_name?.trim() || "Owner not recorded";
 /** "A (Committee Member), B (Co-opted Member)" */
 export const committeeText = (f: CF) => committeePeople(f).map((p) => `${p.name} (${p.role})`).join(", ");
+/** Directory printout / export: "★ Secretary" when the owner holds it, else "★ Committee Member: NAME • Co-opted Member: NAME". */
+export const committeeNote = (f: CF): string => {
+  if (!f.is_committee) return "";
+  const ps = committeePeople(f);
+  const own = (f.owner_name || "").trim().toLowerCase();
+  if (!ps.length || (ps.length === 1 && ps[0].name.trim().toLowerCase() === own)) return `★ ${f.committee_role?.trim() || "Committee"}`;
+  return "★ " + ps.map((p) => `${p.role}: ${p.name}`).join(" • ");
+};
 /** "★ Secretary" or "★ Committee" */
 export const committeeBadge = (f: Pick<Flat, "is_committee" | "committee_role">) => (f.is_committee ? `★ ${f.committee_role?.trim() || "Committee"}` : "");
 /** Family order everywhere: head first, then self, spouse, children, parents, others; oldest first within a group. */
