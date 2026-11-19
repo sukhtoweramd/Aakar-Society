@@ -2,6 +2,8 @@
 // AND by the server route /api/flat-plan, which builds the list again from these same numbers (it never trusts a list from the browser).
 // Numbering: tower letter + floor + 2-digit position: A101, A102 … A1001 (the form the rest of the app reads, see lib/society.ts).
 
+import { FLAT_RULES, type FlatRules } from "./residents";
+
 export type TowerPlan = {
   code: string;        // one letter A-Z: member logins and flat numbers are built from it
   floors: number;      // floors 1 … floors
@@ -66,6 +68,7 @@ export function planSummary(towers: TowerPlan[]) {
   });
 }
 
-/** Tower B: the member-login lookup (lib/residents.ts normaliseFlat) still treats B-numbers ending in 02 as Aakar's joined homes. */
-export const planWarnings = (towers: TowerPlan[]) =>
-  towers.some((t) => t.code === "B" && t.perFloor >= 2) ? ["Tower B: logins for flats ending in 02 (B102, B202 …) are linked to the flat before them (B101, B201 …), as in Aakar's joined homes. Use another letter for a tower with flats numbered 02, or ask for this to be changed first."] : [];
+/** A tower the login lookup treats as joined homes (lib/residents.ts FLAT_RULES) cannot hold ordinary flats at position 02: B102 would log in as B101. */
+export const planWarnings = (towers: TowerPlan[], rules: FlatRules = FLAT_RULES) =>
+  towers.filter((t) => rules.joinedLetters.includes(t.code) && t.perFloor >= 2)
+    .map((t) => `Tower ${t.code}: this copy of the app treats flats ${t.code}102, ${t.code}202 … as one joined home with ${t.code}101, ${t.code}201 …, so ${t.code}102 could not log in on its own. Use another letter, or switch the rule off (FLAT_RULES in lib/residents.ts) before creating this tower.`);
