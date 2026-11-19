@@ -71,6 +71,11 @@ export function noticeText(g: Pick<Group, "areas" | "flat_id" | "book_date" | "s
     : `${societyAppName()} society notice: ${list} is booked by Flat ${flatLabel(g.flat_id)} on ${when}. Please remove vehicles parked in ${list} before then. Thank you.`;
 }
 
+/** WhatsApp text to the member about the state of a booking (approved, rejected, cancelled …). `invoice` only for an approved booking with a bill. */
+export function statusText(g: Pick<Group, "areas" | "book_date" | "slot" | "total" | "reason">, statusWord: string, invoice?: string) {
+  return `${societyAppName()} society: your booking of ${g.areas.join(", ")} on ${dayText(g.book_date)} (${slotName(g.slot).toLowerCase()}) is ${statusWord}.${invoice ? ` Invoice ${invoice}: ${rupees(g.total)}.` : ""}${g.reason ? ` Reason: ${g.reason}` : ""}`;
+}
+
 /** WhatsApp text to the member when an invoice is raised on approval. */
 export function invoiceText(g: Pick<Group, "areas" | "book_date" | "total">, billNo: string) {
   return `${societyAppName()} society: your booking of ${g.areas.join(", ")} on ${dayText(g.book_date)} is approved. Invoice ${billNo}: ${rupees(g.total)}. Please pay by bank transfer / UPI and tap I HAVE PAID in the app. Thank you.`;

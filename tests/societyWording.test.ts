@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { SOCIETY, fileSlug, siteUrl, societyAppName, societyShort, addressOneLine, addressWithPin, nameLines, nameSuffix, regYear, societyPin, societyTitle, titleCase } from "../lib/society";
-import { noticeText, invoiceText } from "../lib/bookings";
+import { dayText, invoiceText, noticeText, rupees, slotName, statusText } from "../lib/bookings";
 import { applySocietyProfile, FALLBACK_PROFILE, profileFromRow } from "../lib/societySetup";
 
 test("Aakar: every helper gives exactly the wording that used to be typed into the code", () => {
@@ -103,4 +103,15 @@ test("no Aakar wording typed into messages, file names, the install button or th
       assert.doesNotMatch(src.replace(/"aakar-society"/g, ""), w, `${f} ${w}`);
     }
   }
+});
+
+test("Aakar: the booking status message is exactly as before, and the screen no longer types the name", () => {
+  const legacy = (gg: any, word: string, inv?: string) =>
+    `Aakar society: your booking of ${gg.areas.join(", ")} on ${dayText(gg.book_date)} (${slotName(gg.slot).toLowerCase()}) is ${word}.${inv ? ` Invoice ${inv}: ${rupees(gg.total)}.` : ""}${gg.reason ? ` Reason: ${gg.reason}` : ""}`;
+  for (const gg of [g, { ...g, reason: "Clash with another booking" }, { ...g, areas: ["Plot A", "Plot B"], total: 1250.5 }]) {
+    for (const [word, inv] of [["approved", "B1"], ["approved", undefined], ["rejected", undefined], ["cancelled", undefined]] as const) {
+      assert.equal(statusText(gg, word, inv), legacy(gg, word, inv));
+    }
+  }
+  assert.doesNotMatch(readFileSync("app/ledger/BookingPanel.tsx", "utf8"), /Aakar society/);
 });

@@ -11,7 +11,7 @@ import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
 import { enteredByLabel } from "@/lib/enteredBy";
 import { useCommitteeNames } from "./useCommitteeNames";
-import { addDays, chargeOf, dayText, flatLabel, groupRows, invoiceText, istToday, memberCanCancel, noticeText, rupees, slotName, sortAreas, STATUS, takenBy, totalFor, type Area, type BookingRow, type Group, type Taken } from "@/lib/bookings";
+import { addDays, chargeOf, dayText, flatLabel, groupRows, invoiceText, statusText, istToday, memberCanCancel, noticeText, rupees, slotName, sortAreas, STATUS, takenBy, totalFor, type Area, type BookingRow, type Group, type Taken } from "@/lib/bookings";
 
 type Props = { mode: "flat" | "committee"; flats: Flat[]; flatId: string | null; isCommittee: boolean; onCount?: (n: number) => void };
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -102,7 +102,7 @@ export default function BookingPanel({ mode, flats, flatId, isCommittee, onCount
           {actions.cancel && <button onClick={() => cancel(g)} className="btn-line px-4 py-2.5">CANCEL BOOKING</button>}
           {actions.wa && g.status === "approved" && <a href={waLink("", noticeText(g, areas.length))} target="_blank" rel="noopener noreferrer" className="btn-line px-4 py-2.5">📲 SHARE NOTICE</a>}
           {actions.wa && g.status === "approved" && g.bill_id && invoices[g.bill_id] && mobileOf(g.flat_id) && <a href={waLink(mobileOf(g.flat_id), invoiceText(g, invoices[g.bill_id].bill_no))} target="_blank" rel="noopener noreferrer" className="btn-line px-4 py-2.5">📲 SEND INVOICE</a>}
-          {actions.wa && g.status !== "pending" && mobileOf(g.flat_id) && <a href={waLink(mobileOf(g.flat_id), `Aakar society: your booking of ${g.areas.join(", ")} on ${dayText(g.book_date)} (${slotName(g.slot).toLowerCase()}) is ${STATUS[g.status].text}.${g.bill_id && invoices[g.bill_id] && g.status === "approved" ? ` Invoice ${invoices[g.bill_id].bill_no}: ${rupees(g.total)}.` : ""}${g.reason ? ` Reason: ${g.reason}` : ""}`)} target="_blank" rel="noopener noreferrer" className="btn-line px-4 py-2.5">📲 TELL MEMBER</a>}
+          {actions.wa && g.status !== "pending" && mobileOf(g.flat_id) && <a href={waLink(mobileOf(g.flat_id), statusText(g, STATUS[g.status].text, g.bill_id && invoices[g.bill_id] && g.status === "approved" ? invoices[g.bill_id].bill_no : undefined))} target="_blank" rel="noopener noreferrer" className="btn-line px-4 py-2.5">📲 TELL MEMBER</a>}
         </div>)}
     </div>);
 
