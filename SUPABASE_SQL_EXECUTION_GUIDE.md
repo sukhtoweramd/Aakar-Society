@@ -21,7 +21,9 @@ Take a backup first (ADMIN → BACKUP & RESTORE → DOWNLOAD FULL BACKUP). Every
 | 14 | `RESOLUTION_FORMAT.sql` | Committee resolution as a letter format: transfer of flat (31 Oct 2026) | **not run yet** |
 | 13 | `DOB.sql` | Date of birth instead of age (31 Oct 2026) | **not run yet** |
 | 12 | `BOOKING_CHARGES.sql` | Booking charges: four areas, full day, invoice on approval (31 Oct 2026) | **not run yet** |
-| 16 | `KEEPALIVE.sql` | Daily GitHub keep-alive job (11 Nov 2026); independent of scripts 1–15 | **not run yet** |
+| 16 | `KEEPALIVE.sql` | Daily GitHub keep-alive job (11 Nov 2026); independent of scripts 1–15 | **run 19 Nov 2026, check OK (all rows true); GitHub job live** |
+| 17 | `FLAT_SETUP_TABLES.sql` | Society profile and towers become data (draft 19 Nov 2026); app does not read them yet | **not run yet (draft, for review)** |
+| 18 | `sql-security/14_RESTORE_flat_setup_tables.sql` | Backups and restores include the two new tables; run after 17 | **not run yet (draft, for review)** |
 | — | `sql-security/00c_LIVE_CHECK_oct30_read_only.sql` | Step 9: read-only check of everything above | run any time; every row ok = true |
 
 ---
@@ -308,3 +310,24 @@ Then set the charges in COMMITTEE → BOOKINGS → BOOKING CHARGES.
 **Re-check any time (read only):** `KEEPALIVE_CHECK.sql`.
 **Undo:** `KEEPALIVE_UNDO.sql` (drops the function; expect `0` left). The GitHub job then fails visibly until it is switched off or the script is run again.
 **If the check shows a row not ok:** do not run anything else; send the result back.
+
+---
+
+## 17. `FLAT_SETUP_TABLES.sql` — society profile and towers as data (draft 19 Nov 2026)
+
+**What it changes:** creates two new tables, `society_profile` (one row) and `towers`, and fills them from what the app keeps in code today (`lib/society.ts`: `SOCIETY`, `TERRACE_TOWERS`). The tower codes are read from your existing flats; towers A and C get a terrace, B does not. **No flat and no other table is touched.** The app does not read the new tables yet, so nothing on screen changes.
+**Who may change them:** only the main admin. Every login can read them. A tower used by flats cannot be deleted or re-coded (a rule that also holds for the server's own key).
+**Before you run it:** take a backup (ADMIN → BACKUP & RESTORE). Run `FLAT_SETUP_SNAPSHOT.sql` (read only, each query on its own) and keep the result outside this repository: it is your "before" picture of the flats. Prerequisite: `AREAS_BACKUPS.sql` (for `is_main_admin()`).
+**How to run:** Supabase → SQL Editor → paste all of `FLAT_SETUP_TABLES.sql` → Run. Safe to run again: it never overwrites an edited row or brings back a deleted one.
+**Expected check result:** both tables `true` • row security `true` • rules 3 and 4 • anon can read `false` • tower guard `true` • society_profile rows `1` • towers = the tower codes in your flats (expected `A · Tower A · true | B · Tower B · false | C · Tower C · true`; if your flats use other codes, stop and send the result) • towers used by flats but missing `0` • flats count = the number in your snapshot.
+**Undo:** run `sql-security/14_UNDO.sql` first, then `FLAT_SETUP_TABLES_UNDO.sql` (expect `0` and `false`). The flats are not affected either way.
+**If the check shows something unexpected:** do not run anything else; send the result back.
+
+---
+
+## 18. `sql-security/14_RESTORE_flat_setup_tables.sql` — restores bring the two tables back (draft 19 Nov 2026)
+
+**What it changes:** the restore function gets `society_profile` and `towers` at the front of its list (nothing points to them). Everything else in the function is exactly as after script 10 (a test checks this). An older backup file without these tables leaves them as they are.
+**Prerequisite:** script 17. Run it right after 17: the app's backup list now includes the two tables, and the restore must be able to read them back.
+**Expected check result:** every row `true` (`society_profile`, `towers`, `letter_templates`, `flat_tenant_logins`, `flats`, only the server can run it).
+**Undo:** `sql-security/14_UNDO.sql` (expect `false` for towers and `true` for letter_templates).
