@@ -8,6 +8,7 @@ import { followsPattern, numberingExceptions, towerViews } from "@/lib/setupView
 import type { Ctx } from "./ctx";
 import { SocietyDetails, TowerEditor } from "./SetupEditors";
 import FlatGenerator from "./FlatGenerator";
+import FlatRemover from "./FlatRemover";
 
 const PARTS = [["SOCIETY", "Society"], ["TOWERS", "Towers"], ["FLOORS", "Floors & flats"], ["RATES", "Rates"]] as const;
 type Part = (typeof PARTS)[number][0];
@@ -37,7 +38,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
       </div>
       {locked && (
         <div className="mt-3 border border-amber-200 bg-[#fffbeb] p-3 mono text-[11px] leading-relaxed">
-          {flats.length} flats already exist, so floors, flat numbers, tower codes, terrace settings and rates cannot be changed here. The society details and the tower names can be changed by the main admin. Owner names are never shown here.
+          {flats.length} flats already exist, so their floors, flat numbers, tower codes, terrace settings and rates cannot be changed here. The main admin can change the society details and tower names, add flats to a tower that has none, and remove flats that hold no data. Owner names are never shown here.
         </div>
       )}
 
@@ -51,7 +52,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
 
       {part === "TOWERS" && <TowerEditor ctx={ctx} />}
 
-      {part === "FLOORS" && !locked && <FlatGenerator ctx={ctx} />}
+      {part === "FLOORS" && <FlatGenerator ctx={ctx} />}
 
       {part === "FLOORS" && locked && cur && (
         <div className="mt-4 space-y-4 min-w-0">
@@ -82,6 +83,8 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       )}
+
+      {part === "FLOORS" && locked && <FlatRemover ctx={ctx} />}
 
       {part === "RATES" && (
         <div className="mt-4 grid gap-3">
