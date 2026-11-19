@@ -60,6 +60,9 @@
   A row with a name and full name is used as it is: an empty field stays empty, it never falls back to Aakar's value.
 - ADMIN -> FLAT SETUP: `FlatSetupPanel.tsx` (view, never writes) + `SetupEditors.tsx` (edit society details and towers). Who may save is decided by the
   database (`is_main_admin()` in the table rules); with flats present, tower code, terrace and on/off are locked (screen) and code change / delete are blocked (trigger).
+- Flat generator (`FlatGenerator.tsx`, `lib/flatPlan.ts`, `POST /api/flat-plan`): only while the society has NO flats, main admin only (server check); the server rebuilds the
+  list from the tower numbers and undoes its insert on error. Flat id = tower letter + floor + 2 digits (A101). Writes only id, tower, floor, flat_no, maintenance (other columns keep
+  their database defaults; not yet tried on a second Supabase project). `normaliseFlat` (`lib/residents.ts`) still has Aakar's B-building rule: the generator warns for tower B.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.

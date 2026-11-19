@@ -7,6 +7,7 @@ import { rupees } from "@/lib/society";
 import { followsPattern, numberingExceptions, towerViews } from "@/lib/setupView";
 import type { Ctx } from "./ctx";
 import { SocietyDetails, TowerEditor } from "./SetupEditors";
+import FlatGenerator from "./FlatGenerator";
 
 const PARTS = [["SOCIETY", "Society"], ["TOWERS", "Towers"], ["FLOORS", "Floors & flats"], ["RATES", "Rates"]] as const;
 type Part = (typeof PARTS)[number][0];
@@ -50,7 +51,9 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
 
       {part === "TOWERS" && <TowerEditor ctx={ctx} />}
 
-      {part === "FLOORS" && cur && (
+      {part === "FLOORS" && !locked && <FlatGenerator ctx={ctx} />}
+
+      {part === "FLOORS" && locked && cur && (
         <div className="mt-4 space-y-4 min-w-0">
           <div className="flex flex-wrap gap-2">
             {views.map((v) => (
