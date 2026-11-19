@@ -6,6 +6,7 @@ import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
+import FlatSetupPanel from "./FlatSetupPanel";
 import BackupPanel from "./BackupPanel";
 import MemberScreensPanel from "./MemberScreensPanel";
 import TestDataPanel from "./TestDataPanel";
@@ -126,6 +127,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       </div>
+
+      <FlatSetupPanel ctx={ctx} />
 
       <CommitteePanel flats={ctx.flats} />
 

@@ -1,0 +1,132 @@
+"use client";
+// ADMIN → FLAT SETUP (view only, 19 Nov 2026): how this society is set up, read from the society profile, the towers and the flats.
+// Shows structure only (tower, floor, flat number, rates), never owners. A society that already has flats cannot change it here.
+import { useMemo, useState } from "react";
+import { SOCIETY, rupees } from "@/lib/society";
+import { followsPattern, numberingExceptions, towerViews } from "@/lib/setupView";
+import type { Ctx } from "./ctx";
+
+const PARTS = [["SOCIETY", "Society"], ["TOWERS", "Towers"], ["FLOORS", "Floors & flats"], ["RATES", "Rates"]] as const;
+type Part = (typeof PARTS)[number][0];
+
+const Row = ({ k, v }: { k: string; v: string }) => (
+  <div className="py-2.5 border-b border-[var(--border)] last:border-0 min-w-0">
+    <div className="mono text-[10px] tracking-[0.1em] opacity-60">{k}</div>
+    <div className="text-[14px] font-semibold break-words">{v || "—"}</div>
+  </div>
+);
+const Chip = ({ children, tone }: { children: React.ReactNode; tone?: "gold" | "navy" }) => (
+  <span className={`mono text-[10px] px-2 py-1 border rounded-[2px] ${tone === "gold" ? "bg-amber-400 text-black border-amber-400" : tone === "navy" ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-white border-[var(--border)]"}`}>{children}</span>
+);
+
+export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
+  const { flats, towers, categories } = ctx;
+  const [part, setPart] = useState<Part>("SOCIETY");
+  const [tower, setTower] = useState<string>("");
+  const views = useMemo(() => towerViews(flats, towers), [flats, towers]);
+  const ex = useMemo(() => numberingExceptions(flats), [flats]);
+  const plain = useMemo(() => flats.filter(followsPattern).length, [flats]);
+  const cur = views.find((v) => v.code === tower) || views[0];
+  const locked = flats.length > 0;
+
+  return (
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4 sm:p-6 min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="serif text-[20px] sm:text-[22px] font-bold">FLAT SETUP</div>
+          <div className="mono text-[11px] opacity-60 mt-1">How this society is set up: society, towers, floors, flats and rates.</div>
+        </div>
+        <Chip tone="navy">{locked ? "VIEW ONLY • IN USE" : "VIEW ONLY"}</Chip>
+      </div>
+      {locked && (
+        <div className="mt-3 border border-amber-200 bg-[#fffbeb] p-3 mono text-[11px] leading-relaxed">
+          {flats.length} flats already exist, so nothing here can be changed. This screen only shows how the society was built. Owner names are never shown here.
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {PARTS.map(([k, t]) => (
+          <button key={k} onClick={() => setPart(k)} className={`min-h-[44px] mono text-[11px] font-semibold tracking-[0.06em] border rounded-[3px] px-2 ${part === k ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)]"}`}>{t.toUpperCase()}</button>
+        ))}
+      </div>
+
+      {part === "SOCIETY" && (
+        <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] rounded-[3px] px-4">
+          <Row k="SOCIETY NAME" v={SOCIETY.name} />
+          <Row k="FULL NAME (PRINTED ON LETTERS AND BILLS)" v={SOCIETY.full} />
+          <Row k="REGISTRATION NO." v={SOCIETY.reg} />
+          <Row k="REGISTERED ON" v={SOCIETY.regDate} />
+          <Row k="BUILDING" v={SOCIETY.building} />
+          <Row k="ADDRESS" v={SOCIETY.address} />
+          <Row k="ADDRESS LINES (LOGIN AND COVER SCREENS)" v={SOCIETY.addressLines.join(" • ")} />
+          <Row k="CITY" v={SOCIETY.city} />
+        </div>
+      )}
+
+      {part === "TOWERS" && (
+        <div className="mt-4 grid gap-3">
+          {views.map((v) => (
+            <div key={v.code} className="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-3 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0"><span className="serif text-[18px] font-bold">{v.name}</span> <span className="mono text-[11px] opacity-60">code {v.code}</span></div>
+                {v.inUse && <Chip>IN USE • LOCKED</Chip>}
+              </div>
+              <div className="mono text-[11px] mt-2 leading-relaxed">
+                {v.flats} flats{v.firstFloor != null ? ` • floors ${v.firstFloor} to ${v.lastFloor}` : ""}<br />
+                Top floor terrace: <b>{v.terrace ? "Yes" : "No"}</b>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {part === "FLOORS" && cur && (
+        <div className="mt-4 space-y-4 min-w-0">
+          <div className="flex flex-wrap gap-2">
+            {views.map((v) => (
+              <button key={v.code} onClick={() => setTower(v.code)} className={`min-h-[44px] min-w-[44px] px-4 mono text-[12px] font-semibold border rounded-[3px] ${cur.code === v.code ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)]"}`}>{v.code}</button>
+            ))}
+          </div>
+          <div className="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-3 mono text-[11px] leading-relaxed">
+            <b>{cur.name}</b>: {cur.flats} flats on {cur.floors.length} floors{cur.perFloor ? ` (${cur.perFloor} per floor)` : ""}.<br />
+            First flat {cur.first || "—"} • last flat {cur.last || "—"}
+          </div>
+          <div className="grid gap-2">
+            {cur.floors.map((r) => (
+              <div key={r.floor} className="border border-[var(--border)] rounded-[3px] p-2.5 min-w-0">
+                <div className="mono text-[10px] opacity-60 mb-1.5">FLOOR {r.floor} • {r.flats.length} FLAT{r.flats.length > 1 ? "S" : ""}</div>
+                <div className="flex flex-wrap gap-1.5">{r.flats.map((n) => <Chip key={n}>{n}</Chip>)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-3 mono text-[11px] leading-relaxed">
+            <div className="font-bold tracking-[0.06em]">NUMBERING</div>
+            <div className="mt-1">{plain} of {flats.length} flats follow the plain pattern: tower letter + floor + 2-digit unit (A-1003 is tower A, floor 10, unit 03).</div>
+            {(ex.joined.length > 0 || ex.otherLetter.length > 0) && <div className="mt-2 opacity-80">The others are exceptions. A new society does not need them:</div>}
+            {ex.joined.map((g) => <div key={`j${g.tower}`} className="mt-2"><b>Joined homes in Tower {g.tower}</b> (one home, two numbers): {g.flats.join(", ")}</div>)}
+            {ex.otherLetter.map((g) => <div key={`o${g.tower}`} className="mt-2"><b>Tower {g.tower}</b> holds flats numbered with another letter: {g.flats.join(", ")}</div>)}
+          </div>
+        </div>
+      )}
+
+      {part === "RATES" && (
+        <div className="mt-4 grid gap-3">
+          {categories.map((c) => (
+            <div key={c.key} className={`border rounded-[3px] p-3 min-w-0 ${c.terrace ? "bg-[#fff8d6] border-amber-300" : "bg-[var(--bg)] border-[var(--border)]"}`}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="mono text-[11px] font-bold tracking-[0.06em] min-w-0 break-words">{c.label}</div>
+                {c.terrace ? <Chip tone="gold">TERRACE</Chip> : <Chip>STANDARD</Chip>}
+              </div>
+              <div className="mono text-[11px] mt-2 leading-relaxed">
+                {c.ids.length} flats • {c.range}<br />
+                Maintenance {c.maint == null ? "not set" : `${rupees(c.maint)} / year`} • {c.sqft == null ? "area not set" : `${c.sqft} sq ft`} • {c.bhk || "type not set"}
+              </div>
+            </div>
+          ))}
+          <div className="mono text-[10px] opacity-60">Rates are changed in the charges panel above (SOCIETY CHARGES CONTROL PANEL).</div>
+        </div>
+      )}
+    </div>
+  );
+}
