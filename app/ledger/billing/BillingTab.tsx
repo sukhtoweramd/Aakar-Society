@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, label, sortFlats, type MemberLite } from "@/lib/society";
+import { familySummary, label, SOCIETY, sortFlats, type MemberLite } from "@/lib/society";
 import {
   addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, tenantBookingDue, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
   OTHER_PRESETS, periodOf, periodOptions, maintenanceCharge, rentMultiplier, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
 } from "@/lib/billing";
 import type { Ctx } from "../ctx";
+import type { TowerInfo } from "@/lib/societySetup";
 import SharePdfButton from "./SharePdfButton";
 import LedgerCard from "./LedgerCard";
 import BillingSettings from "./BillingSettings";
@@ -83,7 +84,7 @@ export default function BillingTab({ ctx }: { ctx: Ctx }) {
       {view === "VERIFY PAYMENTS" && reports && <VerifyPayments reports={reports} bills={bills} pays={pays} flats={flats} settings={settings} signatories={signatories} pc={pc} email={ctx.email} mobileOf={mobileOf} openLedger={openLedger} onDone={load} />}
       {view === "NEW BILLS" && <BillRun ctx={ctx} flats={flats} bills={bills} settings={settings} signatories={signatories} pc={pc} pays={pays} onDone={load} />}
       {view === "OTHER BILL" && <OtherBill ctx={ctx} flats={flats} settings={settings} signatories={signatories} pc={pc} pays={pays} bills={bills} onDone={load} />}
-      {view === "DUES" && <Dues flats={flats} bills={bills} pays={pays} mobileOf={mobileOf} open={openLedger} pc={pc} />}
+      {view === "DUES" && <Dues towers={ctx.towers} flats={flats} bills={bills} pays={pays} mobileOf={mobileOf} open={openLedger} pc={pc} />}
       {view === "LETTERS" && <LettersRegister flats={flats} pc={pc} email={ctx.email} onCount={setLetterReqs} openFlat={(id) => { ctx.selectFlat(id); ctx.go("DETAIL"); setTimeout(() => document.getElementById("sec-letters")?.scrollIntoView({ behavior: "smooth" }), 600); }} />}
       {view === "SETTINGS" && <BillingSettings settings={settings} signatories={signatories} email={ctx.email} onChanged={load} />}
     </div>
@@ -143,7 +144,7 @@ function BillRun({ ctx, flats, bills, settings, signatories, pc, pays, onDone }:
         <label className="text-[10px] opacity-80">PERIOD<select className="field mt-1 !w-[220px]" value={pk} onChange={(e) => setPk(e.target.value)}>{periodOptions().map((k) => <option key={k} value={k}>{periodOf(k).label} (bill {dmy(periodOf(k).billDate)})</option>)}</select></label>
         <label className="text-[10px] opacity-80">BILL DATE<input type="date" className="field mt-1 !w-[150px]" value={billDate} onChange={(e) => setBillDate(e.target.value)} /></label>
         <div className="text-[10px] opacity-80">DUE DATE<div className="field mt-1 !w-[130px] bg-[var(--bg)]">{dmy(due)}</div></div>
-        <label className="text-[10px] opacity-80">TOWERS<select className="field mt-1 !w-[120px]" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All</option><option>A</option><option>B</option><option>C</option></select></label>
+        <label className="text-[10px] opacity-80">TOWERS<select className="field mt-1 !w-[120px]" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All</option>{ctx.towers.map((t) => <option key={t.code} value={t.code}>{t.code}</option>)}</select></label>
         <label className="text-[10px] opacity-80">SIGNED BY<select className="field mt-1 !w-[190px]" value={signer} onChange={(e) => setSigner(e.target.value)}><option value="">— blank line —</option>{signatories.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.designation} – {s.name}</option>)}</select></label>
       </div>
       <div className="opacity-70">Maintenance rates are per year: each flat is billed {months === 6 ? "half its annual rate" : `${months}/12 of its annual rate`}; a rented flat pays {mult} × that (bill still in the owner's name). Flats already billed for this period are skipped, so no flat is billed twice. To bill a single flat, tick only that flat here (not in OTHER BILL). Bill to: owner. Next bill no.: <b>{settings.bill_prefix}{String(settings.bill_last_no + 1).padStart(settings.num_digits, "0")}</b></div>
@@ -262,7 +263,7 @@ function OtherBill({ ctx, flats, settings, signatories, pc, pays, bills, onDone 
 }
 
 // ---------- Dues list ----------
-function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills: Bill[]; pays: Payment[]; mobileOf: (id: string) => string | null; open: (id: string) => void; pc: PrintCtx }) {
+function Dues({ towers, flats, bills, pays, mobileOf, open, pc }: { towers: TowerInfo[]; flats: any[]; bills: Bill[]; pays: Payment[]; mobileOf: (id: string) => string | null; open: (id: string) => void; pc: PrintCtx }) {
   const [tower, setTower] = useState("ALL");
   const rows = flats.filter((f) => tower === "ALL" || f.tower === tower).flatMap((f) => {
     const fb = bills.filter((b) => b.flat_id === f.id && b.status === "active");
@@ -279,7 +280,7 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
   function print() {
     const w = window.open("", "_blank"); if (!w) return;
     w.document.write(`<html><head><title>Dues list</title><style>body{font-family:Inter,Arial;margin:24px;color:#1a1a18}h1{color:#0f1d3d;font-size:17px;margin:0}.s{font-size:11px;color:#6f6a5d;margin:4px 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0f1d3d;color:#fff;text-align:left;padding:6px}td{padding:5px 6px;border-bottom:1px solid #e8e2d1}.r{text-align:right}tfoot td{font-weight:800;background:#f7f2e4}@page{size:A4;margin:12mm}</style></head><body>${backBar()}
-      <h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — DUES LIST</h1><div class="s">${esc(tower === "ALL" ? "All towers" : "Tower " + tower)} • as on ${dmy(today())} • ${rows.length} flats</div>
+      <h1>ॐ ${esc(SOCIETY.full)} — DUES LIST</h1><div class="s">${esc(tower === "ALL" ? "All towers" : "Tower " + tower)} • as on ${dmy(today())} • ${rows.length} flats</div>
       <table><thead><tr><th>Flat</th><th>Owner</th><th>Mobile</th><th>Unpaid bills</th><th>Oldest due date</th><th class="r">Amount due ₹</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td><b>${esc(label(r.f))}</b></td><td>${esc(r.f.owner_name || "")}</td><td>${esc(r.tenant ? "" : mobileOf(r.f.id) || "")}</td><td>${r.count}</td><td>${dmy(r.oldest)}</td><td class="r">${inr(r.due)}</td></tr>`).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL</td><td class="r">${inr(total)}</td></tr></tfoot></table><script>setTimeout(()=>print(),400)</script></body></html>`);
@@ -294,7 +295,7 @@ function Dues({ flats, bills, pays, mobileOf, open, pc }: { flats: any[]; bills:
             <div className="serif text-[22px] font-bold mt-1">Full dues list — {tower === "ALL" ? "All towers" : `Tower ${tower}`}</div>
             <div className="opacity-70 mt-0.5">{rows.length} flat{rows.length === 1 ? " owes" : "s owe"} <b className="text-amber-700">₹{inr(total)}</b> • as on {dmy(today())}</div>
           </div>
-          <label className="text-[10px] font-bold tracking-[0.1em]">SHOW<select className="field !w-[150px] !py-1.5 mt-1 block" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option></select></label>
+          <label className="text-[10px] font-bold tracking-[0.1em]">SHOW<select className="field !w-[150px] !py-1.5 mt-1 block" value={tower} onChange={(e) => setTower(e.target.value)}><option value="ALL">All towers</option>{towers.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}</select></label>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <button onClick={print} disabled={!rows.length} className="btn-navy px-5 py-2.5 text-[12px] tracking-[0.06em]">🖨 PRINT FULL DUES LIST</button>

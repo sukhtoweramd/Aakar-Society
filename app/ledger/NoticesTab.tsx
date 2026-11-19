@@ -149,7 +149,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
             <div className="grid sm:grid-cols-[1fr_140px] gap-2">
               <input className="field" placeholder="Notice title *" value={n.title} onChange={(e) => setN({ ...n, title: e.target.value })} />
               <select className="field" value={n.tower} onChange={(e) => setN({ ...n, tower: e.target.value })}>
-                <option value="Common">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option>
+                <option value="Common">All towers</option>{ctx.towers.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
               </select>
             </div>
             <textarea className="field" rows={3} placeholder="Type notice…" value={n.content} onChange={(e) => setN({ ...n, content: e.target.value })} />
@@ -169,7 +169,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
                 <div className="grid sm:grid-cols-[1fr_140px] gap-2">
                   <input className="field" placeholder="Notice title *" value={ef.title} onChange={(e) => setEf({ ...ef, title: e.target.value })} />
                   <select className="field" value={ef.tower} onChange={(e) => setEf({ ...ef, tower: e.target.value })}>
-                    <option value="Common">All towers</option><option value="A">Tower A</option><option value="B">Tower B</option><option value="C">Tower C</option>
+                    <option value="Common">All towers</option>{ctx.towers.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
                   </select>
                 </div>
                 <textarea className="field" rows={4} placeholder="Type notice…" value={ef.content} onChange={(e) => setEf({ ...ef, content: e.target.value })} />

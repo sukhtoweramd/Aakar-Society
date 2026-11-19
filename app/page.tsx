@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
+import { applySocietyProfile, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "@/lib/societySetup";
 import { TABS, type Ctx, type Tab } from "./ledger/ctx";
 import { residentTabs, tenantTabs } from "@/lib/memberTabs";
 import ChangePassword from "./ledger/ChangePassword";
@@ -77,6 +78,8 @@ export default function Home() {
   }
 
   useEffect(() => {
+    // the login screen (before login the profile table cannot be read) shows the last profile seen on this device
+    try { const c = readCachedProfile(window.localStorage); if (c) applySocietyProfile(c); } catch {}
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
@@ -110,7 +113,30 @@ export default function Home() {
   // Members (flat logins) start on MY FLAT; committee logins start on the cover page.
   useEffect(() => { if (session && ["resident", "tenant"].includes((session.user.app_metadata as any)?.role)) setTab("DETAIL"); }, [session?.user.id]);
 
-  const categories = useMemo(() => buildCategories(flats), [flats]);
+  // Society profile + towers (FLAT_SETUP_TABLES.sql). Read once after login; a missing / empty / slow table keeps today's values.
+  const [towerRows, setTowerRows] = useState<any[] | null>(null);
+  const [setupReady, setSetupReady] = useState(false);
+  const towers = useMemo(() => towersFromRows(towerRows, flats), [towerRows, flats]);
+  const categories = useMemo(() => buildCategories(flats, terraceCodes(towers)), [flats, towers]);
+  useEffect(() => {
+    if (!session || !role) return;
+    let off = false;
+    (async () => {
+      try {
+        const slow = new Promise<null>((r) => setTimeout(() => r(null), 5000)); // never keep the app waiting on the setup tables
+        const got = await Promise.race([
+          Promise.all([supabase.from("society_profile").select("*").eq("id", 1).maybeSingle(), supabase.from("towers").select("*")]),
+          slow,
+        ]);
+        if (off || !got) return;
+        const [p, t] = got;
+        if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { writeCachedProfile(window.localStorage, prof); } catch {} }
+        setTowerRows(!t.error && Array.isArray(t.data) ? t.data : null);
+      } catch { /* keep today's values */ }
+      finally { if (!off) setSetupReady(true); }
+    })();
+    return () => { off = true; };
+  }, [session?.user.id, role]);
 
   // Which tabs flat logins may open (ADMIN → MEMBER SCREENS). null = not set up yet: all member tabs, as before.
   const [memberTabs, setMemberTabs] = useState<string[] | null>(null);
@@ -150,6 +176,7 @@ export default function Home() {
       </div>
     </div>
   ) : <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
+  if (!setupReady) return <div className="min-h-screen grid place-items-center mono text-[12px] opacity-60">Loading ledger…</div>;
   // Flat / tenant logins: must change the first password. Committee logins: only when ADD / RESET marked it
   // (password_changed === false, from 31 Oct 2026); older committee logins without the mark are not forced.
   const pwChanged = (session.user.user_metadata as any)?.password_changed;
@@ -161,7 +188,7 @@ export default function Home() {
   const ctx: Ctx = {
     email: session.user.email || "",
     isCommittee, myFlat, homeFlat, isTenant, tenantFlat,
-    flats, categories, towerFilter, setTowerFilter, search, setSearch, selectedId,
+    flats, categories, towers, towerFilter, setTowerFilter, search, setSearch, selectedId,
     selectFlat: setSelectedId, go, reloadFlats,
   };
   const towerCount = (t: string) => flats.filter((f) => f.tower === t).length;
@@ -173,7 +200,7 @@ export default function Home() {
         <div className="w-full bg-[var(--navy)] text-white px-4 py-2.5 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-[var(--navy)] border border-[var(--gold)] text-[var(--gold)] grid place-items-center serif text-[18px] font-bold shrink-0">ॐ</div>
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">AAKAR CO-OP • {SOCIETY.building}</div>
+            <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">{SOCIETY.name} • {SOCIETY.building}</div>
             <div className="mono text-[11px] opacity-80 truncate normal-case">{who}</div>
           </div>
           <InstallApp variant="bar" />
@@ -195,13 +222,13 @@ export default function Home() {
               SOCIETY LEDGER LIVE
             </span>
             <span className="opacity-40">•</span>
-            <span>AHMEDABAD</span>
+            <span>{SOCIETY.city}</span>
             <span className="opacity-40">•</span>
             <span className="text-[var(--gold)] font-semibold">{flats.length || 90} FLATS {SOCIETY.reg}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-4 opacity-80 mr-2 text-[11px]">
-              <span>SUKH TOWER • MIRAMBICA ROAD</span>
+              <span>{SOCIETY.building} • {SOCIETY.addressLines[0]}</span>
               <span className="h-3 w-px bg-white/20" />
               <span className={myFlat || tenantFlat ? "" : "normal-case"}>{who}</span>
             </div>
@@ -240,7 +267,7 @@ export default function Home() {
         {!isPhone && tab !== "BILLING" && tab !== "COMMITTEE" && <Sidebar ctx={ctx} />}
         <main className="order-1 lg:order-2 min-w-0 max-w-full overflow-x-hidden">
           {!isPhone && <div className="mono text-[11px] opacity-40 mb-3 tracking-[0.04em]">
-            SOCIETY LEDGER • TAB {tab} • {flats.length} FLATS • A {towerCount("A")} • B {towerCount("B")} • C {towerCount("C")}
+            SOCIETY LEDGER • TAB {tab} • {flats.length} FLATS {towers.map((t) => ` • ${t.code} ${towerCount(t.code)}`).join("")}
           </div>}
           {loadError && <div className="mb-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[12px]">{loadError}</div>}
           {isPhone && phoneHome ? <PhoneHome ctx={ctx} allowed={residentAllowed} onOpen={openTile} /> : <>
@@ -264,7 +291,7 @@ export default function Home() {
 
       <HelpChat flats={flats} isCommittee={isCommittee} />
       <footer className="border-t border-[var(--border)] mt-8 mono text-[10px] px-6 py-4 opacity-60 flex flex-wrap gap-4 justify-between max-w-[1600px] mx-auto">
-        <span>AAKAR CO-OP HOUSING SOCIETY {SOCIETY.reg} • Sukh Tower • Mirambica Road Naranpura • Ahmedabad • EST 1994</span>
+        <span>{SOCIETY.name} HOUSING SOCIETY {SOCIETY.reg} • {SOCIETY.building} • {SOCIETY.addressLines[0]} • {SOCIETY.city} • EST {SOCIETY.regDate.slice(-4)}</span>
         <span>Logged in: {who}{isCommittee ? " • Committee" : isTenant ? " • Tenant" : " • Resident"}</span>
       </footer>
     </div>
