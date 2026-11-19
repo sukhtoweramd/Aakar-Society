@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { SOCIETY, TERRACE_TOWERS, buildCategories } from "../lib/society";
-import { FALLBACK_PROFILE, applySocietyProfile, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "../lib/societySetup";
+import { FALLBACK_PROFILE, applySocietyProfile, joinParts, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "../lib/societySetup";
 
 const aakarRow = {
   id: 1, name: "AAKAR CO-OP", full_name: "AAKAR CO-OP HOUSING SOCIETY LTD.", reg_no: "G-16551", reg_date: "16-03-1994", building: "SUKH TOWER",
@@ -20,9 +20,21 @@ test("the Aakar profile row gives exactly SOCIETY", () => {
   assert.deepEqual(profileFromRow(aakarRow), { ...SOCIETY });
 });
 
-test("no row, or empty fields, keep today's values", () => {
+test("no row, or a row without its two names, keeps today's values", () => {
   assert.deepEqual(profileFromRow(null), FALLBACK_PROFILE);
   assert.deepEqual(profileFromRow({ name: "  ", full_name: null, address_lines: [] }), FALLBACK_PROFILE);
+  assert.deepEqual(profileFromRow({ name: "X", full_name: "" }), FALLBACK_PROFILE);
+});
+
+test("a field the society left empty stays empty: it never shows another society's value", () => {
+  const p = profileFromRow({ name: "GREEN VIEW", full_name: "GREEN VIEW CHS", reg_no: "", reg_date: null, building: " ", address: "", address_lines: [], city: "" });
+  assert.deepEqual(p, { name: "GREEN VIEW", full: "GREEN VIEW CHS", reg: "", regDate: "", building: "", address: "", addressLines: [], city: "" });
+});
+
+test("joinParts leaves out empty parts", () => {
+  assert.equal(joinParts(["A", "", " B ", null, undefined, "C"]), "A • B • C");
+  assert.equal(joinParts([]), "");
+  assert.equal(joinParts(["x", "y"], ", "), "x, y");
 });
 
 test("a society's own values are used, trimmed", () => {
@@ -102,6 +114,7 @@ test("the cached profile holds society details only, never resident data", () =>
 test("screens take the society name and towers from the setup, not from typed-in text", () => {
   const page = readFileSync("app/page.tsx", "utf8");
   assert.match(page, /from\("society_profile"\)/);
+  assert.doesNotMatch(page, /EST 1994/);
   assert.match(page, /from\("towers"\)/);
   assert.doesNotMatch(page, /AAKAR CO-OP|Sukh Tower|Mirambica|AHMEDABAD/);
   for (const f of ["app/ledger/billing/BillingTab.tsx", "app/ledger/NoticesTab.tsx"]) {

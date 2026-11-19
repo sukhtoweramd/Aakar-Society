@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
 import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
-import { applySocietyProfile, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "@/lib/societySetup";
+import { applySocietyProfile, joinParts, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "@/lib/societySetup";
 import { TABS, type Ctx, type Tab } from "./ledger/ctx";
 import { residentTabs, tenantTabs } from "@/lib/memberTabs";
 import ChangePassword from "./ledger/ChangePassword";
@@ -118,23 +118,26 @@ export default function Home() {
   const [setupReady, setSetupReady] = useState(false);
   const towers = useMemo(() => towersFromRows(towerRows, flats), [towerRows, flats]);
   const categories = useMemo(() => buildCategories(flats, terraceCodes(towers)), [flats, towers]);
+  const [, setSetupVersion] = useState(0); // bumped after a save so every screen shows the new society details
+  // Reads the profile and towers; the screens that edit them call this after a save (ctx.reloadSetup).
+  async function loadSetup(isCurrent: () => boolean = () => true) {
+    try {
+      const slow = new Promise<null>((r) => setTimeout(() => r(null), 5000)); // never keep the app waiting on the setup tables
+      const got = await Promise.race([
+        Promise.all([supabase.from("society_profile").select("*").eq("id", 1).maybeSingle(), supabase.from("towers").select("*")]),
+        slow,
+      ]);
+      if (!isCurrent() || !got) return;
+      const [p, t] = got;
+      if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { writeCachedProfile(window.localStorage, prof); } catch {} }
+      setTowerRows(!t.error && Array.isArray(t.data) ? t.data : null);
+      setSetupVersion((n) => n + 1);
+    } catch { /* keep today's values */ }
+  }
   useEffect(() => {
     if (!session || !role) return;
     let off = false;
-    (async () => {
-      try {
-        const slow = new Promise<null>((r) => setTimeout(() => r(null), 5000)); // never keep the app waiting on the setup tables
-        const got = await Promise.race([
-          Promise.all([supabase.from("society_profile").select("*").eq("id", 1).maybeSingle(), supabase.from("towers").select("*")]),
-          slow,
-        ]);
-        if (off || !got) return;
-        const [p, t] = got;
-        if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { writeCachedProfile(window.localStorage, prof); } catch {} }
-        setTowerRows(!t.error && Array.isArray(t.data) ? t.data : null);
-      } catch { /* keep today's values */ }
-      finally { if (!off) setSetupReady(true); }
-    })();
+    loadSetup(() => !off).finally(() => { if (!off) setSetupReady(true); });
     return () => { off = true; };
   }, [session?.user.id, role]);
 
@@ -188,7 +191,7 @@ export default function Home() {
   const ctx: Ctx = {
     email: session.user.email || "",
     isCommittee, myFlat, homeFlat, isTenant, tenantFlat,
-    flats, categories, towers, towerFilter, setTowerFilter, search, setSearch, selectedId,
+    flats, categories, towers, reloadSetup: () => loadSetup(), towerFilter, setTowerFilter, search, setSearch, selectedId,
     selectFlat: setSelectedId, go, reloadFlats,
   };
   const towerCount = (t: string) => flats.filter((f) => f.tower === t).length;
@@ -200,7 +203,7 @@ export default function Home() {
         <div className="w-full bg-[var(--navy)] text-white px-4 py-2.5 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-[var(--navy)] border border-[var(--gold)] text-[var(--gold)] grid place-items-center serif text-[18px] font-bold shrink-0">ॐ</div>
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">{SOCIETY.name} • {SOCIETY.building}</div>
+            <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">{joinParts([SOCIETY.name, SOCIETY.building])}</div>
             <div className="mono text-[11px] opacity-80 truncate normal-case">{who}</div>
           </div>
           <InstallApp variant="bar" />
@@ -228,7 +231,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-4 opacity-80 mr-2 text-[11px]">
-              <span>{SOCIETY.building} • {SOCIETY.addressLines[0]}</span>
+              <span>{joinParts([SOCIETY.building, SOCIETY.addressLines[0]])}</span>
               <span className="h-3 w-px bg-white/20" />
               <span className={myFlat || tenantFlat ? "" : "normal-case"}>{who}</span>
             </div>
@@ -291,7 +294,7 @@ export default function Home() {
 
       <HelpChat flats={flats} isCommittee={isCommittee} />
       <footer className="border-t border-[var(--border)] mt-8 mono text-[10px] px-6 py-4 opacity-60 flex flex-wrap gap-4 justify-between max-w-[1600px] mx-auto">
-        <span>{SOCIETY.name} HOUSING SOCIETY {SOCIETY.reg} • {SOCIETY.building} • {SOCIETY.addressLines[0]} • {SOCIETY.city} • EST {SOCIETY.regDate.slice(-4)}</span>
+        <span>{joinParts([`${SOCIETY.name} HOUSING SOCIETY ${SOCIETY.reg}`, SOCIETY.building, SOCIETY.addressLines[0], SOCIETY.city, SOCIETY.regDate ? `EST ${SOCIETY.regDate.slice(-4)}` : ""])}</span>
         <span>Logged in: {who}{isCommittee ? " • Committee" : isTenant ? " • Tenant" : " • Resident"}</span>
       </footer>
     </div>

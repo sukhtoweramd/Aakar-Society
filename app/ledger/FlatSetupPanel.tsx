@@ -1,20 +1,16 @@
 "use client";
-// ADMIN → FLAT SETUP (view only, 19 Nov 2026): how this society is set up, read from the society profile, the towers and the flats.
-// Shows structure only (tower, floor, flat number, rates), never owners. A society that already has flats cannot change it here.
+// ADMIN → FLAT SETUP (19 Nov 2026): how this society is set up, read from the society profile, the towers and the flats.
+// Shows structure only (tower, floor, flat number, rates), never owners. This file never writes: the society details and the
+// towers are edited in SetupEditors.tsx (main admin only, decided by the database); floors, flats and rates are view only here.
 import { useMemo, useState } from "react";
-import { SOCIETY, rupees } from "@/lib/society";
+import { rupees } from "@/lib/society";
 import { followsPattern, numberingExceptions, towerViews } from "@/lib/setupView";
 import type { Ctx } from "./ctx";
+import { SocietyDetails, TowerEditor } from "./SetupEditors";
 
 const PARTS = [["SOCIETY", "Society"], ["TOWERS", "Towers"], ["FLOORS", "Floors & flats"], ["RATES", "Rates"]] as const;
 type Part = (typeof PARTS)[number][0];
 
-const Row = ({ k, v }: { k: string; v: string }) => (
-  <div className="py-2.5 border-b border-[var(--border)] last:border-0 min-w-0">
-    <div className="mono text-[10px] tracking-[0.1em] opacity-60">{k}</div>
-    <div className="text-[14px] font-semibold break-words">{v || "—"}</div>
-  </div>
-);
 const Chip = ({ children, tone }: { children: React.ReactNode; tone?: "gold" | "navy" }) => (
   <span className={`mono text-[10px] px-2 py-1 border rounded-[2px] ${tone === "gold" ? "bg-amber-400 text-black border-amber-400" : tone === "navy" ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-white border-[var(--border)]"}`}>{children}</span>
 );
@@ -36,11 +32,11 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
           <div className="serif text-[20px] sm:text-[22px] font-bold">FLAT SETUP</div>
           <div className="mono text-[11px] opacity-60 mt-1">How this society is set up: society, towers, floors, flats and rates.</div>
         </div>
-        <Chip tone="navy">{locked ? "VIEW ONLY • IN USE" : "VIEW ONLY"}</Chip>
+        <Chip tone="navy">{locked ? "IN USE" : "NOT IN USE YET"}</Chip>
       </div>
       {locked && (
         <div className="mt-3 border border-amber-200 bg-[#fffbeb] p-3 mono text-[11px] leading-relaxed">
-          {flats.length} flats already exist, so nothing here can be changed. This screen only shows how the society was built. Owner names are never shown here.
+          {flats.length} flats already exist, so floors, flat numbers, tower codes, terrace settings and rates cannot be changed here. The society details and the tower names can be changed by the main admin. Owner names are never shown here.
         </div>
       )}
 
@@ -50,35 +46,9 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
         ))}
       </div>
 
-      {part === "SOCIETY" && (
-        <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] rounded-[3px] px-4">
-          <Row k="SOCIETY NAME" v={SOCIETY.name} />
-          <Row k="FULL NAME (PRINTED ON LETTERS AND BILLS)" v={SOCIETY.full} />
-          <Row k="REGISTRATION NO." v={SOCIETY.reg} />
-          <Row k="REGISTERED ON" v={SOCIETY.regDate} />
-          <Row k="BUILDING" v={SOCIETY.building} />
-          <Row k="ADDRESS" v={SOCIETY.address} />
-          <Row k="ADDRESS LINES (LOGIN AND COVER SCREENS)" v={SOCIETY.addressLines.join(" • ")} />
-          <Row k="CITY" v={SOCIETY.city} />
-        </div>
-      )}
+      {part === "SOCIETY" && <SocietyDetails ctx={ctx} />}
 
-      {part === "TOWERS" && (
-        <div className="mt-4 grid gap-3">
-          {views.map((v) => (
-            <div key={v.code} className="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-3 min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0"><span className="serif text-[18px] font-bold">{v.name}</span> <span className="mono text-[11px] opacity-60">code {v.code}</span></div>
-                {v.inUse && <Chip>IN USE • LOCKED</Chip>}
-              </div>
-              <div className="mono text-[11px] mt-2 leading-relaxed">
-                {v.flats} flat{v.flats === 1 ? "" : "s"}{v.firstFloor != null ? ` • floors ${v.firstFloor} to ${v.lastFloor}` : ""}<br />
-                Top floor terrace: <b>{v.terrace ? "Yes" : "No"}</b>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {part === "TOWERS" && <TowerEditor ctx={ctx} />}
 
       {part === "FLOORS" && cur && (
         <div className="mt-4 space-y-4 min-w-0">

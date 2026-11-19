@@ -66,19 +66,20 @@ test("followsPattern: tower letter + floor + unit", () => {
   assert.equal(followsPattern(flat("SHOP1", "A", 0)), false);
 });
 
-test("the screen is view only: no save, no database write, and it is shown in ADMIN", () => {
+test("the panel itself never writes; only the editors do, and the panel is shown in ADMIN", () => {
   const panel = readFileSync("app/ledger/FlatSetupPanel.tsx", "utf8");
   assert.doesNotMatch(panel, /supabase|\.insert\(|\.update\(|\.delete\(|\.upsert\(|fetch\(|api\(/);
   assert.doesNotMatch(panel, /owner_name|owner_mobile|\.email|tenant_name/);
-  assert.match(panel, /VIEW ONLY/);
   assert.match(readFileSync("app/ledger/AdminTab.tsx", "utf8"), /<FlatSetupPanel ctx=\{ctx\} \/>/);
 });
 
 test("phone first: 44 px buttons and nothing that scrolls sideways", () => {
-  const panel = readFileSync("app/ledger/FlatSetupPanel.tsx", "utf8");
-  assert.match(panel, /min-h-\[44px\]/);
-  assert.match(panel, /min-w-0/);
-  assert.doesNotMatch(panel, /<table/);
+  for (const f of ["app/ledger/FlatSetupPanel.tsx", "app/ledger/SetupEditors.tsx"]) {
+    const src = readFileSync(f, "utf8");
+    assert.match(src, /min-h-\[44px\]/, f);
+    assert.match(src, /min-w-0/, f);
+    assert.doesNotMatch(src, /<table/, f);
+  }
 });
 
 test("setupView.ts is a pure file (no supabaseClient), so npm test on Node 20 can import it", () => {
