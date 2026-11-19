@@ -1,0 +1,82 @@
+# Daily keep-alive for the Aakar Society Supabase project (Free plan pauses a project after 7 days of low activity).
+#
+# What it does: once a day it calls the database function public.keepalive() (KEEPALIVE.sql) through Supabase's REST API with the
+# public (publishable) key. The function returns the number 1 and reads or changes no data. The job fails visibly (red run, GitHub
+# e-mail to the person who last edited the schedule) if Supabase does not answer 200 with the number 1.
+#
+# Settings: Repository > Settings > Secrets and variables > Actions > Repository secrets (names only here, never the values):
+#   AAKAR_SUPABASE_URL                 e.g. https://<project-ref>.supabase.co
+#   AAKAR_SUPABASE_PUBLISHABLE_KEY     the publishable (anon) key, NOT the secret / service-role key
+#
+# Notes:
+#   * This lowers the risk of an inactivity pause; it cannot guarantee that Supabase will never pause the project.
+#   * GitHub runs schedules only from the default branch, and switches schedules off in a public repository after 60 days
+#     with no repository activity (re-enable: Actions > this workflow > Enable workflow).
+#   * "Run workflow" (workflow_dispatch) is for manual tests. The pull_request trigger below only runs this file when this file
+#     itself is edited, so a change can be tested before it is merged.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # 02:17 UTC = 07:47 IST; an off-peak minute, because runs at the top of the hour are often delayed
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/supabase-keepalive.yml"
+
+permissions: {} # no repository access needed; no third-party actions are used
+
+concurrency:
+  group: supabase-keepalive-aakar
+  cancel-in-progress: false
+
+jobs:
+  aakar:
+    name: Aakar Society
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call keepalive() on the Aakar Supabase project
+        env:
+          SUPABASE_URL: ${{ secrets.AAKAR_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.AAKAR_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error title=Aakar keep-alive failed::$1"
+            echo "### Aakar Society keep-alive: FAILED" >> "$GITHUB_STEP_SUMMARY"
+            echo "$1" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+
+          [ -n "${SUPABASE_URL:-}" ] || fail "Secret AAKAR_SUPABASE_URL is missing or empty."
+          [ -n "${SUPABASE_KEY:-}" ] || fail "Secret AAKAR_SUPABASE_PUBLISHABLE_KEY is missing or empty."
+          [[ "$SUPABASE_URL" =~ ^https://[a-z0-9]+\.supabase\.co/?$ ]] || fail "AAKAR_SUPABASE_URL must look like https://<project-ref>.supabase.co (the value is not shown here)."
+
+          body="$(mktemp)"
+          # The key goes on the apikey header only (publishable keys are not JWTs). It is passed through a config file
+          # descriptor so it does not appear on the command line.
+          code="$(curl --silent --show-error --max-time 20 --retry 1 --retry-delay 5 \
+            --request POST --header "Content-Type: application/json" --data '{}' \
+            --output "$body" --write-out '%{http_code}' \
+            --config <(printf 'header = "apikey: %s"\n' "$SUPABASE_KEY") \
+            "${SUPABASE_URL%/}/rest/v1/rpc/keepalive")" || code="000"
+
+          answer="$(tr -d '[:space:]' < "$body" | cut -c1-200)"
+          shown="$(tr -s '[:space:]' ' ' < "$body" | cut -c1-200)"
+
+          if [ "$code" = "200" ] && [ "$answer" = "1" ]; then
+            echo "Aakar Society: OK (HTTP 200, keepalive() returned 1)"
+            echo "### Aakar Society keep-alive: OK" >> "$GITHUB_STEP_SUMMARY"
+            echo "HTTP 200, \`keepalive()\` returned 1." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          case "$code" in
+            000) hint="No answer within 20 seconds (project paused, down or unreachable)." ;;
+            401|403) hint="Key refused: check AAKAR_SUPABASE_PUBLISHABLE_KEY (publishable / anon key of this project)." ;;
+            404) hint="Function not found: run KEEPALIVE.sql in Supabase, or the URL points to another project." ;;
+            *) hint="Unexpected answer." ;;
+          esac
+          fail "HTTP $code. $hint Response (first 200 characters): $shown"
