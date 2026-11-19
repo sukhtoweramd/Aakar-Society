@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
-import { buildFlatPlan, planError, type TowerPlan } from "@/lib/flatPlan";
+import { buildFlatPlan, planError, planWarnings, type TowerPlan } from "@/lib/flatPlan";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     }
     const bad = planError(towers);
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+    const warn = planWarnings(towers);
+    if (warn.length) return NextResponse.json({ error: warn[0] }, { status: 400 });
     const { count, error: ce } = await admin.from("flats").select("id", { count: "exact", head: true });
     if (ce) throw ce;
     if ((count || 0) > 0) return NextResponse.json({ error: `This society already has ${count} flats, so none are created.` }, { status: 409 });

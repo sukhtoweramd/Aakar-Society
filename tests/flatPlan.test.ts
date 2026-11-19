@@ -61,15 +61,19 @@ test("summary lines", () => {
   assert.deepEqual(planSummary([t("A", { terrace: true })]), [{ code: "A", flats: 12, first: "A101", last: "A304", terraceFlats: 4 }]);
 });
 
-test("tower B with a position 02 gets a warning (login lookup of Aakar's joined homes)", () => {
+test("a joined-home tower (this copy's FLAT_RULES) with 2+ flats per floor gets a warning; with the rule off there is none", () => {
   assert.equal(planWarnings([t("A")]).length, 0);
   assert.equal(planWarnings([t("B", { perFloor: 1 })]).length, 0);
   assert.equal(planWarnings([t("B")]).length, 1);
+  const none = { joinedLetters: [], separate: [] };
+  assert.equal(planWarnings([t("B")], none).length, 0);
+  for (const f of buildFlatPlan([t("B", { floors: 12, perFloor: 4 })])) assert.equal(normaliseFlat(f.id, none), f.id);
 });
 
 test("server route: main admin only, refuses when flats exist, builds its own list, undoes a failed insert", () => {
   const r = readFileSync("app/api/flat-plan/route.ts", "utf8");
   assert.match(r, /isMainAdminUser/);
+  assert.match(r, /planWarnings\(towers\)/);
   assert.match(r, /getAuthedClient/);
   assert.match(r, /buildFlatPlan\(towers\)/);
   assert.match(r, /already has/);
