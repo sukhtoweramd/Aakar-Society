@@ -87,3 +87,8 @@ test("screen: shown only while there are no flats, 44 px buttons, no table, pure
   assert.doesNotMatch(g, /<table/);
   assert.doesNotMatch(readFileSync("lib/flatPlan.ts", "utf8"), /^import .*supabaseClient/m);
 });
+
+test("screen: the old floor list is hidden while there are no flats; the result message clears when a number changes", () => {
+  assert.match(readFileSync("app/ledger/FlatSetupPanel.tsx", "utf8"), /part === "FLOORS" && locked && cur/);
+  assert.match(readFileSync("app/ledger/FlatGenerator.tsx", "utf8"), /const set = \(code: string, patch: Partial<Row>\) => \{ setMsg\(null\)/);
+});

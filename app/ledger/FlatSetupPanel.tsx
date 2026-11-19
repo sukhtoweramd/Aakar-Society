@@ -53,7 +53,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
 
       {part === "FLOORS" && !locked && <FlatGenerator ctx={ctx} />}
 
-      {part === "FLOORS" && cur && (
+      {part === "FLOORS" && locked && cur && (
         <div className="mt-4 space-y-4 min-w-0">
           <div className="flex flex-wrap gap-2">
             {views.map((v) => (

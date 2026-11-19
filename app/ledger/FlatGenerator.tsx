@@ -18,7 +18,7 @@ export default function FlatGenerator({ ctx }: { ctx: Ctx }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const get = (code: string): Row => rows[code] || { floors: "", perFloor: "", maint: "", maintTerrace: "" };
-  const set = (code: string, patch: Partial<Row>) => setRows((r) => ({ ...r, [code]: { ...get(code), ...patch } }));
+  const set = (code: string, patch: Partial<Row>) => { setMsg(null); setRows((r) => ({ ...r, [code]: { ...get(code), ...patch } })); };
 
   // a tower is part of the plan once its floors are filled in
   const plan: TowerPlan[] = useMemo(() => ctx.towers.filter((t) => get(t.code).floors.trim() !== "").map((t) => {
