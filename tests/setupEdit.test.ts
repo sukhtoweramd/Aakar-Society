@@ -13,7 +13,7 @@ test("the form of today's profile is valid and gives the row the database expect
   if (r.ok) {
     assert.equal(r.row.name, "AAKAR CO-OP");
     assert.equal(r.row.full_name, "AAKAR CO-OP HOUSING SOCIETY LTD.");
-    assert.deepEqual(r.row.address_lines, ["Mirambica Road Naranpura", "Ahmedabad - 380013"]);
+    assert.deepEqual(r.row.address_lines, ["Mirambica Road, Naranpura", "Ahmedabad - 380013"]);
     assert.deepEqual(Object.keys(r.row).sort(), ["address", "address_lines", "building", "city", "full_name", "name", "reg_date", "reg_no"]);
   }
 });

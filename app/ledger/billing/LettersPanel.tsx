@@ -6,7 +6,7 @@ import { label, type Flat } from "@/lib/society";
 import { dmy, flatTotals, letterHtml, letterPdf, loadSettings, loadSignatories, openPrint, reserveNumbers, today, type Letter, type PrintCtx } from "@/lib/billing";
 import { fillTemplate, letterData, type LetterTemplate } from "@/lib/letterTemplates";
 import { customData, fillFields } from "@/lib/letterFields";
-import { SOCIETY } from "@/lib/society";
+import { SOCIETY, titleCase } from "@/lib/society";
 import SharePdfButton from "./SharePdfButton";
 import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
@@ -183,11 +183,11 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
               <label className="flex items-center gap-1.5"><input type="radio" checked={form.kind === "third"} onChange={() => setForm({ ...form, kind: "third" })} /> To a third party (bank, authority, builder…)</label>
             </div></div>}
           {!isRes && form.kind === "third" && <label className="text-[10px] opacity-80 block">TO (NAME AND ADDRESS) * <span className="opacity-60">— one line each</span>
-            <textarea className="field mt-1 !h-auto font-sans text-[13px]" rows={4} value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder={"The Branch Manager\nHDFC Bank Ltd.\nNaranpura Branch\nAhmedabad – 380013"} /></label>}
+            <textarea className="field mt-1 !h-auto font-sans text-[13px]" rows={4} value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder={`The Branch Manager\nSample Bank Ltd.\n${SOCIETY.city} Branch\n${SOCIETY.city}`} /></label>}
           <label className="text-[10px] opacity-80 block">{isRes ? "TITLE" : "SUBJECT"} *<input className="field mt-1" placeholder="e.g. No Objection Certificate for home loan" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>
           <label className="text-[10px] opacity-80 block">LETTER TEXT * <span className="opacity-60">(leave an empty line between paragraphs)</span>
             <textarea className="field mt-1 !h-auto font-sans text-[13px] leading-relaxed" rows={9} value={form.body} onChange={(e) => { setEdited(true); setForm({ ...form, body: e.target.value }); }}
-              placeholder={"This is to certify that Shri / Smt. … is the owner of Flat … in Sukh Tower, a member of the society …\n\nThe society has no objection to …"} /></label>
+              placeholder={"This is to certify that Shri / Smt. … is the owner of Flat … in " + titleCase(SOCIETY.building) + ", a member of the society …\n\nThe society has no objection to …"} /></label>
           {isRes && <div className="border border-sky-300 bg-sky-50 text-sky-900 p-2">Committee resolution: issued by the Chairman, or the Secretary in the Chairman's absence. It prints with the committee's signature table; the Chairman, the Secretary and a Committee Member sign it by hand, and you then tick SIGNED COPY HANDED OVER.</div>}
           {(prefill?.unsigned || fmt?.kind === "bank") && <div className="border border-red-300 bg-red-50 text-red-800 p-2">Bank letter: it is issued as an <b>UNSIGNED</b> copy (no signature or stamp printed). Print it; the Chairman or Secretary signs and stamps it by hand and hands it over; then tick SIGNED COPY HANDED OVER in the list below.</div>}
           <div className="flex flex-wrap gap-2 items-end">

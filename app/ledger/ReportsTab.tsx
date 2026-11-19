@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, committeeNote, committeePrintRows, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, type MemberLite } from "@/lib/society";
+import { familySummary, committeeNote, committeePrintRows, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, societyTitle, titleCase, type MemberLite } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import VehicleReport from "./VehicleReport";
@@ -39,9 +39,9 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
     if (!w) { alert("Please allow pop-ups to create the PDF."); return; }
     const today = new Date().toLocaleDateString("en-IN");
     const isCom = towerFilter === "COMMITTEE";
-    const html = `<html><head><title>Aakar Co-op - Directory ${esc(today)}</title><style>
+    const html = `<html><head><title>${esc(titleCase(SOCIETY.name))} - Directory ${esc(today)}</title><style>
       @page{size:A4 landscape;margin:12mm 10mm 14mm;
-        @bottom-left{content:"Aakar Co-op Housing Society Ltd. • ${esc(SOCIETY.reg)} • Directory ${esc(today)}";font:9px Inter,Arial,sans-serif;color:#7a7568}
+        @bottom-left{content:"${esc(societyTitle())} • ${esc(SOCIETY.reg)} • Directory ${esc(today)}";font:9px Inter,Arial,sans-serif;color:#7a7568}
         @bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Inter,Arial,sans-serif;color:#7a7568}}
       *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
       body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}

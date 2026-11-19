@@ -40,9 +40,28 @@ export const SOCIETY = {
   regDate: "16-03-1994",
   building: "SUKH TOWER",
   address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad",
-  addressLines: ["Mirambica Road Naranpura", "Ahmedabad - 380013"],
+  addressLines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"],
   city: "Ahmedabad",
 };
+
+/** Society wording for printed papers and screens (19 Nov 2026), all derived from SOCIETY (= the society profile in ADMIN → FLAT SETUP). */
+const titleWord = (w: string) => w.toLowerCase().replace(/^[a-z]/, (c) => c.toUpperCase());
+/** "AAKAR CO-OP HOUSING SOCIETY LTD." -> "Aakar Co-op Housing Society Ltd." (first letter of each word capital) */
+export const titleCase = (t: string) => String(t || "").trim().split(/\s+/).filter(Boolean).map(titleWord).join(" ");
+/** "AAKAR CO-OP" -> ["AAKAR", "CO-OP"]: first word and the rest, for the big heading on the login and cover screens. */
+export const nameLines = (name: string): [string, string] => { const w = String(name || "").trim().split(/\s+/); return [w[0] || "", w.slice(1).join(" ")]; };
+/** What follows the short name in the full name: "AAKAR CO-OP" + "AAKAR CO-OP HOUSING SOCIETY LTD." -> "HOUSING SOCIETY LTD." (full name when it does not start with the short name). */
+export const nameSuffix = () => { const n = SOCIETY.name.trim(), f = SOCIETY.full.trim(); return f.toUpperCase().startsWith(n.toUpperCase()) ? f.slice(n.length).trim() : f; };
+/** Six-digit pin code found in the address lines, or "". */
+export const societyPin = () => (`${SOCIETY.addressLines.join(" ")} ${SOCIETY.address}`.match(/\b\d{6}\b/) || [""])[0];
+/** Address lines in one line: "Mirambica Road, Naranpura, Ahmedabad – 380013". */
+export const addressOneLine = () => SOCIETY.addressLines.map((l) => l.trim()).filter(Boolean).join(", ").replace(/ - (?=\d{6}$)/, " – ");
+/** Full postal address with the pin code: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad – 380013". */
+export const addressWithPin = () => `${SOCIETY.address}${societyPin() ? ` – ${societyPin()}` : ""}`;
+/** "For Aakar Co-op Housing Society Ltd." */
+export const societyTitle = () => titleCase(SOCIETY.full);
+/** Year of registration from regDate ("16-03-1994" or "1994-03-16"), or "". */
+export const regYear = () => (String(SOCIETY.regDate || "").match(/\b(19|20)\d{2}\b/) || [""])[0];
 
 /** Number part of a flat id: "A1001" -> 1001 */
 // The 4 BHK homes of the B building are two numbers joined (flat_no "B201/202", id "B201"; shown under Tower C).

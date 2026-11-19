@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { dmy, docPage, openPrint } from "@/lib/billing";
-import { label, ownerText, type Flat } from "@/lib/society";
+import { label, ownerText, SOCIETY, societyTitle, type Flat } from "@/lib/society";
 import { aadhaarLast4, ageOn, cleanPan, isMinor, maskedAadhaar, nomineeProblems, RELATIONS, shareTotal, type Draft, type Nominee, type NominationStatus } from "@/lib/nominees";
 
 const blank = (share: number): Draft => ({ name: "", relation: "", dob: "", aadhaar: "", pan: "", share_pct: String(share), mobile: "", address: "", guardian_name: "", guardian_relation: "" });
@@ -69,7 +69,7 @@ export default function NomineePanel({ flat, isCommittee, email }: { flat: Flat;
     const th = "background:var(--navy);color:#fff;text-align:left;padding:1.5mm 2mm;font-size:9pt";
     const inner = `
       <div style="margin-top:5mm;font-size:10.5pt;line-height:1.7">
-        I, <b>${esc(status?.member_name || ownerText(flat) || "______________________")}</b>, a member of ${esc("Aakar Co-op Housing Society Ltd.")}, holding flat <b>${esc(label(flat))}</b>${flat.share_cert_no ? ` and share certificate no. <b>${esc(flat.share_cert_no)}</b>` : " and share certificate no. ________"},
+        I, <b>${esc(status?.member_name || ownerText(flat) || "______________________")}</b>, a member of ${esc(societyTitle())}, holding flat <b>${esc(label(flat))}</b>${flat.share_cert_no ? ` and share certificate no. <b>${esc(flat.share_cert_no)}</b>` : " and share certificate no. ________"},
         hereby nominate the person(s) named below to whom my share(s) and interest in the property of the society shall be transferred after my death, in the proportion shown.
         This cancels any nomination made by me earlier.
       </div>
@@ -79,7 +79,7 @@ export default function NomineePanel({ flat, isCommittee, email }: { flat: Flat;
       </table>
       <div style="font-size:8.5pt;color:#555;margin-top:2mm">Aadhaar: the society's app keeps only the last 4 digits. Please write the first 8 digits by hand above if the society asks for the full number.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:14mm;font-size:10pt">
-        <div><div style="border-top:.3mm solid var(--ink);padding-top:1mm">Signature of member</div><div style="margin-top:2mm">Place: Ahmedabad &nbsp; Date: ____________</div></div>
+        <div><div style="border-top:.3mm solid var(--ink);padding-top:1mm">Signature of member</div><div style="margin-top:2mm">Place: ${esc(SOCIETY.city)} &nbsp; Date: ____________</div></div>
         <div><div style="border-top:.3mm solid var(--ink);padding-top:1mm">Witness 1 (name, address, signature)</div><div style="border-top:.3mm solid var(--ink);padding-top:1mm;margin-top:12mm">Witness 2 (name, address, signature)</div></div>
       </div>
       <div style="margin-top:10mm;border:.3mm dashed var(--line);padding:3mm;font-size:9.5pt">FOR SOCIETY USE • Nomination received on ____________ • Recorded by ____________ • Committee meeting dated ____________</div>`;

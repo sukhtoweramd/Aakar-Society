@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { rupees, type StoredFile } from "@/lib/society";
+import { rupees, SOCIETY, titleCase, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import { FileLink } from "./SecureFile";
@@ -35,7 +35,7 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="flex flex-wrap justify-between gap-4 items-start">
           <div>
-            <div className="serif text-[24px] font-bold">Floor Plans • Sukh Tower</div>
+            <div className="serif text-[24px] font-bold">Floor Plans • {titleCase(SOCIETY.building)}</div>
             <div className="mono text-[11px] opacity-60 mt-1">Architectural drawings • Terrace logic annotated • Stored permanently in R2 (aakar-vault/floor-plans)</div>
           </div>
           {ctx.isCommittee

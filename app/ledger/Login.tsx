@@ -2,7 +2,7 @@
 import { useState } from "react";
 import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
-import { SOCIETY } from "@/lib/society";
+import { nameLines, nameSuffix, SOCIETY } from "@/lib/society";
 import { flatEmail, parseLogin, tenantEmail } from "@/lib/residents";
 import { InstallApp } from "./PwaRegister";
 
@@ -34,7 +34,7 @@ export default function Login() {
             SOCIETY LEDGER
           </span>
           <span className="opacity-40">•</span>
-          <span>AHMEDABAD</span>
+          <span>{SOCIETY.city.toUpperCase()}</span>
           <span className="opacity-40">•</span>
           <span className="text-[var(--gold)] font-semibold">{SOCIETY.reg}</span>
         </div>
@@ -44,8 +44,8 @@ export default function Login() {
           <div className="bg-[var(--navy)] text-[#fdfcf5] p-8 md:p-10 flex flex-col justify-between">
             <div>
               <div className="h-14 w-14 rounded-full border border-[var(--gold)] grid place-items-center text-[30px] serif text-[var(--gold)]">ॐ</div>
-              <h1 className="serif text-[40px] leading-[0.95] mt-6 tracking-[0.02em] font-[800]">AAKAR<br />CO-OP</h1>
-              <div className="mono text-[11px] tracking-[0.3em] mt-3 opacity-80">HOUSING SOCIETY LTD.</div>
+              <h1 className="serif text-[40px] leading-[0.95] mt-6 tracking-[0.02em] font-[800]">{nameLines(SOCIETY.name)[0]}{nameLines(SOCIETY.name)[1] && <br />}{nameLines(SOCIETY.name)[1]}</h1>
+              <div className="mono text-[11px] tracking-[0.3em] mt-3 opacity-80">{nameSuffix()}</div>
             </div>
             <div className="mono text-[11px] mt-10 opacity-80 leading-relaxed">
               {SOCIETY.building} • REG NO {SOCIETY.reg}<br />

@@ -60,6 +60,9 @@
   A row with a name and full name is used as it is: an empty field stays empty, it never falls back to Aakar's value.
 - ADMIN -> FLAT SETUP: `FlatSetupPanel.tsx` (view, never writes) + `SetupEditors.tsx` (edit society details and towers). Who may save is decided by the
   database (`is_main_admin()` in the table rules); with flats present, tower code, terrace and on/off are locked (screen) and code change / delete are blocked (trigger).
+- Society name, address, registration, city and building on printed papers (bills, receipts, letters, notices, stamp, flat card, directories, login slips, event pass) and on the login / cover screens
+  come from `SOCIETY` (the profile) through helpers in `lib/society.ts` (`societyTitle`, `addressOneLine`, `addressWithPin`, `titleCase`, `nameLines`, `nameSuffix`, `regYear`). Never type them into a screen or a print template;
+  `tests/societyWording.test.ts` fails if they come back. The stamp is `defaultStamp()` (built when used). Not yet moved: WhatsApp message texts, the HELP assistant prompt, app name / manifest / icons.
 - Flat generator (`FlatGenerator.tsx`, `lib/flatPlan.ts`, `POST /api/flat-plan`): only while the society has NO flats, main admin only (server check); the server rebuilds the
   list from the tower numbers and undoes its insert on error. Flat id = tower letter + floor + 2 digits (A101). Writes only id, tower, floor, flat_no, maintenance (other columns keep
   their database defaults; not yet tried on a second Supabase project). The joined-home login rule (B202 -> B201) is the setting `FLAT_RULES` in `lib/residents.ts` (Aakar: joinedLetters ["B"], separate B101/B102;

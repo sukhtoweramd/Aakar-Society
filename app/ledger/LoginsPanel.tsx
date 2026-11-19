@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { label } from "@/lib/society";
+import { label, SOCIETY, titleCase } from "@/lib/society";
 import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import { backBar } from "@/lib/printBack";
@@ -63,11 +63,11 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups."); return; }
     const site = window.location.origin;
-    w.document.write(`<html><head><title>Aakar Co-op login slips</title><style>
+    w.document.write(`<html><head><title>${esc(titleCase(SOCIETY.name))} login slips</title><style>
       body{font-family:Arial,sans-serif;margin:16px} .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       .slip{border:1px dashed #0f1d3d;padding:12px 14px;page-break-inside:avoid} h3{margin:0 0 4px;color:#0f1d3d;font-size:14px}
       .big{font-size:18px;font-weight:bold;letter-spacing:.05em;font-family:monospace} .small{font-size:11px;color:#555}
-    </style></head><body>${backBar()}<div class="grid">${creds.map((c) => `<div class="slip"><h3>ॐ Aakar Co-op • Sukh Tower</h3>
+    </style></head><body>${backBar()}<div class="grid">${creds.map((c) => `<div class="slip"><h3>ॐ ${esc(titleCase(SOCIETY.name))} • ${esc(titleCase(SOCIETY.building))}</h3>
       <div class="small">Website: ${esc(site)}</div>
       <div>Flat: <span class="big">${esc(label({ id: c.flat_id, flat_no: c.flat_id } as any))}</span></div>
       <div>Password: <span class="big">${esc(c.password)}</span></div>

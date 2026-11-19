@@ -6,7 +6,7 @@
 //  • mode "committee" (COMMITTEE → BOOKINGS): waiting / upcoming / past, approve or reject, cancel, WhatsApp, print list
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, type Flat, type MemberLite } from "@/lib/society";
+import { familySummary, SOCIETY, type Flat, type MemberLite } from "@/lib/society";
 import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
 import { enteredByLabel } from "@/lib/enteredBy";
@@ -113,7 +113,7 @@ export default function BookingPanel({ mode, flats, flatId, isCommittee, onCount
     const print = () => {
       const w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to print."); return; }
       w.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bookings</title><style>body{font:12px Arial,sans-serif;margin:0 12px}h1{font-size:15px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:5px;text-align:left}th{background:#0f1d3d;color:#fff}</style></head><body>${backBar()}
-        <h1>AAKAR CO-OP HOUSING SOCIETY LTD. — COMMON PLOT BOOKINGS (confirmed, from ${esc(dayText(today))})</h1>
+        <h1>${esc(SOCIETY.full)} — COMMON PLOT BOOKINGS (confirmed, from ${esc(dayText(today))})</h1>
         <table><tr><th>Date</th><th>Area</th><th>Flat</th><th>Purpose</th><th>Charge</th></tr>${lists.upcoming.map((g) => `<tr><td>${esc(dayText(g.book_date))}${g.slot === "day" ? "" : " (" + esc(slotName(g.slot)) + ")"}</td><td>${esc(g.areas.length >= areas!.length ? "ALL AREAS" : g.areas.join(", "))}</td><td>${esc(flatLabel(g.flat_id))}</td><td>${esc(g.purpose || "")}</td><td>${esc(g.free_event ? "Society event" : g.total > 0 ? rupees(g.total) : "—")}</td></tr>`).join("")}</table></body></html>`);
       w.document.close();
     };
