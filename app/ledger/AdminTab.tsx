@@ -7,6 +7,7 @@ import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
 import FlatSetupPanel from "./FlatSetupPanel";
+import BookingAreasPanel from "./BookingAreasPanel";
 import BackupPanel from "./BackupPanel";
 import MemberScreensPanel from "./MemberScreensPanel";
 import TestDataPanel from "./TestDataPanel";
@@ -129,6 +130,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
       </div>
 
       <FlatSetupPanel ctx={ctx} />
+
+      <BookingAreasPanel />
 
       <CommitteePanel flats={ctx.flats} />
 
