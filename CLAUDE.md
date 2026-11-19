@@ -64,6 +64,9 @@
   list from the tower numbers and undoes its insert on error. Flat id = tower letter + floor + 2 digits (A101). Writes only id, tower, floor, flat_no, maintenance (other columns keep
   their database defaults; not yet tried on a second Supabase project). The joined-home login rule (B202 -> B201) is the setting `FLAT_RULES` in `lib/residents.ts` (Aakar: joinedLetters ["B"], separate B101/B102;
   a society with no joined homes sets `joinedLetters: []`). The generator and `/api/flat-plan` refuse a joined tower with 2+ flats per floor.
+- Flats can also be added later for a tower that has NO flats (a new tower D), same screen; flat numbers may be typed floor by floor (`layout` in `lib/flatPlan.ts`). The server refuses a tower
+  that already has flats and any number that already exists. Removing flats (`FlatRemover.tsx`, `/api/flat-remove`, main admin only) works only when the database function
+  `flat_blockers()` (`sql-security/15`, run by hand; server key only) says every chosen flat holds no data; the server checks again right before deleting.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.

@@ -1,10 +1,11 @@
-// Main admin only: create the flats of a society that has none yet (flat generator). The server builds the list itself from the
-// tower numbers (lib/flatPlan.ts), checks the towers exist, refuses when ANY flat already exists, and undoes its own insert if one fails.
+// Main admin only: create the flats of towers that have none yet (flat generator; a society's first towers, or a new tower later). The server builds
+// the list itself from the tower numbers (lib/flatPlan.ts), checks the towers exist, refuses when a chosen tower already has flats or a planned
+// flat number already exists anywhere, and undoes its own insert if one fails.
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
-import { buildFlatPlan, planError, planWarnings, type TowerPlan } from "@/lib/flatPlan";
+import { buildFlatPlan, planClashes, planError, planWarnings, type TowerPlan } from "@/lib/flatPlan";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
   const towers: TowerPlan[] = Array.isArray(body.towers) ? body.towers.map((t: any) => ({
     code: String(t?.code ?? "").trim().toUpperCase(), floors: Number(t?.floors), perFloor: Number(t?.perFloor),
     terrace: t?.terrace === true, maint: Number(t?.maint), maintTerrace: Number(t?.maintTerrace ?? 0),
+    ...(Array.isArray(t?.layout) ? { layout: t.layout.map((r: any) => ({ floor: Number(r?.floor), numbers: Array.isArray(r?.numbers) ? r.numbers.map((n: any) => String(n).trim().toUpperCase()) : [] })) } : {}),
   })) : [];
   try {
     if (!(await isMainAdminUser(admin, me.userId))) {
@@ -28,9 +30,11 @@ export async function POST(req: NextRequest) {
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     const warn = planWarnings(towers);
     if (warn.length) return NextResponse.json({ error: warn[0] }, { status: 400 });
-    const { count, error: ce } = await admin.from("flats").select("id", { count: "exact", head: true });
+    const { data: have, error: ce } = await admin.from("flats").select("id, tower");
     if (ce) throw ce;
-    if ((count || 0) > 0) return NextResponse.json({ error: `This society already has ${count} flats, so none are created.` }, { status: 409 });
+    const used = new Set(towers.map((t) => t.code));
+    const taken = Array.from(new Set((have || []).map((f: any) => String(f.tower ?? "").trim()).filter((c) => used.has(c))));
+    if (taken.length) return NextResponse.json({ error: `Tower ${taken.join(", ")} already has flats, so none are created.` }, { status: 409 });
     const { data: rows, error: te } = await admin.from("towers").select("code, active");
     if (te) throw te;
     const known = new Set((rows || []).filter((r: any) => r.active !== false).map((r: any) => String(r.code).trim()));
@@ -38,10 +42,12 @@ export async function POST(req: NextRequest) {
     if (missing.length) return NextResponse.json({ error: `Add tower ${missing.join(", ")} in FLAT SETUP → TOWERS first.` }, { status: 400 });
 
     const plan = buildFlatPlan(towers);
+    const clash = planClashes(plan, (have || []).map((f: any) => String(f.id)));
+    if (clash.length) return NextResponse.json({ error: `Flat number ${clash.slice(0, 5).join(", ")}${clash.length > 5 ? " …" : ""} already exists, so none are created.` }, { status: 409 });
     for (let i = 0; i < plan.length; i += 200) {
       const { error } = await admin.from("flats").insert(plan.slice(i, i + 200));
       if (error) {
-        // the table was empty before, so removing the planned ids only removes what this call added
+        // none of these ids existed before (checked above), so removing them only removes what this call added
         await admin.from("flats").delete().in("id", plan.map((p) => p.id));
         throw new Error(`Nothing was created: ${error.message}`);
       }
