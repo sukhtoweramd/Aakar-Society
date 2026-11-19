@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, committeeNote, committeePrintRows, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, societyTitle, titleCase, type MemberLite } from "@/lib/society";
+import { familySummary, committeeNote, committeePrintRows, filterName, inFilter, floorOf, isOccupied, label, rupees, SOCIETY, societyTitle, titleCase, type MemberLite, fileSlug } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import VehicleReport from "./VehicleReport";
@@ -30,7 +30,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
     const csv = "﻿" + [headers, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
-    a.href = url; a.download = `Aakar_Society_Directory${towerFilter === "ALL" ? "" : `_${towerFilter}`}.csv`; a.click();
+    a.href = url; a.download = `${fileSlug()}_Society_Directory${towerFilter === "ALL" ? "" : `_${towerFilter}`}.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 

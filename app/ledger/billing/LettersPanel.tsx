@@ -2,11 +2,10 @@
 // Letters for one flat ("To whomsoever it may concern", NOC…): committee issues and cancels; the flat's members view and print.
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { label, type Flat } from "@/lib/society";
+import { label, type Flat, SOCIETY, societyShort, titleCase } from "@/lib/society";
 import { dmy, flatTotals, letterHtml, letterPdf, loadSettings, loadSignatories, openPrint, reserveNumbers, today, type Letter, type PrintCtx } from "@/lib/billing";
 import { fillTemplate, letterData, type LetterTemplate } from "@/lib/letterTemplates";
 import { customData, fillFields } from "@/lib/letterFields";
-import { SOCIETY, titleCase } from "@/lib/society";
 import SharePdfButton from "./SharePdfButton";
 import { deleteDoc, useMainAdmin } from "@/lib/docDelete";
 
@@ -221,7 +220,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
                   : l.signer_designation || "—"}
                   {isCommittee && l.unsigned && !l.handed_over_at && l.status === "active" && <button onClick={() => handedOver(l)} className="block mt-1 btn-line px-2 py-1 text-[10px]">SIGNED COPY HANDED OVER</button>}</td>
                 <td className="px-3 py-2 whitespace-nowrap text-right">
-                  {l.status === "active" && <SharePdfButton label="📄 PDF" className="underline mr-3" make={() => letterPdf(l, pc)} text={`Aakar Co-op Housing Society: letter ${l.ref_no} for Flat ${label(flat)} — ${l.subject}.`} />}
+                  {l.status === "active" && <SharePdfButton label="📄 PDF" className="underline mr-3" make={() => letterPdf(l, pc)} text={`${societyShort()}: letter ${l.ref_no} for Flat ${label(flat)} — ${l.subject}.`} />}
                   {isCommittee && l.status === "active" && <button onClick={() => cancel(l)} className="text-red-600 underline">cancel</button>}
                   {canDelete && <button onClick={async () => { setError(""); try { if (await deleteDoc("letter", l.id, l.ref_no, l.subject)) load(); } catch (e: any) { setError(e.message); } }} title="Delete permanently (main admin)" className="ml-3 text-red-700 underline">🗑 delete</button>}
                 </td>

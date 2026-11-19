@@ -7,6 +7,7 @@ import { personOf, type Area } from "@/lib/committee";
 import type { Flat } from "@/lib/society";
 import { waLink } from "@/lib/billing";
 import { useContacts } from "./WhoToContact";
+import { societyAppName } from "@/lib/society";
 
 type Msg = { role: "user" | "assistant"; text: string; notFound?: boolean; error?: boolean };
 const SUGGEST = ["How do I tell the committee I have paid?", "How do I register for an event?", "Where are my event passes?", "I forgot my password", "મારું બિલ ક્યાં જોવું?"];
@@ -30,7 +31,7 @@ function Contacts({ flats, areas, question, isCommittee }: { flats: Flat[]; area
         <div key={a.id} className="border border-[var(--border)] bg-white p-2.5 text-[13px]">
           <b>{p?.name || a.name}</b>{p?.flat ? <span className="opacity-60"> • {p.flat}</span> : null}<div className="text-[11px] opacity-70">{a.name}</div>
           {a.contact_phone && <div className="flex flex-wrap gap-3 mt-1.5 text-[12px]">
-            <a className="underline" href={waLink(a.contact_phone, `Aakar app help: ${question}`)} target="_blank" rel="noopener noreferrer">WhatsApp {a.contact_phone}</a>
+            <a className="underline" href={waLink(a.contact_phone, `${societyAppName()} app help: ${question}`)} target="_blank" rel="noopener noreferrer">WhatsApp {a.contact_phone}</a>
             <a className="underline" href={`tel:${a.contact_phone.replace(/\s+/g, "")}`}>Call</a>
           </div>}
         </div>); })}

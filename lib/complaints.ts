@@ -3,6 +3,7 @@
 import { supabase } from "./supabaseClient";
 import { uploadFile } from "./ledgerClient";
 import { compressForUpload } from "./compressFile";
+import { societyAppName } from "./society";
 
 export type Complaint = {
   id: string; complaint_no: string; flat_id: string; area_id: string | null; area_name: string | null;
@@ -55,10 +56,10 @@ export const daysOpen = (c: Complaint) => Math.max(0, Math.floor(((c.closed_at ?
 
 /** WhatsApp texts (sent by a person tapping send). */
 export const waNewText = (c: Complaint, flatLabel: string) =>
-  `Aakar society complaint ${c.complaint_no} from Flat ${flatLabel} (${c.area_name || "General"}): ${c.description}\n\nPlease see MY FLAT → COMPLAINTS (or COMMITTEE → COMPLAINTS) in the society app.`;
+  `${societyAppName()} society complaint ${c.complaint_no} from Flat ${flatLabel} (${c.area_name || "General"}): ${c.description}\n\nPlease see MY FLAT → COMPLAINTS (or COMMITTEE → COMPLAINTS) in the society app.`;
 export const waDoneText = (c: Complaint) =>
   c.status === "closed"
-    ? `Aakar society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is CLOSED.\nWhat was done: ${c.close_note || ""}\n\nIf it is not resolved, please raise it again in the app quoting ${c.complaint_no}.`
-    : `Aakar society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is IN PROGRESS.${c.progress_note ? `\n${c.progress_note}` : ""}`;
+    ? `${societyAppName()} society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is CLOSED.\nWhat was done: ${c.close_note || ""}\n\nIf it is not resolved, please raise it again in the app quoting ${c.complaint_no}.`
+    : `${societyAppName()} society: your complaint ${c.complaint_no} (${c.area_name || "General"}) is IN PROGRESS.${c.progress_note ? `\n${c.progress_note}` : ""}`;
 
 export { isHandler } from "./areaRules";

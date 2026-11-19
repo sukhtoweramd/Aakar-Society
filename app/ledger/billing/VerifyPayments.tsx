@@ -3,7 +3,7 @@
 // then VERIFY makes the normal receipt (one step in the database), or REJECT with a reason the member sees.
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { label, type Flat } from "@/lib/society";
+import { label, type Flat, societyShort } from "@/lib/society";
 import { billBalance, dmy, inr, num, openPrint, receiptHtml, waLink, type Bill, type Payment, type PrintCtx, type Settings, type Signatory } from "@/lib/billing";
 import { openProof, type PayReport } from "@/lib/payReports";
 
@@ -41,7 +41,7 @@ export default function VerifyPayments({ reports, bills, pays, flats, settings, 
   }
   const receiptOf = (r: PayReport) => pays.find((p) => p.id === r.payment_id) || pays.find((p) => p.receipt_no === made[r.id]);
   const printReceipt = (p: Payment) => { const b = bills.find((x) => x.id === p.bill_id)!; openPrint(`Receipt ${p.receipt_no}`, [receiptHtml(p, b, pc, pays.filter((x) => x.flat_id === p.flat_id))]); };
-  const waReceipt = (p: Payment, f?: Flat) => waLink(mobileOf(p.flat_id), `Aakar Co-op Housing Society: Received ₹${inr(p.amount)} from Flat ${f ? label(f) : p.flat_id} on ${dmy(p.paid_on)} (${p.mode}). Receipt no. ${p.receipt_no}. Thank you. You can download the receipt in the society app under MY FLAT.`);
+  const waReceipt = (p: Payment, f?: Flat) => waLink(mobileOf(p.flat_id), `${societyShort()}: Received ₹${inr(p.amount)} from Flat ${f ? label(f) : p.flat_id} on ${dmy(p.paid_on)} (${p.mode}). Receipt no. ${p.receipt_no}. Thank you. You can download the receipt in the society app under MY FLAT.`);
 
   return (
     <div className="space-y-4 mono text-[11px]">

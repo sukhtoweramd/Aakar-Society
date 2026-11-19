@@ -2,7 +2,7 @@
 // Member ledger card: one line per bill, payments under it, receipts. Read-only for members.
 import { Fragment, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { label, type Flat } from "@/lib/society";
+import { label, type Flat, societyShort } from "@/lib/society";
 import {
   billBalance, billHtml, dmy, flatTotals, inr, MODES, num, openPrint, receiptHtml, reserveNumbers, statementHtml, statementPdf, today, waLink,
   type Bill, type Payment, type PrintCtx, type Signatory,
@@ -89,8 +89,8 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
     openPrint(`Receipts ${label(flat)}`, ps.map((p) => receiptHtml(p, myBills.find((x) => x.id === p.bill_id)!, pc, myPays)));
   };
   const printStatement = () => openPrint(`Ledger ${label(flat)}`, [statementHtml(flat, myBills, myPays, pc)]);
-  const waReceipt = (p: Payment) => waLink(mobile, `Aakar Co-op Housing Society: Received ₹${inr(p.amount)} from Flat ${label(flat)} on ${dmy(p.paid_on)} (${p.mode}). Receipt no. ${p.receipt_no}. Thank you. You can download the receipt in the society app under MY FLAT.`);
-  const waBill = (b: Bill) => { const bal = billBalance(b, myPays).balance; return waLink(mobile, `Aakar Co-op Housing Society: Bill ${b.bill_no} for Flat ${label(flat)}${b.period_from ? `, maintenance ${dmy(b.period_from)} – ${dmy(b.period_to)}` : ""}, ₹${inr(b.amount)}${b.due_date ? `, due ${dmy(b.due_date)}` : ""}. Balance due ₹${inr(bal)}. You can view and download it in the society app under MY FLAT.`); };
+  const waReceipt = (p: Payment) => waLink(mobile, `${societyShort()}: Received ₹${inr(p.amount)} from Flat ${label(flat)} on ${dmy(p.paid_on)} (${p.mode}). Receipt no. ${p.receipt_no}. Thank you. You can download the receipt in the society app under MY FLAT.`);
+  const waBill = (b: Bill) => { const bal = billBalance(b, myPays).balance; return waLink(mobile, `${societyShort()}: Bill ${b.bill_no} for Flat ${label(flat)}${b.period_from ? `, maintenance ${dmy(b.period_from)} – ${dmy(b.period_to)}` : ""}, ₹${inr(b.amount)}${b.due_date ? `, due ${dmy(b.due_date)}` : ""}. Balance due ₹${inr(bal)}. You can view and download it in the society app under MY FLAT.`); };
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const tag = (b: Bill, bal: number) => b.status === "cancelled" ? <span className="tag bg-red-50 text-red-700">CANCELLED</span>
@@ -135,7 +135,7 @@ export default function LedgerCard({ flat, bills, pays, pc, editable, email, mob
         <div className="flex flex-wrap gap-2">
           <button onClick={printStatement} className="btn-line px-3 py-1.5">{editable ? "PRINT LEDGER" : "PRINT MY LEDGER"}</button>
           <SharePdfButton className="btn-line px-3 py-1.5" make={() => statementPdf(flat, myBills, myPays, pc)}
-            text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(flat)} as on ${dmy(today())}.`} />
+            text={`${societyShort()}: ledger statement for Flat ${label(flat)} as on ${dmy(today())}.`} />
           {editable && <button onClick={printSelected} disabled={!sel.size} className="btn-line px-3 py-1.5 disabled:opacity-40">PRINT SELECTED RECEIPTS ({sel.size})</button>}
         </div>
       </div>

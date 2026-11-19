@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Notice } from "@/lib/society";
 import { birthdaysToday, type Birthday } from "@/lib/birthdays";
 import { FileLink, SecureImg } from "./SecureFile";
+import { societyAppName } from "@/lib/society";
 
 type Banner = Notice & { is_banner?: boolean; banner_until?: string | null };
 const SLIDE_MS = 6000;
@@ -126,7 +127,7 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
                 <span className="opacity-70">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()}</span>
               </div>
               <div className="serif text-[30px] font-bold leading-tight mt-3">Happy Birthday!</div>
-              <div className="text-[14px] opacity-85 mt-1">{bdays.length > 1 ? `${bdays.length} members celebrate today.` : "Wishing our Aakar family member a wonderful year ahead."}</div>
+              <div className="text-[14px] opacity-85 mt-1">{bdays.length > 1 ? `${bdays.length} members celebrate today.` : `Wishing our ${societyAppName()} family member a wonderful year ahead.`}</div>
               <div className="mt-4 grid gap-2">
                 {bdays.map((x, k) => (
                   <div key={k} className="min-w-0 bg-white/[0.07] border border-white/20 px-3.5 py-3">

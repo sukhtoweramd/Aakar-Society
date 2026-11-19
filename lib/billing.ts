@@ -1,7 +1,7 @@
 "use client";
 // Billing: shared types, numbering, amounts, ledger maths and the printable bill / receipt / statement.
 import { supabase } from "./supabaseClient";
-import { addressOneLine, addressWithPin, label, regYear, SOCIETY, societyTitle, type Flat } from "./society";
+import { addressOneLine, addressWithPin, label, regYear, SOCIETY, societyTitle, type Flat, societyShort } from "./society";
 import { backButton, pdfButton } from "./printBack";
 
 export type Settings = {
@@ -390,7 +390,7 @@ export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | 
   });
   const bank = s?.account_no && s?.ifsc
     ? `\n\nPay to: ${s.account_name || societyTitle()}\n${s.bank_name || "Bank"}${s.bank_branch ? `, ${s.bank_branch}` : ""}\nA/c ${s.account_no} • IFSC ${s.ifsc}${s.upi_id ? `\nUPI: ${s.upi_id}` : ""}` : "";
-  return `Aakar Co-op Housing Society: Gentle reminder for Flat ${label(f)} — dues as on ${dmy(today())}:\n${lines.join("\n")}\n\nTotal due: ₹${inr(total)}${bank}\n\nPlease pay at the earliest. Your full ledger is in the society app under MY FLAT. If already paid, kindly ignore. Thank you.`;
+  return `${societyShort()}: Gentle reminder for Flat ${label(f)} — dues as on ${dmy(today())}:\n${lines.join("\n")}\n\nTotal due: ₹${inr(total)}${bank}\n\nPlease pay at the earliest. Your full ledger is in the society app under MY FLAT. If already paid, kindly ignore. Thank you.`;
 }
 
 /** A society notice on the letterhead (any language: Gujarati prints with a Gujarati font). */

@@ -1,4 +1,5 @@
 // Common plot bookings (item 21). Plain helpers shared by the screen and the tests.
+import { societyAppName } from "./society";
 // Full day only since BOOKING_CHARGES.sql ("day"); older bookings keep "morning" / "evening" as history.
 export type Slot = "morning" | "evening" | "day";
 export type BookingRow = {
@@ -66,11 +67,11 @@ export function noticeText(g: Pick<Group, "areas" | "flat_id" | "book_date" | "s
   const when = `${dayText(g.book_date)} (${slotName(g.slot).toLowerCase()})`;
   const list = g.areas.join(", ");
   return g.areas.length >= allAreaCount
-    ? `Aakar society notice: All common plot areas (${list}) are booked by Flat ${flatLabel(g.flat_id)} on ${when}. All vehicles should be parked outside the premises during this time. Thank you.`
-    : `Aakar society notice: ${list} is booked by Flat ${flatLabel(g.flat_id)} on ${when}. Please remove vehicles parked in ${list} before then. Thank you.`;
+    ? `${societyAppName()} society notice: All common plot areas (${list}) are booked by Flat ${flatLabel(g.flat_id)} on ${when}. All vehicles should be parked outside the premises during this time. Thank you.`
+    : `${societyAppName()} society notice: ${list} is booked by Flat ${flatLabel(g.flat_id)} on ${when}. Please remove vehicles parked in ${list} before then. Thank you.`;
 }
 
 /** WhatsApp text to the member when an invoice is raised on approval. */
 export function invoiceText(g: Pick<Group, "areas" | "book_date" | "total">, billNo: string) {
-  return `Aakar society: your booking of ${g.areas.join(", ")} on ${dayText(g.book_date)} is approved. Invoice ${billNo}: ${rupees(g.total)}. Please pay by bank transfer / UPI and tap I HAVE PAID in the app. Thank you.`;
+  return `${societyAppName()} society: your booking of ${g.areas.join(", ")} on ${dayText(g.book_date)} is approved. Invoice ${billNo}: ${rupees(g.total)}. Please pay by bank transfer / UPI and tap I HAVE PAID in the app. Thank you.`;
 }

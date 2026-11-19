@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/ledgerClient";
-import { label, type Flat } from "@/lib/society";
+import { label, type Flat, societyAppName, siteUrl } from "@/lib/society";
 
 type Member = { id: string; email: string; name: string; flat_id: string | null; created_at: string; last_sign_in_at: string | null; self: boolean; main?: boolean };
 
@@ -17,7 +17,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
   const credRef = useRef<HTMLDivElement>(null);
   // The password box is above the list and the ADD form: on a phone it appeared off-screen (31 Oct). Bring it into view.
   useEffect(() => { if (cred) { setCopied(false); credRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); } }, [cred]);
-  const credText = cred ? `Aakar society app (committee login)\nhttps://aakarsociety.vercel.app\nEmail: ${cred.email}\nPassword: ${cred.password}\nPlease change the password after logging in.` : "";
+  const credText = cred ? `${societyAppName()} society app (committee login)\n${siteUrl()}\nEmail: ${cred.email}\nPassword: ${cred.password}\nPlease change the password after logging in.` : "";
   async function copyCred() { try { await navigator.clipboard.writeText(credText); setCopied(true); } catch { setCopied(false); } }
 
   async function load() {

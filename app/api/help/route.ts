@@ -6,6 +6,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthedClient } from "@/lib/serverAuth";
 import { pickGuide } from "@/lib/helpSections";
+import { SOCIETY, societyShort, titleCase } from "@/lib/society";
+import { applySocietyProfile, profileFromRow } from "@/lib/societySetup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -54,7 +56,9 @@ export async function POST(req: NextRequest) {
     .map((m: any) => ({ role: m.role, content: String(m.text).slice(0, 1200) }));
 
   const who = me.isCommittee ? "a society committee member (committee login)" : me.isTenant ? `the tenant of flat ${me.tenantFlatId || ""} (tenant login: family, vehicles, complaints, common plot booking, notices, events and contacts; no bills, documents or nominees)` : `a member using the flat login of flat ${me.flatId || ""}`;
-  const system = `You are the HELP assistant inside the Aakar Co-op Housing Society app (Sukh Tower).
+  // one society per deployment: the profile (ADMIN → FLAT SETUP) gives the name; no row / unreadable = today's values
+  try { const { data: prof } = await me.db.from("society_profile").select("*").maybeSingle(); applySocietyProfile(profileFromRow(prof)); } catch { /* keep the current values */ }
+  const system = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).

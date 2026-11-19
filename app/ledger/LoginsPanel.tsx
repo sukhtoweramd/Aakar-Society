@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { label, SOCIETY, titleCase } from "@/lib/society";
+import { label, SOCIETY, titleCase, fileSlug } from "@/lib/society";
 import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import { backBar } from "@/lib/printBack";
@@ -78,7 +78,7 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
   function downloadCsv() {
     const csv = "﻿Flat,Password\r\n" + creds.map((c) => `${label({ id: c.flat_id, flat_no: c.flat_id } as any)},${c.password}`).join("\r\n");
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "Aakar_flat_logins.csv"; a.click();
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `${fileSlug()}_flat_logins.csv`; a.click();
   }
 
   const status = (id: string) => {
