@@ -10,23 +10,24 @@ export type TowerInfo = { code: string; name: string; terrace: boolean };
 export const FALLBACK_PROFILE: SocietyProfile = { ...SOCIETY, addressLines: [...SOCIETY.addressLines] };
 
 const text = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim() : fallback);
+const own = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
-/** society_profile row -> the SOCIETY shape. Empty or missing fields keep today's value. */
+/** society_profile row -> the SOCIETY shape. A row with a name and a full name is used exactly as it is: a field the
+ *  society left empty stays empty (it never shows another society's value). No row, or a row without those two names
+ *  (not set up / unreadable): today's values for everything. */
 export function profileFromRow(row: any): SocietyProfile {
   const fb = FALLBACK_PROFILE;
-  if (!row || typeof row !== "object") return { ...fb, addressLines: [...fb.addressLines] };
+  const copy = () => ({ ...fb, addressLines: [...fb.addressLines] });
+  if (!row || typeof row !== "object" || !own(row.name) || !own(row.full_name)) return copy();
   const lines = Array.isArray(row.address_lines) ? row.address_lines.filter((l: unknown) => typeof l === "string" && l.trim()).map((l: string) => l.trim()) : [];
   return {
-    name: text(row.name, fb.name),
-    full: text(row.full_name, fb.full),
-    reg: text(row.reg_no, fb.reg),
-    regDate: text(row.reg_date, fb.regDate),
-    building: text(row.building, fb.building),
-    address: text(row.address, fb.address),
-    addressLines: lines.length ? lines : [...fb.addressLines],
-    city: text(row.city, fb.city),
+    name: own(row.name), full: own(row.full_name), reg: own(row.reg_no), regDate: own(row.reg_date), building: own(row.building),
+    address: own(row.address), addressLines: lines, city: own(row.city),
   };
 }
+
+/** "A • B • C" without the empty parts (a society that left a field empty never shows a dangling separator). */
+export const joinParts = (parts: (string | null | undefined)[], sep = " • ") => parts.map((p) => (p || "").trim()).filter(Boolean).join(sep);
 
 /** Puts the profile into SOCIETY (the one object every screen and print window reads). Call once after login, before the
  *  app is shown. SOCIETY is changed in place so the 25 places that read it need no change. */

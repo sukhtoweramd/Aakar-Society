@@ -54,6 +54,13 @@
 - Database guard `committee_areas_guard` (AREAS_BACKUPS.sql): areas themselves = main admin (`is_main_admin()`, oldest committee
   login); people = Chairman/Secretary committee login or main admin (`can_assign_areas()`). Complaints go to holder + all backups.
 
+## Flat setup (Nov 2026)
+- `society_profile` (one row) and `towers` hold what used to be typed into `lib/society.ts` (`SOCIETY`, `TERRACE_TOWERS`); the app reads them after login
+  (`page.tsx` -> `loadSetup`, helpers in `lib/societySetup.ts`) and applies the profile to `SOCIETY` in place. No row / unreadable table = today's values.
+  A row with a name and full name is used as it is: an empty field stays empty, it never falls back to Aakar's value.
+- ADMIN -> FLAT SETUP: `FlatSetupPanel.tsx` (view, never writes) + `SetupEditors.tsx` (edit society details and towers). Who may save is decided by the
+  database (`is_main_admin()` in the table rules); with flats present, tower code, terrace and on/off are locked (screen) and code change / delete are blocked (trigger).
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.

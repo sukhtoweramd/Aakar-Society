@@ -15,6 +15,7 @@ export type Ctx = {
   tenantFlat?: string | null; // the rented flat of a tenant login
   flats: Flat[];
   categories: Category[];
+  reloadSetup: () => Promise<void>; // re-read the society profile and towers (after they were edited)
   towers: TowerInfo[]; // the society's towers (towers table; falls back to the towers found in the flats)
   towerFilter: string; // "ALL" or tower letter
   setTowerFilter: (t: string) => void;
