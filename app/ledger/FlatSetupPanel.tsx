@@ -72,7 +72,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
                 {v.inUse && <Chip>IN USE • LOCKED</Chip>}
               </div>
               <div className="mono text-[11px] mt-2 leading-relaxed">
-                {v.flats} flats{v.firstFloor != null ? ` • floors ${v.firstFloor} to ${v.lastFloor}` : ""}<br />
+                {v.flats} flat{v.flats === 1 ? "" : "s"}{v.firstFloor != null ? ` • floors ${v.firstFloor} to ${v.lastFloor}` : ""}<br />
                 Top floor terrace: <b>{v.terrace ? "Yes" : "No"}</b>
               </div>
             </div>
@@ -88,7 +88,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
             ))}
           </div>
           <div className="border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-3 mono text-[11px] leading-relaxed">
-            <b>{cur.name}</b>: {cur.flats} flats on {cur.floors.length} floors{cur.perFloor ? ` (${cur.perFloor} per floor)` : ""}.<br />
+            <b>{cur.name}</b>: {cur.flats} flat{cur.flats === 1 ? "" : "s"} on {cur.floors.length} floor{cur.floors.length === 1 ? "" : "s"}{cur.perFloor ? ` (${cur.perFloor} per floor)` : ""}.<br />
             First flat {cur.first || "—"} • last flat {cur.last || "—"}
           </div>
           <div className="grid gap-2">
@@ -119,7 +119,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
                 {c.terrace ? <Chip tone="gold">TERRACE</Chip> : <Chip>STANDARD</Chip>}
               </div>
               <div className="mono text-[11px] mt-2 leading-relaxed">
-                {c.ids.length} flats • {c.range}<br />
+                {c.ids.length} flat{c.ids.length === 1 ? "" : "s"} • {c.range}<br />
                 Maintenance {c.maint == null ? "not set" : `${rupees(c.maint)} / year`} • {c.sqft == null ? "area not set" : `${c.sqft} sq ft`} • {c.bhk || "type not set"}
               </div>
             </div>
