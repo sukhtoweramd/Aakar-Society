@@ -2,6 +2,7 @@
 // ADMIN: download a full backup (also kept in R2), restore one (main admin only), and the access log.
 import { useEffect, useState } from "react";
 import { api, fmtSize } from "@/lib/ledgerClient";
+import { fileSlug } from "@/lib/society";
 
 type Stored = { id: string; kind: string; created: string; size: number };
 type Info = { backups: Stored[] | null; r2: boolean; isMainAdmin: boolean; mainAdminEmail: string | null };
@@ -26,7 +27,7 @@ function saveJson(b: any) {
   const blob = new Blob([JSON.stringify(b, null, 1)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `Aakar_Backup_${String(b.created_at).slice(0, 10)}${b.kind === "pre-restore" ? "_before_restore" : ""}.json`;
+  a.href = url; a.download = `${fileSlug()}_Backup_${String(b.created_at).slice(0, 10)}${b.kind === "pre-restore" ? "_before_restore" : ""}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
@@ -73,7 +74,7 @@ export default function BackupPanel() {
     if (file.size > 4 * 1024 * 1024) { setError("This file is too large to upload (over 4 MB). Use RESTORE on one of the saved copies listed above instead."); return; }
     try {
       const b = JSON.parse(await file.text());
-      if (b?.app !== "aakar-society" || !b.tables?.flats?.length) throw new Error("This is not an Aakar Society backup file.");
+      if (b?.app !== "aakar-society" || !b.tables?.flats?.length) throw new Error("This is not a society backup file.");
       setPick({ source: "file", backup: b, created_at: b.created_at, created_by: b.created_by, counts: b.counts || {} });
     } catch (e: any) { setError(e.message.startsWith("This is not") ? e.message : "Could not read this file. Choose a backup file downloaded from this app."); }
   }

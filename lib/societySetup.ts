@@ -22,7 +22,7 @@ export function profileFromRow(row: any): SocietyProfile {
   const lines = Array.isArray(row.address_lines) ? row.address_lines.filter((l: unknown) => typeof l === "string" && l.trim()).map((l: string) => l.trim()) : [];
   return {
     name: own(row.name), full: own(row.full_name), reg: own(row.reg_no), regDate: own(row.reg_date), building: own(row.building),
-    address: own(row.address), addressLines: lines, city: own(row.city),
+    address: own(row.address), addressLines: lines, city: own(row.city), publicUrl: own(row.public_url),
   };
 }
 
@@ -71,7 +71,7 @@ export function readCachedProfile(store: Store | null | undefined): SocietyProfi
     const raw = store?.getItem(CACHE_KEY);
     if (!raw) return null;
     const j = JSON.parse(raw);
-    return j && typeof j === "object" ? profileFromRow({ name: j.name, full_name: j.full, reg_no: j.reg, reg_date: j.regDate, building: j.building, address: j.address, address_lines: j.addressLines, city: j.city }) : null;
+    return j && typeof j === "object" ? profileFromRow({ name: j.name, full_name: j.full, reg_no: j.reg, reg_date: j.regDate, building: j.building, address: j.address, address_lines: j.addressLines, city: j.city, public_url: j.publicUrl }) : null;
   } catch { return null; }
 }
 export function writeCachedProfile(store: Store | null | undefined, p: SocietyProfile) {

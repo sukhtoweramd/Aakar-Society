@@ -42,6 +42,7 @@ export const SOCIETY = {
   address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad",
   addressLines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"],
   city: "Ahmedabad",
+  publicUrl: "https://aakarsociety.vercel.app", // society_profile.public_url: the address of this society's app (login messages)
 };
 
 /** Society wording for printed papers and screens (19 Nov 2026), all derived from SOCIETY (= the society profile in ADMIN → FLAT SETUP). */
@@ -52,6 +53,14 @@ export const titleCase = (t: string) => String(t || "").trim().split(/\s+/).filt
 export const nameLines = (name: string): [string, string] => { const w = String(name || "").trim().split(/\s+/); return [w[0] || "", w.slice(1).join(" ")]; };
 /** What follows the short name in the full name: "AAKAR CO-OP" + "AAKAR CO-OP HOUSING SOCIETY LTD." -> "HOUSING SOCIETY LTD." (full name when it does not start with the short name). */
 export const nameSuffix = () => { const n = SOCIETY.name.trim(), f = SOCIETY.full.trim(); return f.toUpperCase().startsWith(n.toUpperCase()) ? f.slice(n.length).trim() : f; };
+/** The web address members use: the profile's public address, else the address this page was opened from. */
+export const siteUrl = () => SOCIETY.publicUrl || (typeof window !== "undefined" ? window.location.origin : "");
+/** "Aakar Co-op Housing Society": the full name in words without the trailing "Ltd." (start of WhatsApp messages). */
+export const societyShort = () => societyTitle().replace(/\s+Ltd\.?$/i, "");
+/** The name members use in everyday messages: "AAKAR CO-OP" -> "Aakar" (a trailing CO-OP is dropped), "GREEN VIEW" -> "Green View". */
+export const societyAppName = () => { const [first, rest] = nameLines(SOCIETY.name); return titleCase(/^(co-?op|co-?operative)$/i.test(rest) ? first : SOCIETY.name); };
+/** societyAppName() as a file-name part: "Aakar", "Green_View". */
+export const fileSlug = () => societyAppName().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 /** Six-digit pin code found in the address lines, or "". */
 export const societyPin = () => (`${SOCIETY.addressLines.join(" ")} ${SOCIETY.address}`.match(/\b\d{6}\b/) || [""])[0];
 /** Address lines in one line: "Mirambica Road, Naranpura, Ahmedabad – 380013". */

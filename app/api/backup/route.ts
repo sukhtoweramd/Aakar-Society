@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       let b: Backup = body.backup;
       if (body.id) { const key = await keyForId(String(body.id)); if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 }); b = await readStoredBackup(key); }
       if (!b || b.app !== "aakar-society" || typeof b.tables !== "object" || !Array.isArray(b.tables.flats) || !b.tables.flats.length)
-        return NextResponse.json({ error: "This is not a valid Aakar Society backup file." }, { status: 400 });
+        return NextResponse.json({ error: "This is not a valid society backup file." }, { status: 400 });
       // Safety copy of what is there now, so a wrong restore can be undone.
       const before = await buildBackup(admin, me.email, "pre-restore");
       const safetyKey = await storeBackup(before);

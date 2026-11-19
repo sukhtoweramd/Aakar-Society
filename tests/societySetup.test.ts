@@ -7,7 +7,7 @@ import { FALLBACK_PROFILE, applySocietyProfile, joinParts, profileFromRow, readC
 
 const aakarRow = {
   id: 1, name: "AAKAR CO-OP", full_name: "AAKAR CO-OP HOUSING SOCIETY LTD.", reg_no: "G-16551", reg_date: "16-03-1994", building: "SUKH TOWER",
-  address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad", address_lines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"], city: "Ahmedabad",
+  address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad", address_lines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"], city: "Ahmedabad", public_url: "https://aakarsociety.vercel.app",
 };
 const towerRows = [
   { code: "C", name: "Tower C", has_terrace: true, sort: 30, active: true },
@@ -27,8 +27,8 @@ test("no row, or a row without its two names, keeps today's values", () => {
 });
 
 test("a field the society left empty stays empty: it never shows another society's value", () => {
-  const p = profileFromRow({ name: "GREEN VIEW", full_name: "GREEN VIEW CHS", reg_no: "", reg_date: null, building: " ", address: "", address_lines: [], city: "" });
-  assert.deepEqual(p, { name: "GREEN VIEW", full: "GREEN VIEW CHS", reg: "", regDate: "", building: "", address: "", addressLines: [], city: "" });
+  const p = profileFromRow({ name: "GREEN VIEW", full_name: "GREEN VIEW CHS", reg_no: "", reg_date: null, building: " ", address: "", address_lines: [], city: "", public_url: null });
+  assert.deepEqual(p, { name: "GREEN VIEW", full: "GREEN VIEW CHS", reg: "", regDate: "", building: "", address: "", addressLines: [], city: "", publicUrl: "" });
 });
 
 test("joinParts leaves out empty parts", () => {

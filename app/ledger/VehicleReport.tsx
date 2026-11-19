@@ -2,7 +2,7 @@
 // REPORTS → Vehicle directory: flat, resident, contact and one line per vehicle.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, label, residentName, sortFlats, SOCIETY, titleCase, type Flat, type MemberLite } from "@/lib/society";
+import { familySummary, label, residentName, sortFlats, SOCIETY, titleCase, type Flat, type MemberLite, fileSlug } from "@/lib/society";
 import { VEHICLE_TYPES } from "./FlatListPanel";
 import { backButton, pdfButton } from "@/lib/printBack";
 
@@ -40,7 +40,7 @@ export default function VehicleReport({ list, members, scope }: { list: Flat[]; 
     groups.forEach((g) => g.vs.forEach((v) => rows.push([label(g.f), g.f.tower || "", g.resident, g.tenant ? "Tenant" : "Owner", g.mobile, v.vtype, v.model || "", v.plate || ""])));
     const text = "﻿" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a"); a.href = url; a.download = "Aakar_Vehicle_Directory.csv"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `${fileSlug()}_Vehicle_Directory.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 

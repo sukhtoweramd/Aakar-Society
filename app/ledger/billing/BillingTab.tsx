@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { familySummary, label, SOCIETY, sortFlats, type MemberLite } from "@/lib/society";
+import { familySummary, label, SOCIETY, sortFlats, type MemberLite, societyShort } from "@/lib/society";
 import {
   addDays, billBalance, billHtml, currentPeriodKey, dmy, flatTotals, tenantBookingDue, inr, loadSettings, loadSignatories, monthsIn, num, openPrint,
   OTHER_PRESETS, periodOf, periodOptions, maintenanceCharge, rentMultiplier, reserveNumbers, today, waLink, duesText, statementPdf, duesListPdf, type Bill, type Payment, type PrintCtx, type Settings, type Signatory,
@@ -301,7 +301,7 @@ function Dues({ towers, flats, bills, pays, mobileOf, open, pc }: { towers: Towe
           <button onClick={print} disabled={!rows.length} className="btn-navy px-5 py-2.5 text-[12px] tracking-[0.06em]">🖨 PRINT FULL DUES LIST</button>
           {rows.length > 0 && <SharePdfButton key={tower} label="📋 FULL DUES LIST PDF" className="px-5 py-2.5 text-[12px] tracking-[0.06em] font-bold text-white bg-[#128c48] border border-[#128c48]"
             make={() => duesListPdf(rows, tower === "ALL" ? "All towers" : `Tower ${tower}`)}
-            text={`Aakar Co-op Housing Society: full dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}
+            text={`${societyShort()}: full dues list (${tower === "ALL" ? "all towers" : "Tower " + tower}) as on ${dmy(today())} — ${rows.length} flats, total ₹${inr(total)}.`} />}
           <span className="opacity-70">Share only with the committee — it shows every flat's dues.</span>
         </div>
       </div>
@@ -318,7 +318,7 @@ function Dues({ towers, flats, bills, pays, mobileOf, open, pc }: { towers: Towe
               <td className="px-2.5 py-2"><div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap">
                 {r.tenant ? <span className="opacity-60">see the flat's ledger</span> : m ? <a target="_blank" rel="noopener noreferrer" className="underline" href={waLink(m, duesText(r.f, bills, pays, pc.settings))}title="Opens WhatsApp to this member with an itemised reminder and bank details">📲 Reminder text</a> : <span className="opacity-40">no mobile</span>}
                 {!r.tenant && <SharePdfButton label="📄 Statement PDF" className="underline" make={() => statementPdf(r.f, bills.filter((b) => b.flat_id === r.f.id), pays.filter((p) => p.flat_id === r.f.id), pc)}
-                  text={`Aakar Co-op Housing Society: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />}
+                  text={`${societyShort()}: ledger statement for Flat ${label(r.f)} as on ${dmy(today())}. Balance due ₹${inr(r.due)}.`} />}
               </div></td>
             </tr>); })}
             {rows.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center opacity-60">No dues. Every bill is paid.</td></tr>}
