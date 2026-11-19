@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { SOCIETY, label, ownerText, committeeRoster } from "@/lib/society";
+import { SOCIETY, label, nameLines, nameSuffix, ownerText, committeeRoster } from "@/lib/society";
 import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
@@ -41,8 +41,8 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
           <div className="flex flex-wrap gap-6 items-start justify-between">
             <div>
               <div className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[36px] serif bg-[var(--bg)]">ॐ</div>
-              <h1 className="serif text-[40px] md:text-[64px] leading-[0.9] mt-6 tracking-[0.02em] font-[800] break-words">AAKAR<br />CO-OP</h1>
-              <div className="mono text-[12px] tracking-[0.3em] mt-3">HOUSING SOCIETY LTD.</div>
+              <h1 className="serif text-[40px] md:text-[64px] leading-[0.9] mt-6 tracking-[0.02em] font-[800] break-words">{nameLines(SOCIETY.name)[0]}{nameLines(SOCIETY.name)[1] && <br />}{nameLines(SOCIETY.name)[1]}</h1>
+              <div className="mono text-[12px] tracking-[0.3em] mt-3">{nameSuffix()}</div>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 mono text-[11px] max-w-[420px]">
                 <div className="border border-[var(--border)] p-3 bg-[var(--bg)]">
                   <div className="opacity-60">REGISTRATION</div>
@@ -97,7 +97,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
         </div>
         {contacts.length > 0 && <WhoToContact id="who-to-contact" flats={flats} isCommittee={ctx.isCommittee} areas={contacts} className="border-t border-[var(--border)] px-6 md:px-12 py-6" />}
         <div className="bg-[var(--bg-soft)] border-t border-[var(--border)] mono text-[10px] px-4 md:px-8 py-3 flex flex-wrap gap-4">
-          <span>COVER PAGE • AAKAR CO-OP SOCIETY RECORD</span>
+          <span>COVER PAGE • {SOCIETY.name} SOCIETY RECORD</span>
           <span className="opacity-50">•</span>
           <span className="opacity-70">Use top nav to browse INDEX, FLOOR, DETAIL, BUSINESS, VAULT, NOTICES, EVENTS, ADMIN, REPORTS</span>
         </div>

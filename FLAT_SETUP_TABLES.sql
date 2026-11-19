@@ -83,7 +83,7 @@ create trigger towers_guard before update or delete on public.towers for each ro
 insert into public.society_profile (id, name, full_name, reg_no, reg_date, building, address, address_lines, city, public_url)
 values (1, 'AAKAR CO-OP', 'AAKAR CO-OP HOUSING SOCIETY LTD.', 'G-16551', '16-03-1994', 'SUKH TOWER',
         'Sukh Tower, Mirambica Road, Naranpura, Ahmedabad',
-        array['Mirambica Road Naranpura', 'Ahmedabad - 380013'], 'Ahmedabad', 'https://aakarsociety.vercel.app')
+        array['Mirambica Road, Naranpura', 'Ahmedabad - 380013'], 'Ahmedabad', 'https://aakarsociety.vercel.app')
 on conflict (id) do nothing;
 
 -- tower codes come from the flats themselves; terrace towers A and C as in the code today (B has none)

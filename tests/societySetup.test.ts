@@ -7,7 +7,7 @@ import { FALLBACK_PROFILE, applySocietyProfile, joinParts, profileFromRow, readC
 
 const aakarRow = {
   id: 1, name: "AAKAR CO-OP", full_name: "AAKAR CO-OP HOUSING SOCIETY LTD.", reg_no: "G-16551", reg_date: "16-03-1994", building: "SUKH TOWER",
-  address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad", address_lines: ["Mirambica Road Naranpura", "Ahmedabad - 380013"], city: "Ahmedabad",
+  address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad", address_lines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"], city: "Ahmedabad",
 };
 const towerRows = [
   { code: "C", name: "Tower C", has_terrace: true, sort: 30, active: true },

@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { supabase } from "./supabaseClient";
 import { dmy, inr, today } from "./billing";
 import { paged } from "./events";
-import { label, ownerText, type Flat } from "./society";
+import { label, ownerText, SOCIETY, type Flat } from "./society";
 
 export type Session = { id: string; name: string; date?: string | null; member_price: number | null; guest_price: number | null; ask_jain: boolean };
 export type Count = { mr: number; mj: number; gr: number; gj: number };
@@ -87,7 +87,7 @@ export function passImage(o: { event: string; session: string; when: string; fla
   const g = c.getContext("2d")!;
   g.fillStyle = "#0f1d3d"; g.fillRect(0, 0, W, H);
   g.strokeStyle = "#c9a227"; g.lineWidth = 8; g.strokeRect(14, 14, W - 28, H - 28);
-  g.fillStyle = "#d4ae3c"; g.font = "700 22px Arial"; g.fillText("AAKAR CO-OP HOUSING SOCIETY • EVENT PASS", 48, 80);
+  g.fillStyle = "#d4ae3c"; g.font = "700 22px Arial"; g.fillText(`${SOCIETY.full.replace(/\s*LTD\.?$/i, "")} • EVENT PASS`, 48, 80);
   g.fillStyle = "#ffffff"; g.font = "800 46px Arial"; wrap(g, o.event, 48, 140, W - 96, 52);
   g.fillStyle = "#c9a227"; g.fillRect(48, 210, W - 96, 64);
   g.fillStyle = "#0f1d3d"; g.font = "800 32px Arial"; g.fillText(`${o.session}${o.when ? `  •  ${o.when}` : ""}`.slice(0, 40), 66, 254);

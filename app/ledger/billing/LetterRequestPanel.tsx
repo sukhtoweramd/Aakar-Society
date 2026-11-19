@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { dmy } from "@/lib/billing";
+import { SOCIETY } from "@/lib/society";
 import { LETTER_TYPES, REQ_STATUS, type LetterRequest } from "@/lib/letterRequests";
 import { askName, type LetterTemplate } from "@/lib/letterTemplates";
 import { fieldKind, fieldLabel } from "@/lib/letterFields";
@@ -84,7 +85,7 @@ export default function LetterRequestPanel({ flatId }: { flatId: string }) {
               <label className="flex items-center gap-2 border border-[var(--border)] bg-white p-3"><input type="radio" className="h-5 w-5" checked={third} onChange={() => setThird(true)} /> A bank, office or person</label>
             </div></div>}
           {!isRes && third && <label className="block"><span className="text-[11px] font-bold">TO (NAME AND ADDRESS) *</span>
-            <textarea className="field mt-1" rows={3} maxLength={400} placeholder={"The Branch Manager\nSample Bank, Naranpura Branch, Ahmedabad"} value={to} onChange={(e) => setTo(e.target.value)} /></label>}
+            <textarea className="field mt-1" rows={3} maxLength={400} placeholder={`The Branch Manager\nSample Bank, ${SOCIETY.city}`} value={to} onChange={(e) => setTo(e.target.value)} /></label>}
           {chosen?.kind === "bank" && <div className="text-[11px] border border-[var(--border)] bg-white p-2">Letters for a bank are signed by hand by the Chairman or Secretary: when it is ready you will be told here, and you collect the signed letter from them.</div>}
           <label className="block"><span className="text-[11px] font-bold">PURPOSE / DETAILS {type === "Other" ? "*" : "(optional)"}</span>
             <textarea className="field mt-1" rows={3} maxLength={1000} placeholder="e.g. Home loan of ₹20 lakh from Sample Bank; needed by 5 November" value={purpose} onChange={(e) => setPurpose(e.target.value)} /></label>

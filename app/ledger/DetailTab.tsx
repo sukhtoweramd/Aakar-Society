@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { COMMITTEE_ROLES, committeeBadge, committeePeople, committeeText, floorOf, isOccupied, isRented, label, ownerText, rupees, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
+import { COMMITTEE_ROLES, committeeBadge, committeePeople, committeeText, floorOf, isOccupied, isRented, label, ownerText, rupees, SOCIETY, statusText, unitOf, VAULT_SLOTS, type Flat, type StoredFile } from "@/lib/society";
 import { api, deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import MembersPanel from "./MembersPanel";
@@ -352,7 +352,7 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
             <div className="border border-[var(--border)] p-4 bg-[var(--bg-soft)] mono text-[11px] leading-relaxed">
               <div className="font-bold">FLAT DETAILS</div>
               <div className="mt-2 opacity-80">
-                {label(f)} is in Tower {f.tower}, Floor {floorOf(f)}. Registered under G-16551. {f.bhk ? `${f.bhk} layout. ` : ""}
+                {label(f)} is in Tower {f.tower}, Floor {floorOf(f)}. Registered under {SOCIETY.reg}. {f.bhk ? `${f.bhk} layout. ` : ""}
                 Maintenance {rupees(f.maintenance)} per year, billed half-yearly. {terrace ? "Terrace ownership applicable - owner holds exclusive terrace rights per agreement in VAULT." : "Terrace ownership not applicable for this floor."}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">

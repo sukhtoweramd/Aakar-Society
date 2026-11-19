@@ -2,7 +2,7 @@
 import { birthdayText } from "@/lib/dob";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName } from "@/lib/society";
+import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName, titleCase } from "@/lib/society";
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import { backButton, pdfButton } from "@/lib/printBack";
@@ -89,16 +89,16 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const docTitle = committeeOnly ? "COMMITTEE DIRECTORY" : "MEMBER DIRECTORY";
     const sections = groups.map(([t, list], i) => {
       return `<table class="${i ? "newpage" : ""}"><thead>
-        <tr class="title"><td colspan="5"><div class="row"><div><h1>ॐ AAKAR CO-OP HOUSING SOCIETY LTD. — ${docTitle}</h1>
+        <tr class="title"><td colspan="5"><div class="row"><div><h1>ॐ ${esc(SOCIETY.full)} — ${docTitle}</h1>
           <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • ${esc(scope)} • Family details only for flats that gave consent</div></div>
           <div class="tower">${esc(t)}</div></div></td></tr>
         <tr class="gap"><td colspan="5"></td></tr>
         <tr><th style="width:12%">Flat</th><th style="width:36%">Resident / family member</th><th style="width:14%">Relation</th><th style="width:22%">Mobile</th><th style="width:16%">Birthday</th></tr>
       </thead>${list.map(flatBlock).join("")}</table>`;
     }).join("");
-    w.document.write(`<html><head><title>Aakar Co-op - ${committeeOnly ? "Committee" : "Member"} Directory ${esc(today)}</title><style>
+    w.document.write(`<html><head><title>${esc(titleCase(SOCIETY.name))} - ${committeeOnly ? "Committee" : "Member"} Directory ${esc(today)}</title><style>
       @page{size:A4 portrait;margin:12mm 10mm 15mm;
-        @bottom-left{content:"Aakar Co-op • ${committeeOnly ? "Committee" : "Member"} Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8px Inter,Arial,sans-serif;color:#7a7568}
+        @bottom-left{content:"${esc(titleCase(SOCIETY.name))} • ${committeeOnly ? "Committee" : "Member"} Directory • ${esc(today)} • Shared with consent – not for circulation outside the society";font:8px Inter,Arial,sans-serif;color:#7a7568}
         @bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Inter,Arial,sans-serif;color:#7a7568}}
       *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;margin:0;color:#1a1a18}
       table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed} td{overflow:hidden;white-space:nowrap;text-overflow:ellipsis} .small{font-size:9.5px;margin-top:1px} thead{display:table-header-group}

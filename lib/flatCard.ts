@@ -3,7 +3,7 @@
 import { ageOf } from "./dob";
 import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
-import { byFamilyOrder, committeePeople, label, SOCIETY, sortFlats, type Flat } from "./society";
+import { addressOneLine, byFamilyOrder, committeePeople, label, SOCIETY, sortFlats, type Flat } from "./society";
 import { backButton, pdfButton } from "./printBack";
 
 type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; dob?: string | null; is_head: boolean | null;
@@ -101,7 +101,7 @@ function card(c: CardData, printed: string): string {
     <div class="seal">ॐ</div>
     <div class="soc"><h1>${esc(SOCIETY.full)}</h1>
       <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div>
-      <div class="a">Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
+      <div class="a">${esc(addressOneLine())}</div></div>
     <div class="title"><div class="t">FLAT PROFILE CARD</div><div class="f">${esc(label(f))}</div><div class="s">Tower ${esc(f.tower)} • Floor ${esc(f.floor ?? "")}</div></div>
   </div>
   <div class="strip">

@@ -1,7 +1,7 @@
 "use client";
 // Billing: shared types, numbering, amounts, ledger maths and the printable bill / receipt / statement.
 import { supabase } from "./supabaseClient";
-import { label, SOCIETY, type Flat } from "./society";
+import { addressOneLine, addressWithPin, label, regYear, SOCIETY, societyTitle, type Flat } from "./society";
 import { backButton, pdfButton } from "./printBack";
 
 export type Settings = {
@@ -117,18 +117,20 @@ export function cleanImage(file: File, maxW = 700): Promise<string> {
 }
 
 /** Built-in round blue society stamp (used until a real stamp photo is uploaded). */
-export const DEFAULT_STAMP = (() => {
+/** Built-in round stamp, written from the society profile when it is needed (so a changed profile shows at once). */
+export const defaultStamp = () => {
   const c = "#1f3a93";
+  const x = (t: string) => String(t ?? "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch]!));
   const a = (r: number, d: number) => { const t = (d * Math.PI) / 180; return `${(300 + r * Math.cos(t)).toFixed(1)},${(300 + r * Math.sin(t)).toFixed(1)}`; };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><path id="t" d="M ${a(218, 148)} A 218,218 0 1,1 ${a(218, 32)}"/><path id="b" d="M 52,300 A 248,248 0 0,0 548,300"/></defs>
   <g fill="none" stroke="${c}"><circle cx="300" cy="300" r="286" stroke-width="12"/><circle cx="300" cy="300" r="268" stroke-width="3"/><circle cx="300" cy="300" r="166" stroke-width="5"/></g>
-  <g font-family="Inter,Arial,sans-serif" font-weight="800" fill="${c}"><text font-size="44" letter-spacing="4"><textPath href="#t" startOffset="50%" text-anchor="middle">AAKAR CO-OP HOUSING SOC. LTD.</textPath></text>
-  <text font-size="34" letter-spacing="6"><textPath href="#b" startOffset="50%" text-anchor="middle">★  AHMEDABAD  ★</textPath></text></g>
+  <g font-family="Inter,Arial,sans-serif" font-weight="800" fill="${c}"><text font-size="44" letter-spacing="4"><textPath href="#t" startOffset="50%" text-anchor="middle">${x(SOCIETY.full.replace(/\bSOCIETY\b/i, "SOC."))}</textPath></text>
+  <text font-size="34" letter-spacing="6"><textPath href="#b" startOffset="50%" text-anchor="middle">★  ${x(SOCIETY.city.toUpperCase())}  ★</textPath></text></g>
   <g fill="${c}" text-anchor="middle" font-family="Inter,Arial,sans-serif"><text x="300" y="268" font-size="26" font-weight="700" letter-spacing="6">REG. NO.</text>
-  <text x="300" y="328" font-size="58" font-weight="800" letter-spacing="2">G-16551</text><line x1="200" y1="350" x2="400" y2="350" stroke="${c}" stroke-width="3"/>
-  <text x="300" y="392" font-size="30" font-weight="700" letter-spacing="6">EST. 1994</text></g></svg>`;
+  <text x="300" y="328" font-size="58" font-weight="800" letter-spacing="2">${x(SOCIETY.reg)}</text><line x1="200" y1="350" x2="400" y2="350" stroke="${c}" stroke-width="3"/>
+  <text x="300" y="392" font-size="30" font-weight="700" letter-spacing="6">${regYear() ? `EST. ${regYear()}` : ""}</text></g></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-})();
+};
 
 // ---------- printing ----------
 const CSS = `@page{size:A4 portrait;margin:0}
@@ -181,12 +183,12 @@ export function docPage(kind: string, big: string, small: string, inner: string,
   return `${frameStart}${header(kind, big, small)}${inner}<div class="grow"></div><div class="foot"><div>${esc(footLeft)}</div><div>${esc(footRight)}</div></div>${frameEnd}`;
 }
 const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">ॐ</div>
-  <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
+  <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">${esc(addressOneLine())}</div></div>
   <div class="title"><div class="t">${esc(kind)}</div><div class="f${big.length > 12 ? " long" : ""}">${esc(big)}</div><div class="s">${small}</div></div></div>`;
 const flatLine = (f?: Flat) => (f ? `Flat <b>${esc(label(f))}</b> • Tower ${esc(f.tower)} • Floor ${esc(f.floor ?? "")}${f.bhk ? ` • ${esc(f.bhk)}` : ""}` : "");
 function signBlock(s: Settings | null, name?: string | null, desig?: string | null, image?: string | null) {
-  const stamp = s?.stamp_image || DEFAULT_STAMP;
-  return `<div class="sign"><img class="stamp" src="${stamp}" alt=""><div class="sig"><div class="for">For Aakar Co-op Housing Society Ltd.</div>
+  const stamp = s?.stamp_image || defaultStamp();
+  return `<div class="sign"><img class="stamp" src="${stamp}" alt=""><div class="sig"><div class="for">For ${esc(societyTitle())}</div>
     ${image ? `<img src="${image}" alt="">` : `<div class="blank"></div>`}
     <div class="l">${name ? `<b>${esc(name)}</b>` : ""}${esc(desig ? `Hon. ${desig}` : "Authorised signatory")}</div></div></div>`;
 }
@@ -204,14 +206,14 @@ export function billHtml(b: Bill, c: PrintCtx, prevDue = 0): string {
       <div class="ln" style="font-size:7.6pt">Please write <b>${esc(f ? label(f) : b.flat_id)}</b> in the payment remark.</div></div>` : `<div class="box"><div class="lbl">PAY BY BANK TRANSFER</div><div class="ln">Bank details are available from the society office.</div></div>`;
   return `${frameStart}${b.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
   ${header(b.kind === "maintenance" ? "MAINTENANCE BILL" : "BILL", f ? label(f) : b.flat_id, `Bill no. <b>${esc(b.bill_no)}</b>`)}
-  <div class="meta"><div class="box"><div class="lbl">BILL TO</div><div class="nm">${esc(b.bill_to || f?.owner_name || "Member")}</div><div class="ln">${flatLine(f)}<br>${esc(SOCIETY.address)} – 380013</div></div>
+  <div class="meta"><div class="box"><div class="lbl">BILL TO</div><div class="nm">${esc(b.bill_to || f?.owner_name || "Member")}</div><div class="ln">${flatLine(f)}<br>${esc(addressWithPin())}</div></div>
     <div class="box"><div class="lbl">BILL DETAILS</div><div class="kv"><span>Bill date</span><b>${dmy(b.bill_date)}</b>${b.period_from ? `<span>Period</span><b>${dmy(b.period_from)} – ${dmy(b.period_to)}</b>` : ""}${b.due_date ? `<span>Due date</span><b>${dmy(b.due_date)}</b>` : ""}<span>Flat</span><b>${esc(f ? label(f) : b.flat_id)}</b></div></div></div>
   <table><tr><th style="width:8%">SR.</th><th>PARTICULARS</th><th style="width:18%">RATE</th><th class="r" style="width:20%">AMOUNT (₹)</th></tr>
     ${lines.map((l, i) => `<tr><td>${i + 1}</td><td class="n">${esc(l.description)}${b.kind === "maintenance" && b.period_from && i === 0 ? `<span class="sub">For the period ${dmy(b.period_from, true)} to ${dmy(b.period_to, true)} (${monthsIn(b.period_from, b.period_to!)} months)</span>` : ""}</td><td>${l.rate != null && l.qty != null ? `₹${inr(l.rate)} × ${l.qty}` : ""}</td><td class="r">${inr(l.amount, true)}</td></tr>`).join("")}
     ${prevDue > 0 ? `<tr class="mid"><td></td><td>Previous outstanding (earlier bills not yet paid)</td><td></td><td class="r">${inr(prevDue, true)}</td></tr>` : ""}
     <tr class="tot"><td></td><td colspan="2">TOTAL AMOUNT PAYABLE</td><td class="r">₹${inr(total, true)}</td></tr></table>
   <div class="words">Amount in words: <b>${esc(inWords(total))}</b></div>
-  <div class="pay"><div class="box"><div class="lbl">PAY BY CHEQUE</div><div class="ln">In favour of <b>“${esc(s?.cheque_payee || "Aakar Co-op Housing Society Ltd.")}”</b><br>Write your flat number and mobile on the back of the cheque.</div></div>${bank}</div>
+  <div class="pay"><div class="box"><div class="lbl">PAY BY CHEQUE</div><div class="ln">In favour of <b>“${esc(s?.cheque_payee || societyTitle())}”</b><br>Write your flat number and mobile on the back of the cheque.</div></div>${bank}</div>
   <div class="note">${esc(s?.pay_note || "Kindly pay by the due date. A receipt will be issued by the society once your payment is received.")}<br>For any query about this bill, please contact the society office or the Treasurer.</div>
   ${signBlock(s, b.signer_name, b.signer_designation, sigImg(c, b.signer_id))}
   <div class="slip"><span class="cut">✂</span><div style="display:flex;justify-content:space-between;align-items:baseline"><h3>PAYMENT SLIP • HAND IN WITH YOUR CHEQUE</h3><span style="font-size:7.6pt;color:var(--mute)">${esc(SOCIETY.full)}</span></div>
@@ -230,7 +232,7 @@ export function receiptHtml(p: Payment, b: Bill, c: PrintCtx, allPays: Payment[]
   const cheque = p.mode === "Cheque";
   return `${frameStart}${p.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
   ${header("RECEIPT", f ? label(f) : p.flat_id, `Receipt no. <b>${esc(p.receipt_no)}</b>`)}
-  <div class="meta"><div class="box"><div class="lbl">RECEIVED FROM</div><div class="nm">${esc(name)}</div><div class="ln">${flatLine(f)}<br>${esc(SOCIETY.address)} – 380013</div></div>
+  <div class="meta"><div class="box"><div class="lbl">RECEIVED FROM</div><div class="nm">${esc(name)}</div><div class="ln">${flatLine(f)}<br>${esc(addressWithPin())}</div></div>
     <div class="box"><div class="lbl">RECEIPT DETAILS</div><div class="kv"><span>Receipt date</span><b>${dmy(p.paid_on)}</b><span>Against bill</span><b>${esc(b.bill_no)}</b>${b.period_from ? `<span>Bill period</span><b>${dmy(b.period_from)} – ${dmy(b.period_to)}</b>` : ""}<span>Flat</span><b>${esc(f ? label(f) : p.flat_id)}</b></div></div></div>
   <div class="recv">Received with thanks from <b>${esc(name)}</b>, Flat <b>${esc(f ? label(f) : p.flat_id)}</b>, the sum of <span class="amt">₹${inr(p.amount, true)}</span> (<b>${esc(inWords(num(p.amount)))}</b>) towards ${what} against bill no. <b>${esc(b.bill_no)}</b> dated ${dmy(b.bill_date, true)}.${cheque ? ` <i>Subject to realisation of cheque.</i>` : ""}</div>
   <div class="sec"><div class="sh"><span>PAYMENT DETAILS</span><i></i></div>
@@ -331,9 +333,9 @@ export function letterHtml(l: Letter, c: PrintCtx): string {
       ${!l.unsigned && sigImg(c, l.signer_id) ? `<img src="${sigImg(c, l.signer_id)}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
       <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${l.unsigned ? `<span style="font-size:9.5pt">Hon. Chairman / Hon. Secretary</span>` : `<b style="color:var(--navy)">${esc(l.signer_name || "")}</b><br><span style="font-size:9.5pt">${esc(l.signer_designation ? `Hon. ${l.signer_designation}` : "Authorised signatory")}</span>`}</div>
     </div>
-    ${l.unsigned ? `<div style="width:30mm;height:30mm;border:.3mm dashed #999;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#999;text-align:center">society<br>stamp</div>` : `<img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">`}
+    ${l.unsigned ? `<div style="width:30mm;height:30mm;border:.3mm dashed #999;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#999;text-align:center">society<br>stamp</div>` : `<img src="${c.settings?.stamp_image || defaultStamp()}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">`}
   </div>
-  <div style="margin-top:5mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>Ahmedabad</b></span><span>Date: <b>${dmy(l.letter_date, true)}</b></span></div>
+  <div style="margin-top:5mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>${esc(SOCIETY.city)}</b></span><span>Date: <b>${dmy(l.letter_date, true)}</b></span></div>
   <div class="grow"></div>
   <div class="foot"><div>Generated from the society app • ${dmy(today())}</div><div>Ref. ${esc(l.ref_no)} • Flat ${esc(f ? label(f) : l.flat_id)}</div></div>${frameEnd}`;
 }
@@ -365,7 +367,7 @@ export async function duesListPdf(rows: { f: Flat; due: number; count: number; o
   tr.tot td{font-weight:800;background:#f7f2e4;border-top:.4mm solid #0f1d3d}
   .ft{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#6f6a5d;border-top:.25mm solid #e8e2d1;padding-top:2mm}`;
   const pages = chunks.map((ch, i) => `<section class="page"><div class="hd"><div class="seal">ॐ</div><div><h1>${esc(SOCIETY.full)}</h1>
-    <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • Mirambica Road, Naranpura, Ahmedabad – 380013</div></div>
+    <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • ${esc(addressOneLine())}</div></div>
     <div class="t"><b>DUES LIST</b><span>${esc(scope)}</span></div></div>
     <div class="s"><span>As on <b>${dmy(today())}</b> • ${rows.length} flat${rows.length === 1 ? "" : "s"} with dues</span><span>Total due <b style="color:#b26a00">₹${inr(total)}</b></span></div>
     <table><tr><th>FLAT</th><th>OWNER</th><th>UNPAID BILLS</th><th>OLDEST DUE DATE</th><th class="r">AMOUNT DUE ₹</th></tr>
@@ -387,7 +389,7 @@ export function duesText(f: Flat, bills: Bill[], pays: Payment[], s: Settings | 
     return `• Bill ${b.bill_no} (${what}): ₹${inr(b.amount)}${paid > 0 ? `, paid ₹${inr(paid)}` : ""}, balance ₹${inr(balance)}${b.due_date ? `, due ${dmy(b.due_date)}` : ""}`;
   });
   const bank = s?.account_no && s?.ifsc
-    ? `\n\nPay to: ${s.account_name || "Aakar Co-op Housing Society Ltd."}\n${s.bank_name || "Bank"}${s.bank_branch ? `, ${s.bank_branch}` : ""}\nA/c ${s.account_no} • IFSC ${s.ifsc}${s.upi_id ? `\nUPI: ${s.upi_id}` : ""}` : "";
+    ? `\n\nPay to: ${s.account_name || societyTitle()}\n${s.bank_name || "Bank"}${s.bank_branch ? `, ${s.bank_branch}` : ""}\nA/c ${s.account_no} • IFSC ${s.ifsc}${s.upi_id ? `\nUPI: ${s.upi_id}` : ""}` : "";
   return `Aakar Co-op Housing Society: Gentle reminder for Flat ${label(f)} — dues as on ${dmy(today())}:\n${lines.join("\n")}\n\nTotal due: ₹${inr(total)}${bank}\n\nPlease pay at the earliest. Your full ledger is in the society app under MY FLAT. If already paid, kindly ignore. Thank you.`;
 }
 
@@ -410,9 +412,9 @@ export function noticeHtml(n: { title: string | null; content: string | null; to
       ${g?.signature_image ? `<img src="${g.signature_image}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
       <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${g ? `<b style="color:var(--navy)">${esc(g.name)}</b><br>` : ""}<span style="font-size:9.5pt">${esc(g?.designation ? `Hon. ${g.designation}` : "Managing Committee")}</span></div>
     </div>
-    <img src="${c.settings?.stamp_image || DEFAULT_STAMP}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
+    <img src="${c.settings?.stamp_image || defaultStamp()}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
   </div>
-  <div style="margin-top:4mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>Ahmedabad</b></span><span>Date: <b>${dmy(date, true)}</b></span></div>
+  <div style="margin-top:4mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>${esc(SOCIETY.city)}</b></span><span>Date: <b>${dmy(date, true)}</b></span></div>
   <div class="grow"></div>
   <div class="foot"><div>Generated from the society app • ${dmy(today())}</div><div>Notice • ${esc(towers)}</div></div>${frameEnd}`;
 }

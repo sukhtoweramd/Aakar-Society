@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { COMMITTEE_ROLES } from "@/lib/society";
-import { cleanImage, DEFAULT_STAMP, docNo, type Settings, type Signatory } from "@/lib/billing";
+import { COMMITTEE_ROLES, societyTitle } from "@/lib/society";
+import { cleanImage, defaultStamp, docNo, type Settings, type Signatory } from "@/lib/billing";
 
 export default function BillingSettings({ settings, signatories, email, onChanged }: { settings: Settings; signatories: Signatory[]; email: string; onChanged: () => void }) {
   const [s, setS] = useState<Settings>(settings);
@@ -102,13 +102,13 @@ export default function BillingSettings({ settings, signatories, email, onChange
         <div className="serif text-[18px] font-bold">Society bank details</div>
         <div className="opacity-60 mt-0.5">Printed on every bill so members can pay by transfer.</div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
-          {F({ k: "account_name", l: "ACCOUNT NAME", ph: "Aakar Co-op Housing Society Ltd.", })}
+          {F({ k: "account_name", l: "ACCOUNT NAME", ph: societyTitle(), })}
           {F({ k: "bank_name", l: "BANK", ph: "e.g. Bank of Baroda", })}
-          {F({ k: "bank_branch", l: "BRANCH", ph: "e.g. Naranpura", })}
+          {F({ k: "bank_branch", l: "BRANCH", ph: "e.g. Main branch", })}
           {F({ k: "account_no", l: "ACCOUNT NO.", })}
           {F({ k: "ifsc", l: "IFSC", })}
           {F({ k: "upi_id", l: "UPI ID (optional)", })}
-          {F({ k: "cheque_payee", l: "CHEQUE IN FAVOUR OF", ph: "Aakar Co-op Housing Society Ltd.", w: "sm:col-span-2", })}
+          {F({ k: "cheque_payee", l: "CHEQUE IN FAVOUR OF", ph: societyTitle(), w: "sm:col-span-2", })}
           {F({ k: "pay_note", l: "NOTE ON BILLS (optional)", ph: "Kindly pay by the due date…", w: "lg:col-span-3 sm:col-span-2", })}
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function BillingSettings({ settings, signatories, email, onChange
       </div>
 
       <div className="bg-[var(--surface)] border border-[var(--border)] p-5 flex flex-wrap gap-5 items-center">
-        <div className="h-28 w-28 grid place-items-center bg-white border border-[var(--border)]"><img src={s.stamp_image || DEFAULT_STAMP} alt="Society stamp" className="max-h-24 max-w-24" /></div>
+        <div className="h-28 w-28 grid place-items-center bg-white border border-[var(--border)]"><img src={s.stamp_image || defaultStamp()} alt="Society stamp" className="max-h-24 max-w-24" /></div>
         <div className="flex-1 min-w-[220px]">
           <div className="serif text-[18px] font-bold">Society stamp</div>
           <div className="opacity-60 mt-0.5">{s.stamp_image ? "Using the uploaded stamp." : "Using the built-in round blue stamp. Upload a photo of the real stamp on white paper to use it instead."}</div>
