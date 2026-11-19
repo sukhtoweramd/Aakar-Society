@@ -92,7 +92,7 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
   function printList() {
     const w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to print."); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Letters register</title><style>body{font:11px Arial,sans-serif;margin:0 12px}h1{font-size:14px;margin:6px 0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px;text-align:left;vertical-align:top}th{background:#0f1d3d;color:#fff}.x{color:#b42318}</style></head><body>${backBar()}
-      <h1>AAKAR CO-OP HOUSING SOCIETY LTD. — LETTERS REGISTER • ${esc(new Date().toLocaleDateString("en-IN"))}</h1>
+      <h1>${esc(SOCIETY.full)} — LETTERS REGISTER • ${esc(new Date().toLocaleDateString("en-IN"))}</h1>
       <table><tr><th>Letter no.</th><th>Date</th><th>Flat</th><th>Member</th><th>To</th><th>Subject</th><th>Signed by</th><th>Status</th></tr>
       ${shown.map((l) => `<tr><td>${esc(l.ref_no)}</td><td>${esc(dmy(l.letter_date))}</td><td>${esc(flatOf(l.flat_id) ? label(flatOf(l.flat_id)!) : l.flat_id)}</td><td>${esc(l.owner_name || "")}</td><td>${esc(l.addressee)}</td><td>${esc(l.subject)}</td><td>${esc(l.signer_name || "")}</td><td class="${l.status === "cancelled" ? "x" : ""}">${l.status === "cancelled" ? `CANCELLED${l.cancel_reason ? `: ${esc(l.cancel_reason)}` : ""}` : "Issued"}</td></tr>`).join("")}
       </table></body></html>`);

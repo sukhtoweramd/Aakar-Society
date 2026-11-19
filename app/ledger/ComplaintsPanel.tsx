@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { label, ownerText, type Flat, type MemberLite } from "@/lib/society";
-import { familySummary } from "@/lib/society";
+import { familySummary, SOCIETY } from "@/lib/society";
 import { loadAreas, personOf, type Area } from "@/lib/committee";
 import { waLink } from "@/lib/billing";
 import { backBar } from "@/lib/printBack";
@@ -46,7 +46,7 @@ export default function ComplaintsPanel({ mode, flats, flatId, isCommittee, onCo
     const w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to print."); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Complaints</title><style>
       body{font:11px Arial,sans-serif;margin:0 12px}h1{font-size:14px;margin:6px 0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px;vertical-align:top;text-align:left}th{background:#0f1d3d;color:#fff}@page{size:A4;margin:10mm}</style></head><body>
-      ${backBar()}<h1>AAKAR CO-OP HOUSING SOCIETY LTD. — COMPLAINTS (${esc(filter === "active" ? "open / in progress" : filter)}) • ${esc(new Date().toLocaleDateString("en-IN"))}</h1>
+      ${backBar()}<h1>${esc(SOCIETY.full)} — COMPLAINTS (${esc(filter === "active" ? "open / in progress" : filter)}) • ${esc(new Date().toLocaleDateString("en-IN"))}</h1>
       <table><tr><th>No.</th><th>Date</th><th>Flat</th><th>Area</th><th>Complaint</th><th>Status</th><th>Days</th><th>Action / note</th></tr>
       ${shown.map((c) => `<tr><td>${esc(c.complaint_no)}</td><td>${esc(when(c.created_at))}</td><td>${esc(flatText(flats, c.flat_id))}</td><td>${esc(c.area_name)}</td><td>${esc(c.description)}</td><td>${STATUS[c.status].text}</td><td>${daysOpen(c)}</td><td>${esc(c.close_note || c.progress_note || "")}</td></tr>`).join("")}
       </table></body></html>`);

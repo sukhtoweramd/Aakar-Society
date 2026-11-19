@@ -41,6 +41,7 @@ export const SOCIETY = {
   building: "SUKH TOWER",
   address: "Sukh Tower, Mirambica Road, Naranpura, Ahmedabad",
   addressLines: ["Mirambica Road Naranpura", "Ahmedabad - 380013"],
+  city: "Ahmedabad",
 };
 
 /** Number part of a flat id: "A1001" -> 1001 */
@@ -167,12 +168,12 @@ const mostCommon = <T,>(vals: T[]): T | null => {
 export const isJoined = (f: Pick<Flat, "flat_no">) => (f.flat_no || "").includes("/");
 
 /** Build categories from the real flats: per tower, top floor = terrace, the rest = standard. */
-export function buildCategories(flats: Flat[]): Category[] {
+export function buildCategories(flats: Flat[], terraceTowers: string[] = TERRACE_TOWERS): Category[] {
   const out: Category[] = [];
   const towers = Array.from(new Set(flats.map((f) => f.tower).filter(Boolean))).sort() as string[];
   for (const t of towers) {
     const inTower = flats.filter((f) => f.tower === t).sort(sortFlats);
-    const top = TERRACE_TOWERS.includes(t) ? Math.max(...inTower.map(floorOf)) : Infinity; // no terrace: one standard group
+    const top = terraceTowers.includes(t) ? Math.max(...inTower.map(floorOf)) : Infinity; // no terrace: one standard group
     // A tower with joined homes (flat_no "B201/202") and single flats (B101, B102) gets the single flats as their own
     // category, so a joined home's rate is never applied to a single flat (and charged twice for one pair).
     const mixed = inTower.some(isJoined) && inTower.some((f) => !isJoined(f));

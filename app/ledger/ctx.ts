@@ -1,4 +1,5 @@
 import type { Category, Flat } from "@/lib/society";
+import type { TowerInfo } from "@/lib/societySetup";
 
 export const TABS = ["COVER", "INDEX", "FLOOR", "DETAIL", "BUSINESS", "DIRECTORY", "VAULT", "NOTICES", "CONTACTS", "EVENTS", "BILLING", "COMMITTEE", "ADMIN", "REPORTS"] as const;
 export type Tab = (typeof TABS)[number];
@@ -14,6 +15,7 @@ export type Ctx = {
   tenantFlat?: string | null; // the rented flat of a tenant login
   flats: Flat[];
   categories: Category[];
+  towers: TowerInfo[]; // the society's towers (towers table; falls back to the towers found in the flats)
   towerFilter: string; // "ALL" or tower letter
   setTowerFilter: (t: string) => void;
   search: string;

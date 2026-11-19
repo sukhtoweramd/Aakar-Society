@@ -15,7 +15,7 @@ test("the society profile seed equals SOCIETY in lib/society.ts", () => {
   assert.ok(m, "profile insert not found");
   const lit = Array.from(m![1].matchAll(/'((?:[^']|'')*)'/g), (x) => x[1].replace(/''/g, "'"));
   assert.deepEqual(lit, [SOCIETY.name, SOCIETY.full, SOCIETY.reg, SOCIETY.regDate, SOCIETY.building, SOCIETY.address,
-    ...SOCIETY.addressLines, "Ahmedabad", "https://aakarsociety.vercel.app"]);
+    ...SOCIETY.addressLines, SOCIETY.city, "https://aakarsociety.vercel.app"]);
 });
 
 test("the terrace towers seed equals TERRACE_TOWERS", () => {
