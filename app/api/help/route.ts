@@ -8,6 +8,7 @@ import { getAuthedClient } from "@/lib/serverAuth";
 import { pickGuide } from "@/lib/helpSections";
 import { SOCIETY, societyShort, titleCase } from "@/lib/society";
 import { applySocietyProfile, profileFromRow } from "@/lib/societySetup";
+import { duesFacts, wantsOwnMoney } from "@/lib/helpData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -58,13 +59,22 @@ export async function POST(req: NextRequest) {
   const who = me.isCommittee ? "a society committee member (committee login)" : me.isTenant ? `the tenant of flat ${me.tenantFlatId || ""} (tenant login: family, vehicles, complaints, common plot booking, notices, events and contacts; no bills, documents or nominees)` : `a member using the flat login of flat ${me.flatId || ""}`;
   // one society per deployment: the profile (ADMIN → FLAT SETUP) gives the name; no row / unreadable = today's values
   try { const { data: prof } = await me.db.from("society_profile").select("*").maybeSingle(); applySocietyProfile(profileFromRow(prof)); } catch { /* keep the current values */ }
-  const system = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
+  // A flat login asking about its own amounts: read the flat's bills and payments through the member's OWN login (the database
+  // rules limit them to that flat) and give the assistant a short summary. Tenants, committee logins and other questions get no data.
+  let dataBlock = "";
+  if (me.flatId && !me.isCommittee && !me.isTenant && wantsOwnMoney(question)) {
+    try {
+      const [b, p] = await Promise.all([me.db.from("bills").select("id, bill_no, bill_date, due_date, period_from, period_to, amount, status, tenant_bill").eq("flat_id", me.flatId), me.db.from("payments").select("bill_id, amount, paid_on, mode, receipt_no, status").eq("flat_id", me.flatId)]);
+      if (!b.error && !p.error) dataBlock = `\n\nYOUR FLAT'S AMOUNTS (live data for flat ${me.flatId}, read just now; use it for questions about this flat's bills, dues and payments):\n${duesFacts((b.data as any[]) || [], (p.data as any[]) || [], new Date().toISOString().slice(0, 10))}`;
+    } catch { /* no data: the assistant says where to look */ }
+  }
+  const baseSystem = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).
 Give a complete, helpful answer: explain what the screen or feature shows and the steps to use it, as numbered steps where there are steps (up to about 12 short lines). No greetings, no closing lines.
 Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly as in the guide. If the guide does not say how to do something, do not guess a path.
-You cannot see the member's bills, payments or data; if they ask about their own amounts or a specific record, tell them where in the app to see it.
+Only the "YOUR FLAT'S AMOUNTS" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
 
@@ -72,6 +82,7 @@ HELP GUIDE (the parts that match the question):
 ${guide}`;
 
   const errors: string[] = [];
+  const system = baseSystem + dataBlock;
   for (const model of MODELS) {
     try {
       const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
