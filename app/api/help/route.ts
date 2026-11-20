@@ -8,7 +8,7 @@ import { getAuthedClient } from "@/lib/serverAuth";
 import { pickGuide } from "@/lib/helpSections";
 import { SOCIETY, societyShort, titleCase } from "@/lib/society";
 import { applySocietyProfile, profileFromRow } from "@/lib/societySetup";
-import { duesFacts, societyDuesFacts, wantsOwnMoney, wantsSocietyDues } from "@/lib/helpData";
+import { duesFacts, recordsFacts, societyDuesFacts, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues, type RecordTopic } from "@/lib/helpData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -88,13 +88,29 @@ export async function POST(req: NextRequest) {
       dataBlock = `\n\nTHE SOCIETY'S DUES (live data, read just now; use it for questions about which flats owe and how much; flat ids with owner names):\n${societyDuesFacts(b, p, new Date().toISOString().slice(0, 10), 15, names)}`;
     } catch { /* no data: the assistant says where to look */ }
   }
+  // A flat login or a tenant login asking about its OWN complaints, bookings or letter requests: read them through the member's own
+  // login (the database rules limit them to that flat) and give a short summary. A tenant has no letters; committee logins get none of this.
+  const homeFlat = me.flatId || me.tenantFlatId || null;
+  if (homeFlat && !me.isCommittee) {
+    const topics = wantsOwnRecords(question).filter((t: RecordTopic) => !(me.isTenant && t === "letters"));
+    if (topics.length) {
+      try {
+        const get = async (table: string, cols: string, filter: string) => { const r = await me.db.from(table).select(cols).or(filter).order("created_at", { ascending: false }).limit(20); if (r.error) throw r.error; return (r.data as any[]) || []; };
+        const data: any = {};
+        if (topics.includes("complaints")) data.complaints = await get("complaints", "complaint_no, flat_id, assigned_flat, backup_flat, area_name, description, status, progress_note, close_note, created_at", `flat_id.eq.${homeFlat},assigned_flat.eq.${homeFlat},backup_flat.eq.${homeFlat}`);
+        if (topics.includes("bookings")) data.bookings = await get("bookings", "group_id, area_name, book_date, slot, purpose, status, reason, created_at", `flat_id.eq.${homeFlat}`);
+        if (topics.includes("letters")) data.letters = await get("letter_requests", "letter_type, status, reason, created_at", `flat_id.eq.${homeFlat}`);
+        dataBlock += `\n\nYOUR FLAT'S RECORDS (live data for flat ${homeFlat}, read just now; use it for questions about this flat's own complaints, bookings and letter requests):\n${recordsFacts(homeFlat, topics, data)}`;
+      } catch { /* no data: the assistant says where to look */ }
+    }
+  }
   const baseSystem = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).
 Give a complete, helpful answer: explain what the screen or feature shows and the steps to use it, as numbered steps where there are steps (up to about 12 short lines). No greetings, no closing lines.
 Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly as in the guide. If the guide does not say how to do something, do not guess a path.
-Only the "YOUR FLAT'S AMOUNTS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
+Only the "YOUR FLAT'S AMOUNTS", "YOUR FLAT'S RECORDS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
 

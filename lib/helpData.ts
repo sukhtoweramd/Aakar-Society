@@ -84,3 +84,52 @@ export function societyDuesFacts(bills: SocBill[], pays: SocPay[], today: string
   if (rows.length > top) lines.push(`(${rows.length - top} more flats owe smaller amounts; use the dues list in BILLING for the full list.)`);
   return lines.join("\n");
 }
+
+// ---------- a member's or tenant's OWN complaints, bookings and letter requests ----------
+export type RecordTopic = "complaints" | "bookings" | "letters";
+
+/** Which of the member's own records a question is about (empty = none, so nothing is looked up). */
+export function wantsOwnRecords(question: string): RecordTopic[] {
+  const q = String(question || "").toLowerCase();
+  const out: RecordTopic[] = [];
+  if (/\b(complaint|complaints|complain|my issue|raised|lift|leak|leakage|repair)\b/.test(q) || /(ફરિયાદ|शिकायत)/.test(q)) out.push("complaints");
+  if (/\b(booking|bookings|booked|book|reserve|reserved|plot|hall|slot|party)\b/.test(q) || /(બુકિંગ|बुकिंग)/.test(q)) out.push("bookings");
+  if (/\b(letter|letters|noc|certificate|no dues|address proof)\b/.test(q) || /(પત્ર|पत्र)/.test(q)) out.push("letters");
+  return out;
+}
+
+const cut = (s: any, n: number) => { const t = String(s ?? "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+
+type Cmp = { complaint_no: string | null; flat_id: string; assigned_flat: string | null; backup_flat: string | null; area_name: string | null; description: string; status: string; progress_note: string | null; close_note: string | null; created_at: string };
+type Bkg = { group_id: string; area_name: string; book_date: string; slot: string; purpose: string | null; status: string; reason: string | null };
+type Ltr = { letter_type: string; status: string; reason: string | null; created_at: string };
+
+/** A short block about the flat's own records. Newest first, at most 5 of each kind. */
+export function recordsFacts(flat: string, topics: RecordTopic[], d: { complaints?: Cmp[]; bookings?: Bkg[]; letters?: Ltr[] }): string {
+  const out: string[] = [];
+  if (topics.includes("complaints")) {
+    const rows = [...(d.complaints || [])].sort((a, z) => z.created_at.localeCompare(a.created_at)).slice(0, 5);
+    out.push(rows.length ? "Complaints (newest first):" : "No complaints found for this flat.");
+    for (const c of rows) {
+      const role = c.flat_id === flat ? "raised by this flat" : "assigned to this flat to handle";
+      const note = c.close_note || c.progress_note;
+      out.push(`- ${c.complaint_no || "no number"}${c.area_name ? `, ${c.area_name}` : ""}: ${cut(c.description, 90)} Status ${c.status.replace("_", " ")} (${role}, ${c.created_at.slice(0, 10)})${note ? `. Note: ${cut(note, 100)}` : ""}`);
+    }
+  }
+  if (topics.includes("bookings")) {
+    const groups = new Map<string, Bkg[]>();
+    for (const b of d.bookings || []) groups.set(b.group_id, [...(groups.get(b.group_id) || []), b]);
+    const rows = Array.from(groups.values()).sort((a, z) => z[0].book_date.localeCompare(a[0].book_date)).slice(0, 5);
+    out.push(rows.length ? "Common plot bookings (latest dates first):" : "No bookings found for this flat.");
+    for (const g of rows) {
+      const b = g[0];
+      out.push(`- ${b.book_date}, ${b.slot}: ${g.map((x) => x.area_name).join(", ")}${b.purpose ? ` (${cut(b.purpose, 50)})` : ""}. Status ${b.status}${b.reason ? `. Reason: ${cut(b.reason, 100)}` : ""}`);
+    }
+  }
+  if (topics.includes("letters")) {
+    const rows = [...(d.letters || [])].sort((a, z) => z.created_at.localeCompare(a.created_at)).slice(0, 5);
+    out.push(rows.length ? "Letter requests (newest first):" : "No letter requests found for this flat.");
+    for (const l of rows) out.push(`- ${l.letter_type}: ${l.status}${l.reason ? `. Reason: ${cut(l.reason, 100)}` : ""} (${l.created_at.slice(0, 10)})`);
+  }
+  return out.join("\n");
+}
