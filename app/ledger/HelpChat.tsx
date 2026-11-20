@@ -76,7 +76,7 @@ export default function HelpChat({ flats, isCommittee }: { flats: Flat[]; isComm
           <div onClick={(e) => e.stopPropagation()} className="bg-[var(--bg)] w-full sm:w-[420px] h-full flex flex-col shadow-[0_0_40px_rgba(0,0,0,.3)]"
             style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
             <div className="bg-[var(--navy)] text-white px-4 py-3 flex items-center justify-between gap-2">
-              <div><div className="font-bold tracking-[0.1em] text-[14px]">HELP</div><div className="text-[11px] opacity-75">Ask how to use the app • English, ગુજરાતી, हिंदी</div></div>
+              <div><div className="font-bold tracking-[0.1em] text-[14px]">HELP</div><div className="text-[11px] opacity-75">{isCommittee ? "Ask how to use the app, or which flats owe dues" : "Ask how to use the app, or about your flat's dues, complaints and bookings"} • English, ગુજરાતી, हिंदी</div></div>
               <button onClick={() => setOpen(false)} aria-label="Close help" className="h-10 w-10 grid place-items-center text-[20px] hover:bg-white/10">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
