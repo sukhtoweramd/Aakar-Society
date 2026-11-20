@@ -2,6 +2,7 @@
 // Pure logic with no Supabase import (tests load it directly). The rows come from the member's own login, so the
 // database rules already limit them to that flat; nothing here widens access.
 import { flatTotals } from "./billTotals";
+import { docChecklist, docTypeOf } from "./flatDocTypes";
 
 type BillRow = { id: string; bill_no: string; bill_date: string; due_date: string | null; period_from: string | null; period_to: string | null; amount: number; status: string; tenant_bill?: boolean | null };
 type PayRow = { bill_id: string; amount: number; paid_on: string; mode: string; receipt_no: string; status: string };
@@ -132,4 +133,25 @@ export function recordsFacts(flat: string, topics: RecordTopic[], d: { complaint
     for (const l of rows) out.push(`- ${l.letter_type}: ${l.status}${l.reason ? `. Reason: ${cut(l.reason, 100)}` : ""} (${l.created_at.slice(0, 10)})`);
   }
   return out.join("\n");
+}
+
+// ---------- the flat's documents still to upload ----------
+/** True when the question is about which documents the flat has uploaded or still has to give the society. */
+export function wantsOwnDocs(question: string): boolean {
+  const q = String(question || "").toLowerCase();
+  return (/\b(document|documents|docs|checklist)\b/.test(q) && /\b(pending|missing|upload|uploaded|submit|submitted|still|need|needed|required|left|remaining|have)\b/.test(q))
+    || /(દસ્તાવેજ|दस्तावेज)/.test(q);
+}
+
+/** The flat's document checklist: what is uploaded and what is still to upload (same list as MY FLAT → FLAT DOCUMENTS). */
+export function docsFacts(storedTypes: (string | null | undefined)[], rented: boolean): string {
+  const list = docChecklist(storedTypes, rented);
+  const todo = list.filter((d) => !d.uploaded).map((d) => d.name);
+  const done = list.filter((d) => d.uploaded).map((d) => d.name);
+  const other = storedTypes.filter((s) => String(s || "").trim() && !docTypeOf(s)).length;
+  const lines = [todo.length ? `Still to upload (${todo.length} of ${list.length}): ${todo.join(", ")}.` : `All ${list.length} documents on the list are uploaded.`];
+  lines.push(done.length ? `Already uploaded: ${done.join(", ")}.` : "No documents from the list are uploaded yet.");
+  if (!rented) lines.push("Rent agreement is needed only when the flat is rented, so it is not on this flat's list.");
+  if (other > 0) lines.push(`${other} other file${other === 1 ? " is" : "s are"} uploaded outside the list.`);
+  return lines.join("\n");
 }

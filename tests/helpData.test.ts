@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "fs";
-import { duesFacts, recordsFacts, societyDuesFacts, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues } from "../lib/helpData";
+import { docsFacts, duesFacts, recordsFacts, societyDuesFacts, wantsOwnDocs, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues } from "../lib/helpData";
 
 const bill = (o: any) => ({ id: "b1", bill_no: "M-001", bill_date: "2026-04-01", due_date: "2026-04-30", period_from: "2026-04-01", period_to: "2026-09-30", amount: 10000, status: "active", tenant_bill: false, ...o });
 const pay = (o: any) => ({ bill_id: "b1", amount: 4000, paid_on: "2026-05-02", mode: "UPI", receipt_no: "R-001", status: "active", ...o });
@@ -102,5 +102,29 @@ test("own records go to a flat or tenant login only, through their own client, a
   const src = readFileSync("app/api/help/route.ts", "utf8");
   assert.match(src, /homeFlat && !me\.isCommittee/);
   assert.match(src, /me\.isTenant && t === "letters"/);
+  assert.ok(!src.includes("getAdminClient"));
+});
+
+test("document questions are recognised", () => {
+  assert.ok(wantsOwnDocs("What document are pending for me to submit"));
+  assert.ok(wantsOwnDocs("which documents have I uploaded"));
+  assert.ok(!wantsOwnDocs("How do I raise a complaint"));
+});
+test("an empty flat lists all seven documents still to upload and leaves out the rent agreement", () => {
+  const t = docsFacts([], false);
+  assert.match(t, /Still to upload \(7 of 7\): Index, Dastavej, Torrent Power bill, Property tax bill, Share certificate, Allotment letter, Prathmik karar\./);
+  assert.match(t, /No documents from the list are uploaded yet/);
+  assert.match(t, /Rent agreement is needed only when the flat is rented/);
+});
+test("uploaded documents move off the list, aliases count, and a rented flat also needs the rent agreement", () => {
+  const t = docsFacts(["Index", "Sale deed", "Some letter"], true);
+  assert.match(t, /Still to upload \(6 of 8\): Torrent Power bill, Property tax bill, Rent agreement, Share certificate, Allotment letter, Prathmik karar\./);
+  assert.match(t, /Already uploaded: Index, Dastavej\./);
+  assert.match(t, /1 other file is uploaded outside the list/);
+  assert.match(docsFacts(["Index", "Dastavej", "Torrent Power bill", "Property tax bill", "Share certificate", "Allotment letter", "Prathmik karar"], false), /All 7 documents on the list are uploaded/);
+});
+test("documents go only to a plain flat login through its own client", () => {
+  const src = readFileSync("app/api/help/route.ts", "utf8");
+  assert.match(src, /me\.flatId && !me\.isCommittee && !me\.isTenant && wantsOwnDocs\(question\)/);
   assert.ok(!src.includes("getAdminClient"));
 });

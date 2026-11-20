@@ -8,7 +8,7 @@ import { getAuthedClient } from "@/lib/serverAuth";
 import { pickGuide } from "@/lib/helpSections";
 import { SOCIETY, societyShort, titleCase } from "@/lib/society";
 import { applySocietyProfile, profileFromRow } from "@/lib/societySetup";
-import { duesFacts, recordsFacts, societyDuesFacts, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues, type RecordTopic } from "@/lib/helpData";
+import { docsFacts, duesFacts, recordsFacts, societyDuesFacts, wantsOwnDocs, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues, type RecordTopic } from "@/lib/helpData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -104,13 +104,21 @@ export async function POST(req: NextRequest) {
       } catch { /* no data: the assistant says where to look */ }
     }
   }
+  // A flat login asking which documents are still to upload: the flat's own uploaded document types, through the member's own login
+  // (database rule: a flat sees only its own flat_docs). Tenant and committee logins get none (the committee sees every flat in REPORTS).
+  if (me.flatId && !me.isCommittee && !me.isTenant && wantsOwnDocs(question)) {
+    try {
+      const [d, f] = await Promise.all([me.db.from("flat_docs").select("doc_type").eq("flat_id", me.flatId), me.db.from("flats").select("occupancy").eq("id", me.flatId).maybeSingle()]);
+      if (!d.error && !f.error) dataBlock += `\n\nYOUR FLAT'S DOCUMENTS (live data for flat ${me.flatId}, read just now; use it for questions about which documents are uploaded or still to upload):\n${docsFacts(((d.data as any[]) || []).map((x) => x.doc_type), (f.data as any)?.occupancy === "tenant")}`;
+    } catch { /* no data: the assistant says where to look */ }
+  }
   const baseSystem = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).
 Give a complete, helpful answer: explain what the screen or feature shows and the steps to use it, as numbered steps where there are steps (up to about 12 short lines). No greetings, no closing lines.
 Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly as in the guide. If the guide does not say how to do something, do not guess a path.
-Only the "YOUR FLAT'S AMOUNTS", "YOUR FLAT'S RECORDS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
+Only the "YOUR FLAT'S AMOUNTS", "YOUR FLAT'S RECORDS", "YOUR FLAT'S DOCUMENTS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records). Never list documents, bills or records that are not in a live data block: if there is no block for the question, say where in the app to look (for documents: MY FLAT → FLAT DOCUMENTS checklist).
 When you answer from a live data block, open with the answer to the question (for example "Your complaint CMP/26-27/0001 is closed" or "You owe Rs X"), then the details. Do not open with a count such as "You have one complaint".
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
