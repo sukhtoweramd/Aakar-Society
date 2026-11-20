@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "fs";
-import { duesFacts, societyDuesFacts, wantsOwnMoney, wantsSocietyDues } from "../lib/helpData";
+import { duesFacts, recordsFacts, societyDuesFacts, wantsOwnMoney, wantsOwnRecords, wantsSocietyDues } from "../lib/helpData";
 
 const bill = (o: any) => ({ id: "b1", bill_no: "M-001", bill_date: "2026-04-01", due_date: "2026-04-30", period_from: "2026-04-01", period_to: "2026-09-30", amount: 10000, status: "active", tenant_bill: false, ...o });
 const pay = (o: any) => ({ bill_id: "b1", amount: 4000, paid_on: "2026-05-02", mode: "UPI", receipt_no: "R-001", status: "active", ...o });
@@ -70,5 +70,37 @@ test("the society data goes only to a committee login, in pages, through the com
   const src = readFileSync("app/api/help/route.ts", "utf8");
   assert.match(src, /me\.isCommittee && wantsSocietyDues\(question\)/);
   assert.match(src, /\.range\(from, from \+ 999\)/);
+  assert.ok(!src.includes("getAdminClient"));
+});
+
+test("questions about own complaints, bookings and letters are recognised", () => {
+  assert.deepEqual(wantsOwnRecords("What is the status of my complaint about the lift?"), ["complaints"]);
+  assert.deepEqual(wantsOwnRecords("Is my plot booking approved?"), ["bookings"]);
+  assert.deepEqual(wantsOwnRecords("did the committee issue my NOC letter"), ["letters"]);
+  assert.deepEqual(wantsOwnRecords("How do I add a vehicle?"), []);
+});
+test("records summary shows status, notes and which role the flat has", () => {
+  const t = recordsFacts("A101", ["complaints", "bookings", "letters"], {
+    complaints: [
+      { complaint_no: "CMP/26-27/0002", flat_id: "A101", assigned_flat: "B203", backup_flat: null, area_name: "Lifts", description: "Lift in Tower A stops between floors", status: "in_progress", progress_note: "Vendor called", close_note: null, created_at: "2026-11-10T10:00:00Z" },
+      { complaint_no: "CMP/26-27/0001", flat_id: "C301", assigned_flat: "A101", backup_flat: null, area_name: "Garden", description: "Tap broken", status: "open", progress_note: null, close_note: null, created_at: "2026-11-01T10:00:00Z" },
+    ],
+    bookings: [{ group_id: "g1", area_name: "COMMON", book_date: "2026-12-05", slot: "evening", purpose: "Birthday", status: "approved", reason: null }, { group_id: "g1", area_name: "TOWER-A", book_date: "2026-12-05", slot: "evening", purpose: "Birthday", status: "approved", reason: null }],
+    letters: [{ letter_type: "No dues certificate", status: "declined", reason: "Dues pending", created_at: "2026-11-12T00:00:00Z" }],
+  });
+  assert.match(t, /CMP\/26-27\/0002, Lifts: Lift in Tower A.*Status in progress \(raised by this flat, 2026-11-10\)\. Note: Vendor called/);
+  assert.match(t, /CMP\/26-27\/0001.*assigned to this flat to handle/);
+  assert.match(t, /2026-12-05, evening: COMMON, TOWER-A \(Birthday\)\. Status approved/);
+  assert.match(t, /No dues certificate: declined\. Reason: Dues pending/);
+});
+test("empty records say so, and only the asked topics appear", () => {
+  const t = recordsFacts("A101", ["bookings"], {});
+  assert.match(t, /No bookings found/);
+  assert.ok(!t.includes("complaints"));
+});
+test("own records go to a flat or tenant login only, through their own client, and a tenant gets no letters", () => {
+  const src = readFileSync("app/api/help/route.ts", "utf8");
+  assert.match(src, /homeFlat && !me\.isCommittee/);
+  assert.match(src, /me\.isTenant && t === "letters"/);
   assert.ok(!src.includes("getAdminClient"));
 });
