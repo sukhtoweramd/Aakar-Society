@@ -29,3 +29,7 @@ test("overview is always kept and the text stays short", () => {
 test("no match falls back to the guide", () => {
   assert.ok(pickGuide(KB, "zzzz qqqq").length > 1000);
 });
+test("questions about the assistant itself get its section, and the guide names the admin setup screens", () => {
+  assert.ok(has("what can I ask the help assistant", "Asking the HELP assistant"));
+  assert.ok(KB.includes("FLAT SETUP") && KB.includes("COMMON AREAS (PLOT BOOKINGS)"));
+});
