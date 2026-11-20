@@ -8,7 +8,7 @@ import { getAuthedClient } from "@/lib/serverAuth";
 import { pickGuide } from "@/lib/helpSections";
 import { SOCIETY, societyShort, titleCase } from "@/lib/society";
 import { applySocietyProfile, profileFromRow } from "@/lib/societySetup";
-import { duesFacts, wantsOwnMoney } from "@/lib/helpData";
+import { duesFacts, societyDuesFacts, wantsOwnMoney, wantsSocietyDues } from "@/lib/helpData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -68,13 +68,33 @@ export async function POST(req: NextRequest) {
       if (!b.error && !p.error) dataBlock = `\n\nYOUR FLAT'S AMOUNTS (live data for flat ${me.flatId}, read just now; use it for questions about this flat's bills, dues and payments):\n${duesFacts((b.data as any[]) || [], (p.data as any[]) || [], new Date().toISOString().slice(0, 10))}`;
     } catch { /* no data: the assistant says where to look */ }
   }
+  // A committee login asking about the society's dues: all bills and payments through the committee's OWN login (committee rules),
+  // summarised as flat ids, owner names and amounts (the committee sees the same in BILLING; no phone numbers). Read in pages because one request returns at most 1000 rows.
+  if (me.isCommittee && wantsSocietyDues(question)) {
+    try {
+      const all = async (table: string, cols: string) => {
+        const rows: any[] = [];
+        for (let from = 0; from < 20000; from += 1000) {
+          const { data, error } = await me.db.from(table).select(cols).order("id", { ascending: true }).range(from, from + 999);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < 1000) break;
+        }
+        return rows;
+      };
+      const [b, p, fl] = await Promise.all([all("bills", "id, flat_id, bill_no, bill_date, due_date, period_from, period_to, amount, status, tenant_bill"), all("payments", "id, flat_id, bill_id, amount, paid_on, mode, receipt_no, status"), all("flats", "id, owner_name")]);
+      const names: Record<string, string> = {};
+      for (const f of fl) if (f.owner_name) names[f.id] = String(f.owner_name).slice(0, 60);
+      dataBlock = `\n\nTHE SOCIETY'S DUES (live data, read just now; use it for questions about which flats owe and how much; flat ids with owner names):\n${societyDuesFacts(b, p, new Date().toISOString().slice(0, 10), 15, names)}`;
+    } catch { /* no data: the assistant says where to look */ }
+  }
   const baseSystem = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
 You are talking to ${who}.
 Answer ONLY using the HELP GUIDE below. Do not invent screens, buttons, rules, amounts, names or phone numbers that are not in the guide.
 Reply in the same language as the question (English, Gujarati or Hindi). Keep button and tab names in English capitals exactly as in the guide (for example I HAVE PAID, MY FLAT).
 Give a complete, helpful answer: explain what the screen or feature shows and the steps to use it, as numbered steps where there are steps (up to about 12 short lines). No greetings, no closing lines.
 Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly as in the guide. If the guide does not say how to do something, do not guess a path.
-Only the "YOUR FLAT'S AMOUNTS" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
+Only the "YOUR FLAT'S AMOUNTS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records); if asked, tell them where in the app to look.
 Never ask for passwords, OTPs, bank account or card numbers.
 If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
 
