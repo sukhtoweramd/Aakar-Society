@@ -132,6 +132,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Ask in English, Gujarati or Hindi. The assistant explains how to use the app from this guide.
 - **Your own amounts** (owner's flat login): ask, for example, "how much do I owe?" or "which bill is overdue?". It reads your flat's bills and payments at that moment and tells you the total due, the open bills and the latest payment. For the bill or receipt itself, open MY BILLS & RECEIPTS.
 - **Your own complaints, plot bookings and letter requests** (owner or tenant login): ask, for example, "what is the status of my complaint?" or "is my booking approved?". It shows the latest five of each, with the status and any note or reason. A tenant login has no letters.
+- **Your documents** (owner's flat login): ask "which documents are pending?". It compares what your flat has uploaded with the list in FLAT DOCUMENTS and tells you what is still to upload. Rent agreement counts only for a rented flat.
 - **Committee logins**: ask, for example, "which flats have overdue maintenance?". It gives the total outstanding, how many flats owe and the flats owing most, with the owner's name. The full list is in BILLING (dues list). Phone numbers and bank balances are not shown.
 - It cannot see other flats' records, and it does not change anything. For a payment, use I HAVE PAID; for a problem, raise a complaint.
 - If it says it cannot answer, contact the app coordinator.
