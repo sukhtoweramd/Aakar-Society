@@ -54,9 +54,10 @@ type SocPay = PayRow & { flat_id: string };
 
 /**
  * A short summary for the committee: total outstanding, how many flats owe, and the flats owing most.
- * Flat ids only (no names or phone numbers). Cancelled documents and tenant booking bills are left out.
+ * Flat ids and, when given, the owner's name (the committee sees the same in BILLING). No phone numbers or bank balances.
+ * Cancelled documents and tenant booking bills are left out.
  */
-export function societyDuesFacts(bills: SocBill[], pays: SocPay[], today: string, top = 15): string {
+export function societyDuesFacts(bills: SocBill[], pays: SocPay[], today: string, top = 15, names: Record<string, string> = {}): string {
   const byFlat = new Map<string, { bills: SocBill[]; pays: SocPay[] }>();
   for (const b of bills) { if (!byFlat.has(b.flat_id)) byFlat.set(b.flat_id, { bills: [], pays: [] }); byFlat.get(b.flat_id)!.bills.push(b); }
   for (const p of pays) { if (byFlat.has(p.flat_id)) byFlat.get(p.flat_id)!.pays.push(p); }
@@ -79,7 +80,7 @@ export function societyDuesFacts(bills: SocBill[], pays: SocPay[], today: string
   const past = rows.filter((r) => r.pastDue).length;
   const lines = [`Outstanding in total ${money(Math.round(totalDue * 100) / 100)} across ${rows.length} of ${byFlat.size} flats that have bills; ${past} of them have a bill past its due date.`];
   lines.push(`Largest dues (up to ${top}):`);
-  for (const r of rows.slice(0, top)) lines.push(`- Flat ${r.flat}: ${money(r.due)}${r.oldest ? `, oldest open bill due ${r.oldest}${r.pastDue ? " (past due)" : ""}` : ""}`);
+  for (const r of rows.slice(0, top)) lines.push(`- Flat ${r.flat}${names[r.flat] ? ` (${names[r.flat]})` : ""}: ${money(r.due)}${r.oldest ? `, oldest open bill due ${r.oldest}${r.pastDue ? " (past due)" : ""}` : ""}`);
   if (rows.length > top) lines.push(`(${rows.length - top} more flats owe smaller amounts; use the dues list in BILLING for the full list.)`);
   return lines.join("\n");
 }

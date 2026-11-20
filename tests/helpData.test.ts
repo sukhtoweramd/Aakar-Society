@@ -53,6 +53,11 @@ test("society summary lists the largest dues first and shows flat ids only", () 
   assert.ok(t.indexOf("Flat A102") < t.indexOf("Flat A103"));
   assert.ok(!t.includes("Flat A101"));
 });
+test("owner names are shown when given", () => {
+  const t = societyDuesFacts([sb({ id: "2", flat_id: "A102", amount: 20000 })] as any, [], "2026-09-01", 15, { A102: "R. Shah" });
+  assert.match(t, /Flat A102 \(R\. Shah\): Rs 20,000/);
+  assert.ok(!societyDuesFacts([sb({ id: "2", flat_id: "A102", amount: 20000 })] as any, [], "2026-09-01").includes("Flat A102 ("));
+});
 test("society summary skips cancelled and tenant bills and caps the list", () => {
   const many = Array.from({ length: 20 }, (_, i) => sb({ id: `b${i}`, bill_no: `M-${i}`, flat_id: `F${i}`, amount: 1000 + i }));
   const t = societyDuesFacts(many as any, [], "2026-09-01", 5);

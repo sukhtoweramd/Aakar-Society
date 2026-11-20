@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     } catch { /* no data: the assistant says where to look */ }
   }
   // A committee login asking about the society's dues: all bills and payments through the committee's OWN login (committee rules),
-  // summarised as flat ids and amounts only (no names or phone numbers). Read in pages because one request returns at most 1000 rows.
+  // summarised as flat ids, owner names and amounts (the committee sees the same in BILLING; no phone numbers). Read in pages because one request returns at most 1000 rows.
   if (me.isCommittee && wantsSocietyDues(question)) {
     try {
       const all = async (table: string, cols: string) => {
@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
         }
         return rows;
       };
-      const [b, p] = await Promise.all([all("bills", "id, flat_id, bill_no, bill_date, due_date, period_from, period_to, amount, status, tenant_bill"), all("payments", "id, flat_id, bill_id, amount, paid_on, mode, receipt_no, status")]);
-      dataBlock = `\n\nTHE SOCIETY'S DUES (live data, read just now; use it for questions about which flats owe and how much; flat ids only, no names):\n${societyDuesFacts(b, p, new Date().toISOString().slice(0, 10))}`;
+      const [b, p, fl] = await Promise.all([all("bills", "id, flat_id, bill_no, bill_date, due_date, period_from, period_to, amount, status, tenant_bill"), all("payments", "id, flat_id, bill_id, amount, paid_on, mode, receipt_no, status"), all("flats", "id, owner_name")]);
+      const names: Record<string, string> = {};
+      for (const f of fl) if (f.owner_name) names[f.id] = String(f.owner_name).slice(0, 60);
+      dataBlock = `\n\nTHE SOCIETY'S DUES (live data, read just now; use it for questions about which flats owe and how much; flat ids with owner names):\n${societyDuesFacts(b, p, new Date().toISOString().slice(0, 10), 15, names)}`;
     } catch { /* no data: the assistant says where to look */ }
   }
   const baseSystem = `You are the HELP assistant inside the ${societyShort()} app${SOCIETY.building ? ` (${titleCase(SOCIETY.building)})` : ""}.
