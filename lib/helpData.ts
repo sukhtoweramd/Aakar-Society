@@ -40,3 +40,46 @@ export function duesFacts(bills: BillRow[], pays: PayRow[], today: string): stri
   if (last) lines.push(`Latest payment received: ${money(num(last.amount))} on ${last.paid_on} by ${last.mode} (receipt ${last.receipt_no}).`);
   return lines.join("\n");
 }
+
+/** True when a committee member asks about the whole society's dues (which flats owe, how much is outstanding). */
+export function wantsSocietyDues(question: string): boolean {
+  const q = String(question || "").toLowerCase();
+  const money = /\b(due|dues|owe|owes|owed|outstanding|pending|overdue|unpaid|defaulter|defaulters|arrears|not paid|haven't paid|have not paid)\b/.test(q) || /(બાકી|बकाया|बाकी)/.test(q);
+  const society = /\b(flats?|members?|residents?|owners?|society|total|all|which|who|how many|list|top)\b/.test(q) || /(ફ્લેટ|फ्लैट)/.test(q);
+  return money && society;
+}
+
+type SocBill = BillRow & { flat_id: string };
+type SocPay = PayRow & { flat_id: string };
+
+/**
+ * A short summary for the committee: total outstanding, how many flats owe, and the flats owing most.
+ * Flat ids only (no names or phone numbers). Cancelled documents and tenant booking bills are left out.
+ */
+export function societyDuesFacts(bills: SocBill[], pays: SocPay[], today: string, top = 15): string {
+  const byFlat = new Map<string, { bills: SocBill[]; pays: SocPay[] }>();
+  for (const b of bills) { if (!byFlat.has(b.flat_id)) byFlat.set(b.flat_id, { bills: [], pays: [] }); byFlat.get(b.flat_id)!.bills.push(b); }
+  for (const p of pays) { if (byFlat.has(p.flat_id)) byFlat.get(p.flat_id)!.pays.push(p); }
+  const rows: { flat: string; due: number; oldest: string | null; pastDue: boolean }[] = [];
+  let totalDue = 0, billed = 0;
+  for (const [flat, x] of Array.from(byFlat.entries())) {
+    const t = flatTotals(x.bills as any, x.pays as any);
+    billed += t.billed;
+    if (t.due > 0.001) {
+      const live = x.bills.filter((b) => b.status === "active" && !b.tenant_bill);
+      const paidOn = (id: string) => x.pays.filter((p) => p.status === "active" && p.bill_id === id).reduce((n, p) => n + num(p.amount), 0);
+      const openDates = live.filter((b) => num(b.amount) - paidOn(b.id) > 0.001).map((b) => b.due_date || b.bill_date).sort();
+      rows.push({ flat, due: t.due, oldest: openDates[0] || null, pastDue: !!openDates[0] && openDates[0] < today });
+      totalDue += t.due;
+    }
+  }
+  if (!byFlat.size || billed === 0) return "No bills have been raised yet.";
+  if (!rows.length) return `All ${byFlat.size} flats with bills are fully paid. Nothing is outstanding.`;
+  rows.sort((a, z) => z.due - a.due);
+  const past = rows.filter((r) => r.pastDue).length;
+  const lines = [`Outstanding in total ${money(Math.round(totalDue * 100) / 100)} across ${rows.length} of ${byFlat.size} flats that have bills; ${past} of them have a bill past its due date.`];
+  lines.push(`Largest dues (up to ${top}):`);
+  for (const r of rows.slice(0, top)) lines.push(`- Flat ${r.flat}: ${money(r.due)}${r.oldest ? `, oldest open bill due ${r.oldest}${r.pastDue ? " (past due)" : ""}` : ""}`);
+  if (rows.length > top) lines.push(`(${rows.length - top} more flats owe smaller amounts; use the dues list in BILLING for the full list.)`);
+  return lines.join("\n");
+}

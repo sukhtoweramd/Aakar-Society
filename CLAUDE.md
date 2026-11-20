@@ -73,7 +73,7 @@
   `flat_blockers()` (`sql-security/15`, run by hand; server key only) says every chosen flat holds no data; the server checks again right before deleting.
 
 ## HELP assistant (Nov 2026)
-- `app/api/help/route.ts` answers from the written guide. For a plain flat login (not committee, not tenant) asking about its own amounts (`wantsOwnMoney`), it also reads that flat's bills and payments through the member's own client (database rules apply, no server key) and adds a short summary (`duesFacts`, `lib/helpData.ts`) to the prompt. Never widen this to other flats or other tables without a server-side check of who is asking.
+- `app/api/help/route.ts` answers from the written guide. For a plain flat login (not committee, not tenant) asking about its own amounts (`wantsOwnMoney`), it also reads that flat's bills and payments through the member's own client (database rules apply, no server key) and adds a short summary (`duesFacts`, `lib/helpData.ts`) to the prompt. A committee login asking about the whole society's dues (`wantsSocietyDues`) gets `societyDuesFacts`: flat ids and amounts only, no names or phone numbers, read in pages through the committee's own client. Never widen either to other tables or to other kinds of login without a server-side check of who is asking.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
