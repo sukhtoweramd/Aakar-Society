@@ -27,7 +27,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
   - PASSWORD and LOG OUT are at the top of the home screen. On a computer (or a phone turned sideways on a wide screen) the tabs are shown as before.
 - On a computer the row of tabs is across the top.
 - The committee chooses which tabs members see (ADMIN → MEMBER SCREENS). MY FLAT and NOTICES are always there; if another tab is missing, the committee has turned it off for members.
-- HELP: on a phone it is the round **?** button at the bottom right; on a computer the HELP button.
+- HELP: on a phone it is the round **?** button at the bottom right; on a computer the HELP button. See "Asking the HELP assistant" below for what you can ask.
 - The left panel (on a computer) shows Tower A, B, C and the COMMITTEE with FILTER links, and the SOCIETY NOTICE.
 
 ## What each tab shows
@@ -41,7 +41,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - **EVENTS**: events, photos, registration and passes (see Events).
 - **CONTACTS**: important phone numbers for the society (lift, fire, security, MyGate, CCTV, electricity, Torrent Power, borewell, garbage collection, plumber …), grouped by category. Tap a number to call. Search by name or number. Below the list: WHO TO CONTACT (the committee member responsible for each area). Committee logins add contacts with + ADD CONTACT, edit them, and switch off a contact that is no longer used (it is kept, not deleted, and can be switched on again).
 - **VAULT**: SOCIETY DOCUMENT VAULT with the society's official documents (for example Registration Certificate, Society Bye-laws, Terrace Ownership Agreement marked IMPORTANT, Building Plan Approval, Fire NOC, Lift AMC) and OTHER SOCIETY DOCUMENTS. Tap VIEW to open a document. Only the committee can UPLOAD, REPLACE or DELETE.
-- Committee only: **BILLING** (bills, receipts, VERIFY PAYMENTS, dues, letters, settings), **COMMITTEE** (COMPLAINTS, BOOKINGS, RESPONSIBILITIES, AMC CONTRACTS, MINUTES), **ADMIN** (logins, MEMBER SCREENS, backup, test tools, HELP GUIDE, storage), **REPORTS** (flat-wise reports: PDF REPORT, CSV / EXCEL, FLAT DOCUMENTS, NOMINATIONS, FLAT PROFILE CARDS).
+- Committee only: **BILLING** (bills, receipts, VERIFY PAYMENTS, dues, letters, settings), **COMMITTEE** (COMPLAINTS, BOOKINGS, RESPONSIBILITIES, AMC CONTRACTS, MINUTES), **ADMIN** (FLAT SETUP, COMMON AREAS, committee people, logins, MEMBER SCREENS, backup, test tools, screenshot reader, HELP GUIDE, storage), **REPORTS** (flat-wise reports: PDF REPORT, CSV / EXCEL, FLAT DOCUMENTS, NOMINATIONS, FLAT PROFILE CARDS).
 
 ## MY FLAT in detail
 - Top of the page: flat number, tower, floor, type, owner, and QUICK ACTIONS: VIEW FLOOR, PRINT MY CARD (a one-page flat profile card), EDIT MY DETAILS, MY LEDGER ↓, MY VEHICLES ↓, MY LETTERS ↓, WHO TO CONTACT ↓, COMPLAINTS ↓, BOOK COMMON PLOT ↓, NOMINEE ↓ (the ↓ buttons jump down the page to that section).
@@ -76,7 +76,7 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Only your flat, the responsible committee member(s) and the committee see a complaint.
 
 ## Booking the common plot
-- Four areas: **Tower A area**, **Center area**, **Tower B area** and **Main common area**. A booking is for the **full day** (no morning / evening). One booking per area per date.
+- The bookable areas are the ones listed in BOOK PLOT (at present Tower A area, Center area, Tower B area and Main common area). The Chairman, the Secretary or the main admin can add, rename, reorder, hide or delete areas in ADMIN → **COMMON AREAS (PLOT BOOKINGS)**; the charge of each area is set in BOOKING CHARGES. A booking is for the **full day** (no morning / evening). One booking per area per date.
 - Each area has a **charge per day**, set by the Chairman, the Secretary or the main admin (COMMITTEE → BOOKINGS → BOOKING CHARGES; every change is logged). No deposit.
 - To book a common area (the common plot): on the home screen tap **BOOK PLOT** → **+ BOOK AN AREA** (owners and tenants).
   1. DATE: from tomorrow up to 90 days ahead.
@@ -127,6 +127,14 @@ Never ask for or repeat passwords, OTPs, bank details or card numbers.
 - Part payment is allowed; the app will point it out.
 - If the app says the reference was already reported, check you are not reporting the same payment twice.
 - "Could not read the screenshot": fill in the details by hand; the screenshot is still attached for the committee.
+
+## Asking the HELP assistant
+- Ask in English, Gujarati or Hindi. The assistant explains how to use the app from this guide.
+- **Your own amounts** (owner's flat login): ask, for example, "how much do I owe?" or "which bill is overdue?". It reads your flat's bills and payments at that moment and tells you the total due, the open bills and the latest payment. For the bill or receipt itself, open MY BILLS & RECEIPTS.
+- **Your own complaints, plot bookings and letter requests** (owner or tenant login): ask, for example, "what is the status of my complaint?" or "is my booking approved?". It shows the latest five of each, with the status and any note or reason. A tenant login has no letters.
+- **Committee logins**: ask, for example, "which flats have overdue maintenance?". It gives the total outstanding, how many flats owe and the flats owing most, with the owner's name. The full list is in BILLING (dues list). Phone numbers and bank balances are not shown.
+- It cannot see other flats' records, and it does not change anything. For a payment, use I HAVE PAID; for a problem, raise a complaint.
+- If it says it cannot answer, contact the app coordinator.
 
 ## Notices and banners
 - NOTICES tab lists society notices, newest first, in English or Gujarati as typed by the committee.
