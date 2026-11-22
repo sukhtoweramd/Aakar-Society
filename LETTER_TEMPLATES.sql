@@ -1,6 +1,7 @@
 -- Letter requests with standard formats, approval, and unsigned bank letters (30 Oct 2026).
 -- Run once in Supabase → SQL Editor after LETTERS.sql, LETTER_REQUESTS.sql and AREAS_BACKUPS.sql. Safe to re-run.
 -- Then run sql-security/10_RESTORE_letter_templates.sql.
+--   • Starter formats use {{city}} (the society's city from ADMIN → FLAT SETUP), never a typed city name. Formats already saved are not changed by this script.
 --
 --   • letter_templates: the society's standard letter formats (kept by the committee in BILLING → LETTERS → LETTER FORMATS).
 --     A format has a subject, an optional default addressee and a body with fields like {{owner_name}}, {{flat_no}}.
@@ -44,17 +45,17 @@ grant select, insert, update, delete on public.letter_templates to authenticated
 insert into public.letter_templates (name, kind, subject, addressee, body, sort)
 select v.name, v.kind, v.subject, v.addressee, v.body, v.sort from (values
   ('NOC for bank loan', 'bank', 'No Objection Certificate for housing loan', 'The Branch Manager',
-   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad, holding share certificate no. {{share_cert_no}}.\n\nThe society has no objection to the member raising a loan from your bank against the security of the said flat, subject to the bye-laws of the society.\n\n{{purpose}}', 10),
+   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}, holding share certificate no. {{share_cert_no}}.\n\nThe society has no objection to the member raising a loan from your bank against the security of the said flat, subject to the bye-laws of the society.\n\n{{purpose}}', 10),
   ('NOC for sale of flat', 'general', 'No Objection Certificate for sale of flat', null,
-   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad, holding share certificate no. {{share_cert_no}}.\n\nThe society has no objection to the sale of the said flat, subject to the transfer being completed as per the bye-laws of the society.\n\n{{purpose}}', 20),
+   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}, holding share certificate no. {{share_cert_no}}.\n\nThe society has no objection to the sale of the said flat, subject to the transfer being completed as per the bye-laws of the society.\n\n{{purpose}}', 20),
   ('NOC for renting the flat / police verification', 'general', 'No Objection Certificate for renting the flat', null,
-   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad.\n\nThe society has no objection to the said flat being given on rent, subject to police verification of the tenant and the bye-laws of the society.\n\n{{purpose}}', 30),
+   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}.\n\nThe society has no objection to the said flat being given on rent, subject to police verification of the tenant and the bye-laws of the society.\n\n{{purpose}}', 30),
   ('Address proof / residence letter', 'general', 'Residence certificate', null,
-   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad.\n\n{{purpose}}', 40),
+   E'This is to certify that {{owner_name}} is a member of {{society}} and the owner of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}.\n\n{{purpose}}', 40),
   ('No-dues certificate', 'general', 'No-dues certificate', null,
-   E'This is to certify that, as per the records of the society, the maintenance dues of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad, owned by {{owner_name}}, outstanding as on {{date}} are {{dues}}.\n\n{{purpose}}', 50),
+   E'This is to certify that, as per the records of the society, the maintenance dues of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}, owned by {{owner_name}}, outstanding as on {{date}} are {{dues}}.\n\n{{purpose}}', 50),
   ('Share certificate / membership letter', 'general', 'Membership certificate', null,
-   E'This is to certify that {{owner_name}} is a member of {{society}} since {{member_since}}, holding share certificate no. {{share_cert_no}} in respect of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, Ahmedabad.\n\n{{purpose}}', 60)
+   E'This is to certify that {{owner_name}} is a member of {{society}} since {{member_since}}, holding share certificate no. {{share_cert_no}} in respect of Flat No. {{flat_no}}, Tower {{tower}}, {{building}}, {{city}}.\n\n{{purpose}}', 60)
 ) as v(name, kind, subject, addressee, body, sort)
 where not exists (select 1 from public.letter_templates);
 

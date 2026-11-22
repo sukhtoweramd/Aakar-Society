@@ -1,7 +1,8 @@
 // Letter formats (30 Oct 2026): fields are filled from the flat's records; missing values stay visible. Sample data only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fillTemplate, letterData } from "../lib/letterTemplates";
+import { readFileSync } from "node:fs";
+import { fillTemplate, letterData, TEMPLATE_FIELDS } from "../lib/letterTemplates";
 
 const flat = { id: "A101", tower: "A", floor: 1, owner_name: "SAMPLE OWNER", share_cert_no: "123", member_since: "2001-04-01" };
 const data = (x: any = {}) => letterData(flat, { society: "SAMPLE SOCIETY", building: "SAMPLE TOWER", date: "2026-10-30", ...x });
@@ -21,4 +22,12 @@ test("an empty purpose leaves no gap; unknown fields are left as typed", () => {
   assert.equal(fillTemplate("Line one.\n\n{{purpose}}", data()), "Line one.");
   assert.equal(fillTemplate("Hello {{nickname}}", data()), "Hello {{nickname}}");
   assert.equal(fillTemplate("Cert {{share_cert_no}}", letterData({ id: "A102" }, { society: "S", building: "B" })), "Cert ______");
+});
+
+test("city comes from the society's setup; the starter formats do not type a city", () => {
+  assert.equal(fillTemplate("{{building}}, {{city}}", data({ city: "SAMPLE CITY" })), "SAMPLE TOWER, SAMPLE CITY");
+  assert.equal(fillTemplate("{{city}}", data()), "______");
+  const seed = readFileSync(new URL("../LETTER_TEMPLATES.sql", import.meta.url), "utf8");
+  assert.ok(!/Ahmedabad/i.test(seed));
+  assert.ok(TEMPLATE_FIELDS.some((f) => f.key === "city"));
 });
