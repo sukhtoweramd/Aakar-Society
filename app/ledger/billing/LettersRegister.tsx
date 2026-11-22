@@ -50,7 +50,7 @@ export default function LettersRegister({ flats, pc, email, openFlat, onCount }:
         const [b, p] = await Promise.all([supabase.from("bills").select("*").eq("flat_id", f.id), supabase.from("payments").select("*").eq("flat_id", f.id)]);
         if (!b.error && !p.error) dues = flatTotals((b.data as any[]) || [], (p.data as any[]) || []).due;
       }
-      body = fillTemplate(t.body, letterData(f, { addressee: r.addressee || t.addressee, purpose: r.purpose, dues, society: SOCIETY.full, building: SOCIETY.building }));
+      body = fillTemplate(t.body, letterData(f, { addressee: r.addressee || t.addressee, purpose: r.purpose, dues, society: SOCIETY.full, building: SOCIETY.building, city: SOCIETY.city }));
     }
     setDraftBody({ key: `${r.id}-${Date.now()}`, subject: t?.subject || subjectFor(r), to: r.addressee || t?.addressee || "", body, unsigned: t?.kind === "bank", requestId: r.id,
       // a resolution (or any format with fill-in boxes) opens with its boxes, the member's details already in them

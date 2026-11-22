@@ -24,6 +24,7 @@ export const TEMPLATE_FIELDS: { key: string; what: string }[] = [
   { key: "dues", what: "maintenance outstanding today, e.g. ₹0 (nil)" },
   { key: "society", what: "society name" },
   { key: "building", what: "building name" },
+  { key: "city", what: "society's city (from FLAT SETUP)" },
 ];
 
 /** Replaces {{field}} with its value. A field with no value is left as "______" so the committee sees it in the draft. */
@@ -41,12 +42,12 @@ const flatLabel = (id: string, no?: string | null) => { const m = (no || id || "
 /** The values for one flat (from the society's records). dues = outstanding amount in rupees, or null if not known. */
 export function letterData(f: { id: string; flat_no?: string | null; tower?: string | null; floor?: number | null; owner_name?: string | null;
   share_cert_no?: string | null; member_since?: string | null; tenant_name?: string | null },
-  o: { addressee?: string | null; purpose?: string | null; dues?: number | null; date?: string; society: string; building: string }): Record<string, string> {
+  o: { addressee?: string | null; purpose?: string | null; dues?: number | null; date?: string; society: string; building: string; city?: string }): Record<string, string> {
   const dues = o.dues == null ? "" : o.dues <= 0 ? "₹0 (nil)" : `₹${Number(o.dues).toLocaleString("en-IN")}`;
   return {
     owner_name: f.owner_name || "", flat_no: flatLabel(f.id, f.flat_no), tower: f.tower || "", floor: f.floor != null ? String(f.floor) : "",
     share_cert_no: f.share_cert_no || "", member_since: fmt(f.member_since), tenant_name: f.tenant_name || "",
     date: fmt(o.date || new Date().toISOString().slice(0, 10)), addressee: (o.addressee || "").split("\n")[0], purpose: o.purpose || "", dues,
-    society: o.society, building: o.building,
+    society: o.society, building: o.building, city: o.city || "",
   };
 }

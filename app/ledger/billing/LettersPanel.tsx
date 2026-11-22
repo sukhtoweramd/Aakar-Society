@@ -52,7 +52,7 @@ export default function LettersPanel({ flat, flats, isCommittee, email, onChange
   const chairman = () => pc.signatories.find((g) => g.active && /^chairman$/i.test(g.designation.trim())) || pc.signatories.find((g) => g.active && /chairman/i.test(g.designation));
   // the existing member's name is the one in the OWNER NAME box (the committee can correct it, e.g. joint owners)
   const fillBody = (t: LetterTemplate, values: Record<string, string>, d: number | null, owner = form.owner_name) =>
-    fillTemplate(t.body, { ...letterData({ ...flat, owner_name: owner || flat.owner_name }, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, date: form.letter_date }), ...customData(t.body, values) });
+    fillTemplate(t.body, { ...letterData({ ...flat, owner_name: owner || flat.owner_name }, { addressee: t.addressee, purpose: "", dues: d, society: SOCIETY.full, building: SOCIETY.building, city: SOCIETY.city, date: form.letter_date }), ...customData(t.body, values) });
   async function pickFormat(id: string, initial: Record<string, string> = {}) {
     const t = formats.find((x) => x.id === id) || null;
     setFmt(t); setTyped(initial); setEdited(false); setError("");

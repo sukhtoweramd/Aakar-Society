@@ -37,7 +37,7 @@ export default function LetterFormats({ list, email, onChanged }: { list: Letter
     const { error } = await supabase.from("letter_templates").update({ active, updated_by: email, updated_at: new Date().toISOString() }).eq("id", t.id);
     if (error) setError(error.message); else onChanged();
   }
-  const sample = form ? fillTemplate(form.body, letterData(SAMPLE, { addressee: form.addressee, purpose: "", dues: 0, society: SOCIETY.full, building: SOCIETY.building })) : "";
+  const sample = form ? fillTemplate(form.body, letterData(SAMPLE, { addressee: form.addressee, purpose: "", dues: 0, society: SOCIETY.full, building: SOCIETY.building, city: SOCIETY.city })) : "";
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] p-3 sm:p-4 mono text-[12px]">
