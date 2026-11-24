@@ -28,3 +28,9 @@ test("the wall rule is restrictive, for logged-in logins, on both reading and wr
 test("undo drops every wall", () => {
   assert.match(read("multitenant/MT_04_UNDO.sql"), /drop policy if exists society_wall/);
 });
+
+test("the check reads pg_policies.permissive as text (PERMISSIVE / RESTRICTIVE), not as a boolean", () => {
+  const sql = read("multitenant/MT_04_SOCIETY_WALL.sql");
+  assert.match(sql, /permissive = 'RESTRICTIVE'/);
+  assert.doesNotMatch(sql, /not permissive/);
+});

@@ -107,7 +107,7 @@ with want(t) as (select unnest(array[
     'society_profile',
     'towers',
     'vehicles'])),
-walls as (select tablename as t, bool_and(not permissive) as restrictive from pg_policies where schemaname = 'public' and policyname = 'society_wall' group by tablename)
+walls as (select tablename as t, bool_and(permissive = 'RESTRICTIVE') as restrictive from pg_policies where schemaname = 'public' and policyname = 'society_wall' group by tablename)
 select 'tables with a society wall' as what, count(*)::text as value from walls where t in (select t from want)
 union all select 'walls that are restrictive (expect the same number)', count(*)::text from walls where restrictive and t in (select t from want)
 union all select 'tables without a wall (expect none)', coalesce(string_agg(t, ', '), 'none') from want where to_regclass('public.' || t) is not null and t not in (select t from walls)
