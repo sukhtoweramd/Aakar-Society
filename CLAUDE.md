@@ -83,7 +83,10 @@
   MT_05 = numbers / names unique per society (bill, receipt, letter, complaint numbers, area and template names, flat_no, edit_code, one maintenance bill / one tenant login per flat) and complaint numbers counted per society.
   MT_06 = the five one-row settings tables (billing_settings, app_settings, society_profile, help_guide, society_live) keyed `(society_id, id)` (id stays 1); every database function saying `where id = 1` on them is rewritten from its live text to
   `where society_id = public.current_society_or_first() and id = 1` (`current_society_or_first()` = the login's society, Aakar's for server-key calls; TEMPORARY, 4d replaces it with an explicit society). A NEW function that updates one of these tables must filter by society the same way.
-  Still to do in 4c: keys of flats / towers / nomination_status with society, society_id default -> active society.
+  MT_07 = keys of flats `(society_id, id)`, towers `(society_id, code)`, nomination_status `(society_id, flat_id)`; every foreign key to flats is remade as `(society_id, flat col) -> flats (society_id, id)` (found from the live database, same names / rules;
+  `ON DELETE SET NULL (col)`, PostgreSQL 15+); `flats_tower_check` dropped; functions `towers_guard` and `nominees_changed` rewritten from their live text. MT_05 / MT_06 are live on Aakar (24 Nov 2026).
+  RULE after MT_07: never write `on conflict (id)` / `upsert` on flats, towers, nomination_status or the five settings tables, and never look a flat up by id alone in a SECURITY DEFINER function or a view without the society (step 4d fixes the existing ones). A second society must not reuse flat ids on the real database before 4d is done.
+  Still to do in 4c: society_id default -> active society (MT_08).
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
