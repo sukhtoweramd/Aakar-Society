@@ -47,8 +47,13 @@ export function SocietyDetails({ ctx }: { ctx: Ctx }) {
     setErrors([]);
     if (!confirm("Save the society details?\n\nThey are printed on bills, receipts and letters from now on. Documents already printed do not change.")) return;
     setBusy(true); setMsg(null);
-    const { data, error } = await supabase.from("society_profile")
-      .upsert({ id: 1, ...r.row, updated_by: ctx.email, updated_at: new Date().toISOString() }, { onConflict: "id" }).select("*").maybeSingle();
+    // Update this society's row; insert it only when there is none yet. (No upsert: the key is (society_id, id) since MT_06,
+    // and an update-then-insert works with the old key and the new one alike.)
+    const payload = { ...r.row, updated_by: ctx.email, updated_at: new Date().toISOString() };
+    let { data, error } = await supabase.from("society_profile").update(payload).eq("id", 1).select("*").maybeSingle();
+    if (!error && !data) {
+      ({ data, error } = await supabase.from("society_profile").insert({ id: 1, ...payload }).select("*").maybeSingle());
+    }
     setBusy(false);
     if (error || !data) { setMsg({ ok: false, text: `Not saved: ${error?.message || "only the main admin login can change this."}` }); return; }
     const prof = profileFromRow(data);

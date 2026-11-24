@@ -81,7 +81,9 @@
 - A new society table must also get `society_id` (same default pattern until step 4 replaces the default) and be added to the list in `MT_02_SOCIETY_ID.sql`; `tests/multitenantScripts.test.ts` checks the backup list against it.
 - Step 4b (MT_04, wall on every society table) is live on Aakar (24 Nov 2026). Step 4c is split into small scripts, each tried on the test project (aanganone) first, each with `_TEST` and `_UNDO`:
   MT_05 = numbers / names unique per society (bill, receipt, letter, complaint numbers, area and template names, flat_no, edit_code, one maintenance bill / one tenant login per flat) and complaint numbers counted per society.
-  Still to do in 4c: one-row settings tables per society (keep `id = 1`, key `(society_id, id)`), keys of flats / towers / nomination_status with society, society_id default -> active society.
+  MT_06 = the five one-row settings tables (billing_settings, app_settings, society_profile, help_guide, society_live) keyed `(society_id, id)` (id stays 1); every database function saying `where id = 1` on them is rewritten from its live text to
+  `where society_id = public.current_society_or_first() and id = 1` (`current_society_or_first()` = the login's society, Aakar's for server-key calls; TEMPORARY, 4d replaces it with an explicit society). A NEW function that updates one of these tables must filter by society the same way.
+  Still to do in 4c: keys of flats / towers / nomination_status with society, society_id default -> active society.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
