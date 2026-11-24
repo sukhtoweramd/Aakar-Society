@@ -111,3 +111,24 @@ test("MT_08 changes the society_id default on every MT_02 table, and the undo pu
   assert.match(mt02, /current_society_or_first/, "the MT_02 check must accept the MT_08 default too");
   readFileSync(join(root, "multitenant/MT_08_TEST.sql"), "utf8");
 });
+
+// Step 4d-1: clearing test documents and restoring a backup act on one society (MT_09).
+const mt09 = readFileSync(join(root, "multitenant/MT_09_BACKUP_CLEAR_SCOPE.sql"), "utf8");
+const mt09undo = readFileSync(join(root, "multitenant/MT_09_UNDO.sql"), "utf8");
+
+test("MT_09 scopes clear_test_documents and restore_society_backup to one society, keeps them closed to members, and can be undone", () => {
+  for (const fn of ["clear_test_documents", "restore_society_backup"]) {
+    assert.ok(mt09.includes(fn), `MT_09 does not cover ${fn}`);
+    assert.ok(mt09undo.includes(fn), `MT_09_UNDO does not cover ${fn}`);
+  }
+  assert.match(mt09, /p_society uuid DEFAULT NULL::uuid/, "the society is an optional last argument (the 4-argument call keeps meaning Aakar)");
+  assert.match(mt09, /where society_id = v_society/);
+  assert.match(mt09, /select %L::uuid/, "restored rows are written with the society's id, never the file's");
+  assert.match(mt09, /a\.attname <> ''society_id''/, "a society_id inside a backup file is ignored");
+  assert.match(mt09, /revoke all on function public\.clear_test_documents\(integer, integer, integer, integer, uuid\) from public, anon, authenticated/);
+  assert.match(mt09, /revoke all on function public\.restore_society_backup\(jsonb, uuid\) from public, anon, authenticated/);
+  assert.match(mt09, /on conflict \(fn\) do update/, "the saved original must always be refreshed while the old form is present");
+  assert.match(mt09, /unexpected form; nothing was changed/);
+  assert.match(mt09undo, /zz_mt09_function_backup/);
+  readFileSync(join(root, "multitenant/MT_09_TEST.sql"), "utf8");
+});
