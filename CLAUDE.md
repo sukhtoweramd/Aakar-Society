@@ -86,7 +86,8 @@
   MT_07 = keys of flats `(society_id, id)`, towers `(society_id, code)`, nomination_status `(society_id, flat_id)`; every foreign key to flats is remade as `(society_id, flat col) -> flats (society_id, id)` (found from the live database, same names / rules;
   `ON DELETE SET NULL (col)`, PostgreSQL 15+); `flats_tower_check` dropped; functions `towers_guard` and `nominees_changed` rewritten from their live text. MT_05 / MT_06 / MT_07 are live on Aakar (24 Nov 2026).
   RULE after MT_07: never write `on conflict (id)` / `upsert` on flats, towers, nomination_status or the five settings tables, and never look a flat up by id alone in a SECURITY DEFINER function or a view without the society (step 4d fixes the existing ones). A second society must not reuse flat ids on the real database before 4d is done.
-  Still to do in 4c: society_id default -> active society (MT_08).
+  MT_08 = the `society_id` default on all 39 society tables is `public.current_society_or_first()` (the login's society; Aakar's for server-key calls, TEMPORARY until 4d) instead of Aakar's id written out; an insert that names its society is untouched.
+  A NEW society table gets `society_id uuid not null default public.current_society_or_first() references public.societies(id)` (and goes into the lists in MT_02 / MT_04 / MT_08). MT_05 - MT_08 are all live on Aakar (24 Nov 2026), so step 4c is complete; next is 4d.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.

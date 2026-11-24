@@ -107,8 +107,8 @@ with want(t) as (select unnest(array[
 have as (
   select c.table_name as t from information_schema.columns c
    where c.table_schema = 'public' and c.column_name = 'society_id' and c.is_nullable = 'NO'
-     and c.column_default like '%a4a4a4a4-0000-4000-8000-000000000001%')
-select 'tables with society_id (Aakar default, not null)' as what, count(*)::text as value from have where t in (select t from want)
+     and (c.column_default like '%a4a4a4a4-0000-4000-8000-000000000001%' or c.column_default like '%current_society_or_first%'))   -- the second form after MT_08
+select 'tables with society_id (Aakar or per-login default, not null)' as what, count(*)::text as value from have where t in (select t from want)
 union all select 'expected tables that exist', count(*)::text from want where to_regclass('public.' || t) is not null
 union all select 'missing the column', coalesce(string_agg(t, ', '), 'none') from want where to_regclass('public.' || t) is not null and t not in (select t from have)
 union all select 'rows in flats / members / bills that are not Aakar',
