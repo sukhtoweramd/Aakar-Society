@@ -58,7 +58,14 @@ export default function NomineePanel({ flat, isCommittee, email }: { flat: Flat;
     if (error) setErr(error.message); else load();
   }
   async function markReceived(v: boolean) {
-    const { error } = await supabase.from("nomination_status").upsert({ flat_id: flat.id, form_received: v, received_at: v ? new Date().toISOString() : null, received_by: v ? email : null, updated_at: new Date().toISOString() });
+    // Update the flat's row; insert it only when there is none yet. (No upsert: the key is (society_id, flat_id) since MT_07,
+    // and an update-then-insert works with the old key and the new one alike.)
+    const patch = { form_received: v, received_at: v ? new Date().toISOString() : null, received_by: v ? email : null, updated_at: new Date().toISOString() };
+    const upd = await supabase.from("nomination_status").update(patch).eq("flat_id", flat.id).select("flat_id");
+    let error = upd.error;
+    if (!error && (!upd.data || upd.data.length === 0)) {
+      error = (await supabase.from("nomination_status").insert({ flat_id: flat.id, ...patch })).error;
+    }
     if (error) setErr(error.message); else load();
   }
   function print() {

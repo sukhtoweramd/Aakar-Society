@@ -68,3 +68,26 @@ test("the society profile is saved without an upsert on id (the key is (society_
   const src = readFileSync(join(root, "app/ledger/SetupEditors.tsx"), "utf8");
   assert.doesNotMatch(src, /onConflict:\s*"id"/);
 });
+
+// Step 4c-3: flat ids, tower codes and nomination rows per society (MT_07).
+const mt07 = readFileSync(join(root, "multitenant/MT_07_FLAT_KEYS.sql"), "utf8");
+const mt07undo = readFileSync(join(root, "multitenant/MT_07_UNDO.sql"), "utf8");
+
+test("MT_07 keys flats / towers / nomination_status by society, remakes the links and rewrites the two functions", () => {
+  assert.match(mt07, /primary key \(society_id, id\)/);
+  assert.match(mt07, /FOREIGN KEY \(society_id, \\1\)/);
+  assert.match(mt07, /flats\(society_id, id\)/);
+  assert.match(mt07, /'towers', 'code'/);
+  assert.match(mt07, /'nomination_status', 'flat_id'/);
+  assert.match(mt07, /on conflict \(society_id, flat_id\)/, "nominees_changed must conflict on the new key");
+  assert.match(mt07, /f\.society_id = old\.society_id/, "towers_guard must count the society's own flats");
+  assert.match(mt07, /drop constraint if exists flats_tower_check/);
+  assert.match(mt07undo, /primary key \(id\)/);
+  assert.match(mt07undo, /flats_tower_check/);
+  readFileSync(join(root, "multitenant/MT_07_TEST.sql"), "utf8");
+});
+
+test("the nomination 'form received' button saves without an upsert (the key is (society_id, flat_id) after MT_07)", () => {
+  const src = readFileSync(join(root, "app/ledger/NomineePanel.tsx"), "utf8");
+  assert.doesNotMatch(src, /nomination_status"\)\s*\.upsert/);
+});
