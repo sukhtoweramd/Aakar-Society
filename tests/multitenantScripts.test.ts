@@ -128,7 +128,8 @@ test("MT_09 scopes clear_test_documents and restore_society_backup to one societ
   assert.match(mt09, /revoke all on function public\.clear_test_documents\(integer, integer, integer, integer, uuid\) from public, anon, authenticated/);
   assert.match(mt09, /revoke all on function public\.restore_society_backup\(jsonb, uuid\) from public, anon, authenticated/);
   assert.match(mt09, /on conflict \(fn\) do update/, "the saved original must always be refreshed while the old form is present");
-  assert.match(mt09, /unexpected form; nothing was changed/);
+  assert.match(mt09, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.doesNotMatch(mt09, /chr\(10\)/, "the script must not depend on a fixed line break (a function pasted from Windows has CR + LF)");
   assert.match(mt09undo, /zz_mt09_function_backup/);
   readFileSync(join(root, "multitenant/MT_09_TEST.sql"), "utf8");
 });

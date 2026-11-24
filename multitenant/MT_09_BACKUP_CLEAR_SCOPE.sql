@@ -45,6 +45,7 @@ do $$
 declare
   def text;
   newdef text;
+  failed text;
 begin
   if to_regprocedure('public.current_society_or_first()') is null then
     raise exception 'Run MT_06_SETTINGS_PER_SOCIETY.sql first (public.current_society_or_first() is missing).';
@@ -71,10 +72,17 @@ begin
   newdef := replace(newdef, 'where society_id = public.current_society_or_first() and id = 1'' using p_letter', 'where society_id = $2 and id = 1'' using p_letter, v_society');
   newdef := replace(newdef, 'public.current_society_or_first()', 'v_society');
   -- the variable
-  newdef := replace(newdef, '$function$' || chr(10) || 'declare', '$function$' || chr(10) || 'declare v_society uuid := coalesce(p_society, public.current_society_or_first());');
-  if newdef = def or newdef ~ 'where true' or newdef !~ 'declare v_society uuid' or newdef !~ 'society_id = v_society'
-     or newdef ~ 'where id = 1' or newdef !~ 'p_society uuid DEFAULT NULL' then
-    raise exception 'clear_test_documents() has an unexpected form; nothing was changed. Send me its text.';
+  -- (regexp, not a fixed line break: a function pasted from a Windows machine is stored with CR + LF)
+  newdef := regexp_replace(newdef, '\$function\$(\s*)declare', '$function$\1declare v_society uuid := coalesce(p_society, public.current_society_or_first());');
+  failed := concat_ws(', ',
+    case when newdef = def then 'nothing was rewritten' end,
+    case when newdef ~ 'where true' then 'a "where true" delete is left' end,
+    case when newdef !~ 'declare v_society uuid' then 'the declare line was not found' end,
+    case when newdef !~ 'society_id = v_society' then 'no society filter was added' end,
+    case when newdef ~ 'where id = 1' then 'a "where id = 1" is left' end,
+    case when newdef !~ 'p_society uuid DEFAULT NULL' then 'the argument list was not found' end);
+  if failed <> '' then
+    raise exception 'clear_test_documents() has an unexpected form (%); nothing was changed. Send me its text.', failed;
   end if;
   execute newdef;
   drop function public.clear_test_documents(integer, integer, integer, integer);
@@ -87,6 +95,7 @@ do $$
 declare
   def text;
   newdef text;
+  failed text;
 begin
   if to_regprocedure('public.restore_society_backup(jsonb,uuid)') is not null then
     raise notice 'restore_society_backup already takes a society';
@@ -107,10 +116,18 @@ begin
                             '''insert into public.%I (society_id, %s) overriding system value select %L::uuid, %s from jsonb_populate_recordset(null::public.%I, $1)''');
   newdef := replace(newdef, 't, cols, cols, t) using p->''tables''->t;', 't, cols, v_society, cols, t) using p->''tables''->t;');
   -- the variable
-  newdef := replace(newdef, '$function$' || chr(10) || 'declare', '$function$' || chr(10) || 'declare' || chr(10) || '  v_society uuid := coalesce(p_society, public.current_society_or_first());');
-  if newdef = def or newdef ~ 'where true' or newdef !~ 'v_society uuid :=' or newdef !~ 'where society_id = %L'
-     or newdef !~ '\(society_id, %s\)' or newdef !~ 'a.attname <> ''society_id''' or newdef !~ 't, cols, v_society, cols, t\)' then
-    raise exception 'restore_society_backup() has an unexpected form; nothing was changed. Send me its text.';
+  -- (regexp, not a fixed line break: a function pasted from a Windows machine is stored with CR + LF)
+  newdef := regexp_replace(newdef, '\$function\$(\s*)declare', '$function$\1declare v_society uuid := coalesce(p_society, public.current_society_or_first());');
+  failed := concat_ws(', ',
+    case when newdef = def then 'nothing was rewritten' end,
+    case when newdef ~ 'where true' then 'a "where true" delete is left' end,
+    case when newdef !~ 'v_society uuid :=' then 'the declare line was not found' end,
+    case when newdef !~ 'where society_id = %L' then 'the delete was not found' end,
+    case when newdef !~ '\(society_id, %s\)' then 'the insert was not found' end,
+    case when newdef !~ 'a.attname <> ''society_id''' then 'the column list was not found' end,
+    case when newdef !~ 't, cols, v_society, cols, t\)' then 'the insert arguments were not found' end);
+  if failed <> '' then
+    raise exception 'restore_society_backup() has an unexpected form (%); nothing was changed. Send me its text.', failed;
   end if;
   execute newdef;
   drop function public.restore_society_backup(jsonb);
