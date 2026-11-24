@@ -1,7 +1,7 @@
 # Order of the SQL scripts for a NEW database (the "aanganone" copy) — 24 Nov 2026
 
-Status: **LIKELY, not yet proven.** Built from each script's "run after" header and from which tables and functions it needs
-(read from the files, not run). The first full run on the empty copy will confirm or correct it; fix this list then.
+Status: **PROVEN on an empty Supabase project ("aanganone", 24 Nov 2026)** with the corrections below: every script ran and every check matched.
+Built from each script's "run after" header and from which tables and functions it needs, then corrected by the first full run.
 Aakar's live database already has all of this; do not re-run these there.
 
 Every script is run by hand in the Supabase SQL Editor. After each one compare its check result with its own header.
@@ -16,11 +16,12 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 |---|---|---|
 | 0 | `multitenant/BASE_TABLES.sql` | the six core tables (flats, members, notices, events, businesses, maintenance); the original base script is not in the repo |
 | 1 | `RESIDENT_ACCESS.sql` | defines `is_committee()` and `my_flat()` and the rules on the core tables (needs 0) |
+| 2a | **first committee login** (Authentication > Users > Add user, auto-confirm), then in the SQL Editor: `update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data,'{}'::jsonb) \|\| '{"role":"committee"}'::jsonb where email = '<that email>';` | script 02 refuses to run while no login has the committee role |
 | 2 | `sql-security/02_IS_COMMITTEE_strict.sql` | `is_committee()` reads `app_metadata.role` |
 | 3 | `MEMBER_SCREENS.sql` | creates `app_settings` (needed by contacts, areas) |
 | 4 | `COMMITTEE_ROLES.sql`, `COMMITTEE_PERSON.sql`, `COMMITTEE_PEOPLE.sql` | flat columns for committee roles (in this order) |
 | 5 | `PRE_PHASE2_A.sql` | emergency contacts, vehicles, flat documents |
-| 6 | `DIRECTORY_CONSENT.sql`, `TENANTS.sql`, `DOB.sql`, `BANNERS.sql` | extra columns on flats / members / notices |
+| 6 | `DOB.sql`, `BANNERS.sql` | extra columns on members / notices. **Do NOT run `DIRECTORY_CONSENT.sql` and `TENANTS.sql` on a new database:** their columns are already in BASE_TABLES, `COMMITTEE_ROLES.sql` already made the newer directory views (they fail with "cannot drop columns from view"), and TENANTS would put back an older, weaker flat guard |
 | 7 | `BILLING.sql` | billing settings, bills, payments, signatories, `next_doc_numbers()` |
 | 8 | `BACKUP_RESTORE.sql` | access log, society_live, backup/restore base |
 | 9 | `BILL_DUPLICATE_GUARD.sql`, `BILLING_ANNUAL.sql` | |
@@ -49,3 +50,12 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - **Unique numbers that are global today:** `bills.bill_no`, `payments.receipt_no`, `letters.ref_no`, `complaints.complaint_no`,
   `flats.flat_no` / `edit_code`, `booking_areas.name`, `letter_templates.name`. Each becomes per society.
 - `flats_tower_check` (A, B, C only) must be dropped for a society with other tower codes.
+
+## Found by the first full run (24 Nov 2026)
+- `FLAT_SETUP_TABLES.sql` also **inserts Aakar's real society profile** (name, registration, address, web address) into any database where it runs; its starter towers come from the flats. For a new society that seed must be a separate Aakar-only script.
+- Starter data that is Aakar's own and lands in every new database: letter prefix `AKR/L/26-27/` (LETTERS.sql), 10 committee areas (COMMITTEE_AMC.sql), 4 booking areas
+  "Tower A area / Center area / Tower B area / Main common area" (BOOKING_CHARGES.sql), 6 letter formats and 1 resolution format, the help guide text.
+- **Restore is not society-safe:** `restore_society_backup` runs `delete from <table> where true` on every table, and accepts only files labelled `aakar-society`.
+  With two societies it would wipe the other one. Step 4 must scope the delete and the file label to one society.
+- `sql-security/12_CLEAR_TEST_ALL.sql` (clear test) also clears tables without a society filter; same fix.
+- A fully built database has 39 society tables + 3 directory views (checked by GRANTS_ALL.sql: 42 rows, all closed to visitors).
