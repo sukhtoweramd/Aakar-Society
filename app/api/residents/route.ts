@@ -8,6 +8,7 @@ import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { flatEmail, normaliseFlat, tenantEmail } from "@/lib/residents";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
+import { addMembership, membershipRow, societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ async function tenantUsers(admin: SupabaseClient): Promise<User[]> {
 const BAN = "876000h"; // about 100 years: the login cannot be used; its records stay
 
 /** Tenant login actions. The flat must exist and be marked rented; one active tenant login per flat. */
-async function tenantAction(action: string, body: any, admin: SupabaseClient, me: { email: string; db: SupabaseClient }) {
+async function tenantAction(action: string, body: any, admin: SupabaseClient, me: { email: string; db: SupabaseClient; userId: string }) {
   const flat = normaliseFlat(String(body.flat || ""));
   if (!flat) return NextResponse.json({ error: "Which flat?" }, { status: 400 });
   const { data: row, error: fe } = await me.db.from("flats").select("id, occupancy, tenant_name").eq("id", flat).maybeSingle();
@@ -59,6 +60,8 @@ async function tenantAction(action: string, body: any, admin: SupabaseClient, me
       user_metadata: { password_changed: false },
     });
     if (error || !made.user) throw error || new Error("Could not create the login.");
+    try { await addMembership(admin, membershipRow(made.user.id, await societyOfCaller(admin, me.userId), "tenant", flat)); }
+    catch (e) { await admin.auth.admin.deleteUser(made.user.id); throw e; }
     await admin.from("flat_tenant_logins").update({ active: false, revoked_at: new Date().toISOString(), revoked_by: me.email, revoke_reason: "replaced" }).eq("flat_id", flat).eq("active", true);
     const { error: ie } = await admin.from("flat_tenant_logins").insert({ user_id: made.user.id, flat_id: flat, tenant_name: (row as any).tenant_name || null, created_by: me.email });
     if (ie) { await admin.auth.admin.deleteUser(made.user.id); throw ie; }
@@ -140,17 +143,20 @@ export async function POST(req: NextRequest) {
       const { data: rows, error } = await me.db.from("flats").select("id").in("id", flats);
       if (error) throw error;
       const valid = new Set((rows || []).map((r: any) => r.id));
+      const society = await societyOfCaller(admin, me.userId);
       const created: { flat_id: string; password: string }[] = [];
       const skipped: string[] = [];
       for (const flat of flats) {
         if (!valid.has(flat) || byFlat.has(flat)) { skipped.push(flat); continue; }
         const password = newPassword();
-        const { error: e } = await admin.auth.admin.createUser({
+        const { data: madeFlat, error: e } = await admin.auth.admin.createUser({
           email: flatEmail(flat), password, email_confirm: true,
           app_metadata: { role: "resident", flat_id: flat },
           user_metadata: { password_changed: false },
         });
-        if (e) { skipped.push(`${flat} (${e.message})`); continue; }
+        if (e || !madeFlat?.user) { skipped.push(`${flat} (${e?.message || "not created"})`); continue; }
+        try { await addMembership(admin, membershipRow(madeFlat.user.id, society, "flat", flat)); }
+        catch (err: any) { await admin.auth.admin.deleteUser(madeFlat.user.id); skipped.push(`${flat} (${err?.message || "could not join the society"})`); continue; }
         created.push({ flat_id: flat, password });
       }
       return NextResponse.json({ ok: true, created, skipped });
