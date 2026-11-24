@@ -7,6 +7,7 @@ import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { normaliseFlat } from "@/lib/residents";
 import { logAccess, mainAdminId } from "@/lib/backup";
 import { isCommitteeMeta } from "@/lib/roles";
+import { addMembership, membershipRow, societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 
@@ -75,8 +76,14 @@ export async function POST(req: NextRequest) {
       if (!EMAIL.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
       if (email.endsWith("@flats.aakarsociety.app")) return NextResponse.json({ error: "That is a flat login address." }, { status: 400 });
       const password = newPassword();
-      const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email, password_changed: false } });
-      if (error) return NextResponse.json({ error: /already/i.test(error.message) ? "A login with this email already exists." : error.message }, { status: 400 });
+      const { data: made, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email, password_changed: false } });
+      if (error || !made?.user) return NextResponse.json({ error: error && /already/i.test(error.message) ? "A login with this email already exists." : error?.message || "Could not create the login." }, { status: 400 });
+      try {   // the new login joins the society of the main admin who made it; if that fails the login is removed again
+        await addMembership(admin, membershipRow(made.user.id, await societyOfCaller(admin, me.userId), "committee", flatId));
+      } catch (e: any) {
+        await admin.auth.admin.deleteUser(made.user.id);
+        return NextResponse.json({ error: "Could not add the login to the society: " + (e?.message || "unknown error") }, { status: 500 });
+      }
       await logAccess(admin, me.email, "login_added", email, flatId ? `own flat ${flatId}` : "");
       return NextResponse.json({ ok: true, email, password });
     }
@@ -108,6 +115,8 @@ export async function POST(req: NextRequest) {
     if (body.action === "link") {
       const { error } = await admin.auth.admin.updateUserById(target.id, { app_metadata: { role: "committee", flat_id: flatId } });
       if (error) throw error;
+      const { error: me2 } = await admin.from("society_memberships").update({ flat_id: flatId }).eq("user_id", target.id);   // keep the membership's flat link equal
+      if (me2) throw me2;
       return NextResponse.json({ ok: true });
     }
     if (body.action === "remove") {
