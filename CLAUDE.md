@@ -75,6 +75,11 @@
 ## HELP assistant (Nov 2026)
 - `app/api/help/route.ts` answers from the written guide. For a plain flat login (not committee, not tenant) asking about its own amounts (`wantsOwnMoney`), it also reads that flat's bills and payments through the member's own client (database rules apply, no server key) and adds a short summary (`duesFacts`, `lib/helpData.ts`) to the prompt. A committee login asking about the whole society's dues (`wantsSocietyDues`) gets `societyDuesFacts`: flat ids, owner names and amounts (no phone numbers or bank balances), read in pages through the committee's own client. A flat or tenant login asking about its own complaints, bookings or letter requests (`wantsOwnRecords`, `recordsFacts`) gets a short summary read through its own client, filtered to its home flat (tenants get no letter requests). A plain flat login asking which documents are still to upload gets `docsFacts` (its own `flat_docs` types against the list in `lib/flatDocTypes.ts`). Never widen these to other tables or to other kinds of login without a server-side check of who is asking.
 
+## Multi-tenant (Nov 2026, in progress - see `multitenant/`)
+- Step 2-3 scripts (run by hand, after a full backup, MT_01 then MT_02; each has an `_UNDO`): `societies` + `society_memberships` (platform tables, NOT society data, so not in
+  `BACKUP_TABLES` / restore on purpose) and a `society_id uuid not null default <Aakar id>` column on every society table. Nothing reads `society_id` yet; Aakar behaves as before.
+- A new society table must also get `society_id` (same default pattern until step 4 replaces the default) and be added to the list in `MT_02_SOCIETY_ID.sql`; `tests/multitenantScripts.test.ts` checks the backup list against it.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.
