@@ -48,3 +48,23 @@ test("MT_05 makes every number per society, and has an undo and a test", () => {
   assert.doesNotMatch(mt05undo, /society_id = new\.society_id/, "the undo restores the old complaint trigger");
   readFileSync(join(root, "multitenant/MT_05_TEST.sql"), "utf8");
 });
+
+// Step 4c-2: the one-row settings tables per society (MT_06).
+const mt06 = readFileSync(join(root, "multitenant/MT_06_SETTINGS_PER_SOCIETY.sql"), "utf8");
+const mt06undo = readFileSync(join(root, "multitenant/MT_06_UNDO.sql"), "utf8");
+
+test("MT_06 keys the five settings tables by society and rewrites the 'where id = 1' functions", () => {
+  for (const t of ["billing_settings", "app_settings", "society_profile", "help_guide", "society_live"]) {
+    assert.ok(mt06.includes(`'${t}'`), `MT_06 does not cover ${t}`);
+    assert.ok(mt06undo.includes(`'${t}'`), `MT_06_UNDO does not cover ${t}`);
+  }
+  assert.match(mt06, /primary key \(society_id, id\)/);
+  assert.match(mt06, /where society_id = public\.current_society_or_first\(\) and id = 1/);
+  assert.match(mt06undo, /primary key \(id\)/);
+  readFileSync(join(root, "multitenant/MT_06_TEST.sql"), "utf8");
+});
+
+test("the society profile is saved without an upsert on id (the key is (society_id, id) after MT_06)", () => {
+  const src = readFileSync(join(root, "app/ledger/SetupEditors.tsx"), "utf8");
+  assert.doesNotMatch(src, /onConflict:\s*"id"/);
+});
