@@ -58,7 +58,7 @@ begin
   exception when others then
     res := res || E'\n5 first society cleared while the second is live: REFUSED (' || sqlerrm || ') (want allowed)  <-- WRONG'; ok := false;
   end;
-  delete from public.society_live where society_id = other;
+  -- (the second society stays "live" until the rollback at the end: a live row can never be deleted, by design)
 
   -- 4. restore into the second society from a file whose rows claim to belong to the FIRST society
   select count(*) into c1 from public.flats where society_id = aakar;
