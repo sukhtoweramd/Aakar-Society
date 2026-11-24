@@ -5,7 +5,9 @@
 
 insert into public.society_profile (id, name, full_name, building, address, city)
 values (1, 'Test Heights', 'Test Heights Co-op Housing Society Ltd', 'Test Heights', 'Sample Road', 'Sampletown')
-on conflict (id) do nothing;
+on conflict (id) do update set name = excluded.name, full_name = excluded.full_name, building = excluded.building,
+  address = excluded.address, city = excluded.city, reg_no = null, reg_date = null, address_lines = '{}', public_url = null;
+-- (FLAT_SETUP_TABLES.sql had already put Aakar's real profile here; this replaces it with the sample one.)
 
 insert into public.towers (code, name, has_terrace, sort) values
   ('A', 'Tower A', true, 10), ('B', 'Tower B', false, 20), ('C', 'Tower C', false, 30)
