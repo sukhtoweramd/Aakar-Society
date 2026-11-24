@@ -30,3 +30,21 @@ test("MT_01 and MT_02 use the same Aakar id", () => {
   assert.match(mt01, id);
   assert.match(mt02, id);
 });
+
+// Step 4c-1: numbers and names unique per society (MT_05).
+const mt05 = readFileSync(join(root, "multitenant/MT_05_PER_SOCIETY_UNIQUE.sql"), "utf8");
+const mt05undo = readFileSync(join(root, "multitenant/MT_05_UNDO.sql"), "utf8");
+
+test("MT_05 makes every number per society, and has an undo and a test", () => {
+  for (const pair of ["'bills','bill_no'", "'payments','receipt_no'", "'letters','ref_no'", "'complaints','complaint_no'",
+    "'booking_areas','name'", "'letter_templates','name'", "'flats','flat_no'", "'flats','edit_code'"]) {
+    assert.ok(mt05.includes(pair), `MT_05 does not cover ${pair}`);
+    assert.ok(mt05undo.includes(pair), `MT_05_UNDO does not cover ${pair}`);
+  }
+  assert.match(mt05, /unique \(society_id, %I\)/);
+  assert.match(mt05, /on public\.bills \(society_id, flat_id, period_from\)/);
+  assert.match(mt05, /on public\.flat_tenant_logins \(society_id, flat_id\) where active/);
+  assert.match(mt05, /c\.society_id = new\.society_id/, "complaint numbers must be counted inside the society");
+  assert.doesNotMatch(mt05undo, /society_id = new\.society_id/, "the undo restores the old complaint trigger");
+  readFileSync(join(root, "multitenant/MT_05_TEST.sql"), "utf8");
+});
