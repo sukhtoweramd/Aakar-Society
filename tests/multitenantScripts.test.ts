@@ -91,3 +91,23 @@ test("the nomination 'form received' button saves without an upsert (the key is 
   const src = readFileSync(join(root, "app/ledger/NomineePanel.tsx"), "utf8");
   assert.doesNotMatch(src, /nomination_status"\)\s*\.upsert/);
 });
+
+// Step 4c-4: the society_id default is the login's society (MT_08).
+const mt08 = readFileSync(join(root, "multitenant/MT_08_SOCIETY_DEFAULT.sql"), "utf8");
+const mt08undo = readFileSync(join(root, "multitenant/MT_08_UNDO.sql"), "utf8");
+
+test("MT_08 changes the society_id default on every MT_02 table, and the undo puts Aakar's id back", () => {
+  const list = (s: string) => {
+    const m = s.match(/tabs text\[\] := array\[([\s\S]*?)\];/);
+    assert.ok(m, "table list not found");
+    return Array.from(m![1].matchAll(/'([a-z_]+)'/g), (x) => x[1]);
+  };
+  assert.deepEqual(list(mt08), listedTables(), "MT_08 must cover exactly the tables of MT_02");
+  assert.deepEqual(list(mt08undo), listedTables(), "MT_08_UNDO must cover exactly the tables of MT_02");
+  assert.match(mt08, /set default public\.current_society_or_first\(\)/);
+  assert.match(mt08, /Run MT_06/, "MT_08 needs the MT_06 helper and must say so");
+  assert.doesNotMatch(mt08, /set default %L/, "the new default must not be a fixed id (the check query may still name Aakar to count leftovers)");
+  assert.match(mt08undo, /a4a4a4a4-0000-4000-8000-000000000001/);
+  assert.match(mt02, /current_society_or_first/, "the MT_02 check must accept the MT_08 default too");
+  readFileSync(join(root, "multitenant/MT_08_TEST.sql"), "utf8");
+});
