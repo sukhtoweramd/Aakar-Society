@@ -23,3 +23,30 @@ Server-key routes: `flat-family`, `flat-plan`, `flat-remove`, `committee`, `paym
 
 ## Next
 Run the 10 queries, save the results outside the repo, and bring them back (or paste the column and constraint lists) so stage 1 can list every table that needs `society_id`.
+
+---
+
+# Live database findings (24 Nov 2026) · structure and counts only, no personal data
+
+Queries run by the main admin in the Supabase SQL Editor: tables, columns, keys and links, functions, triggers, rules per table, grants, logins by role.
+
+## Size and state
+- 40 tables + 3 views, row rules on for every table. About 230 rows in all (91 flats, 32 members, the rest small).
+- Real data: flats, members, committee members and areas of responsibility. Everything else is demo data. GO LIVE has not been pressed (`society_live` is empty), so test clearing is still open.
+- 12 logins: 5 committee, 6 flat (resident), 1 tenant.
+- Row counts from `pg_stat` were stale (showed 0); exact counts were used.
+
+## Needs `society_id` (39 tables; not `zz_security_app_meta_backup`)
+- One-row settings tables, to become one row per society: `app_settings`, `billing_settings`, `society_profile`, `help_guide`, `society_live` (keyed on `id` today).
+- Keys to include the society: `flats.id`, `towers.code`, `nomination_status.flat_id`.
+- 20 tables carry `flat_id` as text; 19 formal foreign keys point at `flats(id)`. Not formally linked today: `bookings`, `complaints`, `event_checkins`, `letter_requests`, `nominees`, `nomination_status`.
+- Unique across the whole database today, to become per society: `bills.bill_no`, `payments.receipt_no`, `letters.ref_no`, `complaints.complaint_no`, `booking_areas.name`, `letter_templates.name`, `flats.flat_no`, `flats.edit_code` (edit_code is not used by the code; to be confirmed and probably dropped).
+- `maintenance` and `businesses` (0 rows, not read by any screen): drop candidates, to be confirmed.
+- Billing defaults hold Aakar's initials and the year (`AKR/26-27/` and similar).
+
+## Rules, functions, triggers, grants
+- 121 live row rules (the 127 in the repo counts replaced versions). Suggested: one RESTRICTIVE rule per table (society_id = active society), ANDed with the existing rules (PostgreSQL docs, CREATE POLICY). To be tried on a test copy first.
+- 59 functions, 51 SECURITY DEFINER (bypass row rules; each needs its own society check). About 16 role helpers first (`is_committee`, `is_main_admin`, `my_flat`, `my_home_flat`, `my_tenant_flat` …), then the actions, numbering (`next_doc_numbers`), backup / restore, and `utr_already_reported` (global or per society: to decide).
+- 14 triggers on 12 tables. Complaint numbers come from a trigger; bill / receipt numbers from `next_doc_numbers`.
+- `anon` has no grants anywhere. `authenticated` has all 7 privileges (incl. TRUNCATE, TRIGGER, REFERENCES) on 42 objects: suggested to revoke the last three in stage 1.
+- The 3 directory views are `security_invoker = false`: each needs an explicit society filter.
