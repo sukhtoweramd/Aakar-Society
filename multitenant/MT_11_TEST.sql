@@ -16,6 +16,11 @@ begin
   if uid is null then raise exception 'No committee login found (RUN_ORDER.md, step 2a).'; end if;
   if (select count(*) from public.flats where society_id = aakar and id in ('A101', 'A102')) < 2 then raise exception 'The first society needs flats A101 and A102 (load SAMPLE_DATA.sql).'; end if;
 
+  -- act as the committee login from the start: the guard on flats (sql-security/05) refuses changes to committee fields from anyone who is not committee,
+  -- and the SQL Editor has no login of its own
+  perform set_config('request.jwt.claim.sub', uid::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid::text, 'app_metadata', jsonb_build_object('role', 'committee'))::text, true);
+
   -- first society: A101 is a plain committee member, nobody is Chairman / Secretary, A102 is an owner's flat
   update public.flats set committee_role = null where society_id = aakar and committee_role ~* '(chair|secretary)';
   update public.flats set is_committee = true, committee_role = 'Member', committee_person = 'AAKAR COMMITTEE', occupancy = 'owner' where society_id = aakar and id = 'A101';
