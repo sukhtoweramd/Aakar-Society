@@ -4,21 +4,25 @@ import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getR2 } from "./r2Client";
+import { backupFolderOf, isBackupKey, keyBelongsTo, loginsOfSociety } from "./backupScope";
 
 /** Every table with society records, in the order they are restored (parents first). */
 export const BACKUP_TABLES = ["flats", "billing_settings", "signatories", "events", "notices", "maintenance", "businesses",
   "members", "emergency_contacts", "vehicles", "flat_docs", "bills", "payments", "letters", "payment_reports", "committee_areas", "amc_contracts", "amc_visits", "meetings", "meeting_actions",
   "event_team", "event_money", "event_registrations", "help_guide", "complaints", "nominees", "nomination_status", "booking_areas", "bookings", "letter_templates", "letter_requests", "event_checkins", "society_contacts", "flat_tenant_logins", "society_profile", "towers"];
-export const BACKUP_FOLDER = "backups";
+export const BACKUP_FOLDER = "backups"; // the first society's folder; others use backups/<society id>/ (lib/backupScope.ts)
 
 export type Backup = {
-  app: "aakar-society"; version: 1; created_at: string; created_by: string; kind: "manual" | "pre-restore";
+  app: "aakar-society"; // a file-format tag kept so older files still restore; the society itself is society_id (not shown to people)
+  version: 1; created_at: string; created_by: string; kind: "manual" | "pre-restore";
+  society_id?: string; // the society this backup belongs to (files made before step 4d carry none = the first society)
   counts: Record<string, number>; skipped: string[];
   tables: Record<string, any[]>;
   logins: { email: string | undefined; role: string; flat_id: string | null; name: string }[]; // for reference only; not restored
 };
 
-const missingTable = (msg: string) => /does not exist|could not find the table|schema cache/i.test(msg);
+// A missing TABLE is skipped (older databases); a missing society_id COLUMN is an error, never a silent skip.
+const missingTable = (msg: string) => !/society_id/i.test(msg) && /does not exist|could not find the table|schema cache/i.test(msg);
 
 export async function allUsers(admin: SupabaseClient): Promise<User[]> {
   const all: User[] = [];
@@ -40,13 +44,26 @@ export function mainAdminId(committee: User[]): string | null {
   return sorted[0]?.id || null;
 }
 
-export async function buildBackup(admin: SupabaseClient, by: string, kind: Backup["kind"]): Promise<Backup> {
+/** Every membership row (platform table), read in pages. */
+async function allMemberships(admin: SupabaseClient) {
+  const out: { user_id: string; society_id: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from("society_memberships").select("user_id, society_id").range(from, from + 999);
+    if (error) throw new Error(`society_memberships: ${error.message}`);
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+/** Backup of ONE society: every table is read with the server key (which skips the society wall), so each read names the society. */
+export async function buildBackup(admin: SupabaseClient, by: string, kind: Backup["kind"], society: string): Promise<Backup> {
   const tables: Record<string, any[]> = {}, counts: Record<string, number> = {}, skipped: string[] = [];
   for (const t of BACKUP_TABLES) {
     const rows: any[] = [];
     let failed = false;
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await admin.from(t).select("*").range(from, from + 999);
+      const { data, error } = await admin.from(t).select("*").eq("society_id", society).range(from, from + 999);
       if (error) { if (missingTable(error.message)) { failed = true; break; } throw new Error(`${t}: ${error.message}`); }
       rows.push(...(data || []));
       if (!data || data.length < 1000) break;
@@ -54,37 +71,37 @@ export async function buildBackup(admin: SupabaseClient, by: string, kind: Backu
     if (failed) { skipped.push(t); continue; }
     tables[t] = rows; counts[t] = rows.length;
   }
-  const users = await allUsers(admin);
+  const users = loginsOfSociety(await allUsers(admin), await allMemberships(admin), society);
   const logins = users.map((u) => ({ email: u.email, role: (u.app_metadata as any)?.role || "none", flat_id: (u.app_metadata as any)?.flat_id || null, name: (u.user_metadata as any)?.name || "" }));
-  return { app: "aakar-society", version: 1, created_at: new Date().toISOString(), created_by: by, kind, counts, skipped, tables, logins };
+  return { app: "aakar-society", version: 1, society_id: society, created_at: new Date().toISOString(), created_by: by, kind, counts, skipped, tables, logins };
 }
 
 /** Saves a copy in R2 under an unguessable name. Returns the key, or null when R2 is not set up. */
-export async function storeBackup(b: Backup): Promise<string | null> {
+export async function storeBackup(b: Backup, society: string): Promise<string | null> {
   const r2 = getR2();
   if (!r2) return null;
   const stamp = b.created_at.replace(/[:.]/g, "-");
-  const key = `${BACKUP_FOLDER}/${b.kind === "pre-restore" ? "pre-restore" : "backup"}-${stamp}-${randomBytes(16).toString("hex")}.json`;
+  const key = `${backupFolderOf(society)}/${b.kind === "pre-restore" ? "pre-restore" : "backup"}-${stamp}-${randomBytes(16).toString("hex")}.json`;
   await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: JSON.stringify(b), ContentType: "application/json" }));
   return key;
 }
 
 /** Public id for a stored copy. The real file name is never sent to browsers: the bucket serves files by name. */
 export const backupId = (key: string) => createHash("sha256").update(key + (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "")).digest("hex").slice(0, 32);
-export async function keyForId(id: string) {
-  const all = await listBackups();
+export async function keyForId(id: string, society: string) {
+  const all = await listBackups(society);
   return all?.find((b) => backupId(b.key) === id)?.key || null;
 }
 
-export async function listBackups() {
+export async function listBackups(society: string) {
   const r2 = getR2();
   if (!r2) return null;
   const out: { key: string; kind: string; created: string; size: number }[] = [];
   let token: string | undefined;
   do {
-    const res = await r2.client.send(new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: `${BACKUP_FOLDER}/`, ContinuationToken: token }));
+    const res = await r2.client.send(new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: `${backupFolderOf(society)}/`, ContinuationToken: token }));
     for (const o of res.Contents || []) {
-      if (!o.Key || !o.Key.endsWith(".json")) continue;
+      if (!o.Key || !o.Key.endsWith(".json") || !keyBelongsTo(society, o.Key)) continue; // the first society's prefix also lists the other societies' folders
       out.push({ key: o.Key, kind: o.Key.includes("/pre-restore-") ? "pre-restore" : "manual", created: o.LastModified?.toISOString() || "", size: o.Size || 0 });
     }
     token = res.IsTruncated ? res.NextContinuationToken : undefined;
@@ -92,15 +109,16 @@ export async function listBackups() {
   return out.sort((a, b) => b.created.localeCompare(a.created));
 }
 
-export async function readStoredBackup(key: string): Promise<Backup> {
+export async function readStoredBackup(key: string, society: string): Promise<Backup> {
   const r2 = getR2();
   if (!r2) throw new Error("File storage (R2) is not configured.");
-  if (!new RegExp(`^${BACKUP_FOLDER}/[\\w.-]+\\.json$`).test(key)) throw new Error("Bad backup name.");
+  if (!isBackupKey(key) || !keyBelongsTo(society, key)) throw new Error("Bad backup name.");
   const res = await r2.client.send(new GetObjectCommand({ Bucket: r2.bucket, Key: key }));
   return JSON.parse(await (res.Body as any).transformToString());
 }
 
-/** Records an action in access_log. Never fails the main action (table may not exist yet). */
-export async function logAccess(admin: SupabaseClient, actor: string, action: string, target = "", details = "") {
-  try { await admin.from("access_log").insert([{ actor, action, target, details }]); } catch { /* ignore */ }
+/** Records an action in access_log. Never fails the main action (table may not exist yet).
+ *  Name the society when the action belongs to one: the server key has no login, so without it the row would be filed under the first society. */
+export async function logAccess(admin: SupabaseClient, actor: string, action: string, target = "", details = "", society?: string) {
+  try { await admin.from("access_log").insert([society ? { actor, action, target, details, society_id: society } : { actor, action, target, details }]); } catch { /* ignore */ }
 }

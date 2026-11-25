@@ -10,7 +10,7 @@ const panel = readFileSync(join(root, "app/ledger/BackupPanel.tsx"), "utf8");
 
 test("server: downloading a stored backup checks the main admin BEFORE reading it", () => {
   const check = route.indexOf("if (!(await isMainAdminLogin(admin, me.userId))) return MAIN_ADMIN_ONLY();");
-  const read = route.indexOf("readStoredBackup(key)");
+  const read = route.indexOf("readStoredBackup(key, society)");
   assert.ok(check > 0 && read > 0 && check < read);
   assert.ok(route.indexOf("if (id) {") < check, "check must be inside the ?id= branch");
 });
