@@ -28,8 +28,16 @@ test("server route: main admin only, asks the database function, checks again be
   assert.match(r, /isMainAdminUser/);
   assert.match(r, /rpc\("flat_blockers"/);
   assert.match(r, /canRemoveAll\(rows\)/);
-  assert.ok(r.indexOf("canRemoveAll(rows)") < r.indexOf('.delete().in("id"'));
+  assert.ok(r.indexOf("canRemoveAll(rows)") < r.indexOf('.delete().eq("society_id", society).in("id"'));
   assert.match(r, /Run sql-security\/15/);
+  // step 4d: the server key skips the society wall, so every read and write names the caller's society (a flat id alone is not unique any more)
+  assert.match(r, /societyOfCaller\(admin, me\.userId\)/);
+  assert.match(r, /from\("flats"\)\.select\("id, tower"\)\.eq\("society_id", society\)/);
+  assert.match(r, /rpc\("flat_blockers", \{ p_flats: ids, p_society: society \}\)/);
+  assert.doesNotMatch(r, /\.delete\(\)\.in\(/, "never delete flats by id alone");
+  const logs = r.split("\n").filter((l) => l.includes("logAccess(") && !l.includes("import "));
+  assert.ok(logs.length >= 3 && logs.every((l) => /, society\);/.test(l)), "every access-log row names the society");
+  assert.match(r, /multitenant\/MT_11/);
   assert.doesNotMatch(r, /owner_name|owner_mobile|owner_address/);
 });
 

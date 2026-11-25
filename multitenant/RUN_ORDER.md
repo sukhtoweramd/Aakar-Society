@@ -59,3 +59,8 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
   With two societies it would wipe the other one. Step 4 must scope the delete and the file label to one society.
 - `sql-security/12_CLEAR_TEST_ALL.sql` (clear test) also clears tables without a society filter; same fix.
 - A fully built database has 39 society tables + 3 directory views (checked by GRANTS_ALL.sql: 42 rows, all closed to visitors).
+
+## Step 4d-3 (25 Nov 2026): MT_11 flat lookups
+- `MT_11_FLAT_LOOKUPS.sql` after MT_10: the flat / bill / committee lookup functions look in the login's society; `flat_blockers` takes a society. Check table: 11 / yes / yes / true / false / 12. `MT_11_UNDO.sql` puts every function back.
+- `MT_11_TEST.sql` on the TEST project only (aanganone): lines 1 - 20 and `21 overall: PASS`. Never on live.
+- Run MT_11 on a database BEFORE the app version with the new `/api/flat-remove` is live on it (the route passes `p_society`).

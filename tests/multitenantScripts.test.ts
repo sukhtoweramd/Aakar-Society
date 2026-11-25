@@ -155,3 +155,33 @@ test("MT_10 rebuilds the three directory views for the caller's society, joins o
   assert.match(mt10test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.doesNotMatch(mt10, /\bdrop view\b/i, "views are replaced in place so their grants stay");
 });
+
+// Step 4d-3: the functions that look a flat / bill / the committee up do it in the LOGIN'S society (MT_11).
+const mt11 = readFileSync(join(root, "multitenant/MT_11_FLAT_LOOKUPS.sql"), "utf8");
+const mt11undo = readFileSync(join(root, "multitenant/MT_11_UNDO.sql"), "utf8");
+const mt11test = readFileSync(join(root, "multitenant/MT_11_TEST.sql"), "utf8");
+
+test("MT_11 rewrites the flat-lookup functions from their live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  for (const f of ["flat_is_rented", "flat_has_tenant_login", "my_tenant_flat", "can_assign_areas", "area_rights", "can_approve_letters",
+                   "can_approve_booking", "my_flat_is_committee", "committee_people", "flat_people_counts", "bill_is_tenant", "flat_blockers"]) {
+    assert.ok(mt11.includes(`public.${f}(`) , `${f} is rewritten`);
+    assert.ok(mt11undo.includes("zz_mt11_function_backup"), "the undo reads the saved copy");
+  }
+  assert.match(mt11, /pg_get_functiondef\(s::regprocedure\)/, "rewritten from the live text");
+  assert.match(mt11, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.match(mt11, /if d !~\* 'active_society' and d !~\* 'p_society' then/, "only the ORIGINAL text is saved, so a re-run cannot overwrite it");
+  assert.match(mt11, /case when s = 'public\.can_approve_booking\(\)' then 2 else 1 end/, "can_approve_booking has two flat lookups and both are filtered");
+  assert.match(mt11, /join public\.flats f on f\.society_id = t\.society_id and f\.id = t\.flat_id/, "tenant login joins its flat in the same society");
+  assert.match(mt11, /m\.society_id = \(select public\.active_society\(\)\) and \(public\.is_committee\(\) or exists \(/, "the old A-or-B is bracketed under the society filter");
+  assert.match(mt11, /a\.attname <> ''society_id''/, "flat_blockers skips the society_id column of the composite foreign keys");
+  assert.match(mt11, /p_society uuid DEFAULT NULL::uuid/, "flat_blockers takes a society; left out = the first society's (server key, no login)");
+  assert.match(mt11, /revoke all on function public\.flat_blockers\(text\[\], uuid\) from public, anon, authenticated/);
+  assert.match(mt11, /grant execute on function public\.flat_blockers\(text\[\], uuid\) to service_role/);
+  assert.match(mt11, /Run MT_03/, "needs active_society() and says so");
+  assert.doesNotMatch(mt11, /chr\(10\)/, "the script must not depend on a fixed line break (a function pasted from Windows has CR + LF)");
+  assert.doesNotMatch(mt11, /\bdrop function public\.(?!flat_blockers)/i, "only the old one-argument flat_blockers is dropped");
+  assert.doesNotMatch(mt11, /\b(insert into|update|delete from) public\.(?!zz_mt11)/i, "changes no table and no data");
+  assert.match(mt11undo, /drop function public\.flat_blockers\(text\[\], uuid\)/);
+  assert.match(mt11test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt11test, /NEVER run it on Aakar/, "the test says it is for the test project only");
+});
