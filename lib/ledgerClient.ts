@@ -1,12 +1,20 @@
 "use client";
 import { supabase } from "./supabaseClient";
 import type { StoredFile } from "./society";
+import { badReplyMessage } from "./apiReply";
 
 /** Call our own API routes with the logged-in user's token. */
 export async function api(path: string, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
   const res = await fetch(path, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${data.session?.access_token || ""}` } });
-  const j = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
+  let body = "", readError = "", j: any = null, parsed = false;
+  try { body = await res.text(); } catch (e: any) { readError = `${e?.name || "Error"} ${e?.message || ""}`.trim(); }
+  if (!readError) { try { j = JSON.parse(body); parsed = true; } catch { /* not JSON */ } }
+  if (!parsed || j === null) {
+    const msg = badReplyMessage({ status: res.status, readError, body, contentType: res.headers.get("content-type"), ref: res.headers.get("x-vercel-id") });
+    console.warn("[api]", path, msg);
+    throw new Error(msg);
+  }
   if (!res.ok || j.error) throw new Error(j.error || `Server error ${res.status}`);
   return j;
 }
