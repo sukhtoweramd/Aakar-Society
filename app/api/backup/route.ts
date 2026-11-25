@@ -5,6 +5,8 @@
 //                                     current records is taken first.
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
+import { backupSocietyError } from "@/lib/backupScope";
+import { societyOfCaller } from "@/lib/memberships";
 import { allUsers, backupId, keyForId, buildBackup, isCommitteeUser, listBackups, logAccess, mainAdminId, readStoredBackup, storeBackup, type Backup } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +18,7 @@ async function guard(req: NextRequest) {
   if (!me.isCommittee) return { error: NextResponse.json({ error: "Committee only." }, { status: 403 }) };
   const admin = getAdminClient();
   if (!admin) return { error: NextResponse.json({ error: "SUPABASE_SECRET_KEY is not set in Vercel environment variables." }, { status: 500 }) };
-  return { me, admin };
+  return { me, admin, society: await societyOfCaller(admin, me.userId) }; // every read and write below names this society (the server key skips the database wall)
 }
 
 // A backup holds every resident's records, so downloading one (or making one that is handed to the browser) is
@@ -30,24 +32,24 @@ const MAIN_ADMIN_ONLY = () => NextResponse.json({ error: "Only the main admin lo
 export async function GET(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
-  const { admin, me } = g;
+  const { admin, me, society } = g;
   try {
     const id = req.nextUrl.searchParams.get("id");
     if (id) {
       if (!(await isMainAdminLogin(admin, me.userId))) return MAIN_ADMIN_ONLY();
-      const key = await keyForId(id);
+      const key = await keyForId(id, society);
       if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 });
-      const b = await readStoredBackup(key);
-      await logAccess(admin, me.email, "backup_downloaded", `backup of ${b.created_at}`);
+      const b = await readStoredBackup(key, society);
+      await logAccess(admin, me.email, "backup_downloaded", `backup of ${b.created_at}`, "", society);
       return NextResponse.json({ backup: b });
     }
     if (req.nextUrl.searchParams.get("log")) {
-      const { data, error } = await admin.from("access_log").select("*").order("at", { ascending: false }).limit(30);
+      const { data, error } = await admin.from("access_log").select("*").eq("society_id", society).order("at", { ascending: false }).limit(30);
       return NextResponse.json({ log: error ? null : data, needsSql: !!error });
     }
     const committee = (await allUsers(admin)).filter(isCommitteeUser);
     const main = committee.find((u) => u.id === mainAdminId(committee));
-    const backups = await listBackups();
+    const backups = await listBackups(society);
     return NextResponse.json({ backups: backups && backups.map((b) => ({ id: backupId(b.key), kind: b.kind, created: b.created, size: b.size })), r2: backups !== null, isMainAdmin: main?.id === me.userId, mainAdminEmail: main?.email || null });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed" }, { status: 500 });
@@ -57,34 +59,37 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
-  const { admin, me } = g;
+  const { admin, me, society } = g;
   const body = await req.json().catch(() => ({}));
   try {
     if (body.action === "backup") {
       if (!(await isMainAdminLogin(admin, me.userId))) return MAIN_ADMIN_ONLY();
-      const b = await buildBackup(admin, me.email, "manual");
-      const key = await storeBackup(b);
-      await logAccess(admin, me.email, "backup", key ? "saved in file storage + downloaded" : "downloaded only (R2 not set up)", Object.entries(b.counts).map(([t, n]) => `${t} ${n}`).join(", "));
+      const b = await buildBackup(admin, me.email, "manual", society);
+      const key = await storeBackup(b, society);
+      await logAccess(admin, me.email, "backup", key ? "saved in file storage + downloaded" : "downloaded only (R2 not set up)", Object.entries(b.counts).map(([t, n]) => `${t} ${n}`).join(", "), society);
       return NextResponse.json({ backup: b, stored: !!key });
     }
     if (body.action === "restore") {
       const committee = (await allUsers(admin)).filter(isCommitteeUser);
       if (mainAdminId(committee) !== me.userId) return NextResponse.json({ error: "Only the main admin login can restore a backup." }, { status: 403 });
       let b: Backup = body.backup;
-      if (body.id) { const key = await keyForId(String(body.id)); if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 }); b = await readStoredBackup(key); }
+      if (body.id) { const key = await keyForId(String(body.id), society); if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 }); b = await readStoredBackup(key, society); }
       if (!b || b.app !== "aakar-society" || typeof b.tables !== "object" || !Array.isArray(b.tables.flats) || !b.tables.flats.length)
         return NextResponse.json({ error: "This is not a valid society backup file." }, { status: 400 });
+      // A file may only go back into the society it was made from (a file from before step 4d has no society id: it is the first society's).
+      const wrong = backupSocietyError(b, society);
+      if (wrong) return NextResponse.json({ error: wrong }, { status: 400 });
       // Safety copy of what is there now, so a wrong restore can be undone.
-      const before = await buildBackup(admin, me.email, "pre-restore");
-      const safetyKey = await storeBackup(before);
+      const before = await buildBackup(admin, me.email, "pre-restore", society);
+      const safetyKey = await storeBackup(before, society);
       if (!safetyKey) return NextResponse.json({ error: "Restore needs file storage (R2) to keep a safety copy first. R2 is not configured." }, { status: 500 });
-      const { data, error } = await admin.rpc("restore_society_backup", { p: b });
+      const { data, error } = await admin.rpc("restore_society_backup", { p: b, p_society: society });
       if (error) {
-        const needSql = /function .*restore_society_backup|could not find the function/i.test(error.message);
-        await logAccess(admin, me.email, "restore_failed", `backup of ${b.created_at}`, error.message);
-        return NextResponse.json({ error: needSql ? "Run BACKUP_RESTORE.sql in Supabase first." : `Restore stopped; nothing was changed. ${error.message}` }, { status: needSql ? 400 : 500 });
+        const needSql = /function .*restore_society_backup|could not find the function/i.test(error.message); // also when multitenant/MT_09 is not run yet (the society argument)
+        await logAccess(admin, me.email, "restore_failed", `backup of ${b.created_at}`, error.message, society);
+        return NextResponse.json({ error: needSql ? "Run BACKUP_RESTORE.sql and multitenant/MT_09 in Supabase first." : `Restore stopped; nothing was changed. ${error.message}` }, { status: needSql ? 400 : 500 });
       }
-      await logAccess(admin, me.email, "restore", `backup of ${b.created_at}`, "safety copy of earlier records saved");
+      await logAccess(admin, me.email, "restore", `backup of ${b.created_at}`, "safety copy of earlier records saved", society);
       return NextResponse.json({ ok: true, restored: data });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
