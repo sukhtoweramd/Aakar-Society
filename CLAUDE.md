@@ -92,6 +92,7 @@
   `flat_people_counts`, `bill_is_tenant`) look in `(select public.active_society())` (strict: a login with no society finds nothing; `area_rights` no longer uses `current_society_or_first()`). `my_home_flat`, `can_set_booking_charge`, `my_flat` are unchanged on purpose.
   `flat_blockers(p_flats, p_society default null)` (server key only; left out = Aakar's) counts only that society's rows and skips the `society_id` column of the composite keys (the old text failed with "uuid = text" since MT_07). Rewritten from live text like MT_09; originals in `zz_mt11_function_backup`.
   `/api/flat-remove` (same PR) names the caller's society in every read / write / `flat_blockers` / access-log row: run MT_11 on a database BEFORE the app that passes `p_society` reaches it. NEVER run `MT_11_TEST.sql` on live (it moves the committee login to another society, rolled back).
+  MT_12 (`MT_12_BOOKING_ACTIONS.sql`, `_UNDO`, `_TEST`): the five booking actions (`booked_slots`, `request_booking`, `cancel_booking`, `decide_booking`, `set_booking_charge`) look in `(select public.active_society())` (strict: a login with no society finds nothing); `decide_booking` writes its notice, bill and bill counter under `b.society_id` (the booking's society), not the fallback. Rewritten from live text like MT_11; originals in `zz_mt12_function_backup`. Needs MT_11 first. NEVER run `MT_12_TEST.sql` on live.
 
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
