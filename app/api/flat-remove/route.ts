@@ -6,6 +6,7 @@ import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
 import { MAX_REMOVE, canRemoveAll, removeText, type FlatBlocker } from "@/lib/flatRemove";
+import { societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 
@@ -20,34 +21,35 @@ export async function POST(req: NextRequest) {
   const tower = String(body.tower ?? "").trim();
   const flat = String(body.flat ?? "").trim();
   try {
+    const society = await societyOfCaller(admin, me.userId); // the server key skips the database wall: every read and write below names this society
     if (!(await isMainAdminUser(admin, me.userId))) {
-      await logAccess(admin, me.email, "refused_remove_flats", tower || flat);
+      await logAccess(admin, me.email, "refused_remove_flats", tower || flat, "", society);
       return NextResponse.json({ error: "Only the main admin login can remove flats." }, { status: 403 });
     }
     if (!tower && !flat) return NextResponse.json({ error: "Which tower or flat?" }, { status: 400 });
-    const { data: all, error: fe } = await admin.from("flats").select("id, tower");
+    const { data: all, error: fe } = await admin.from("flats").select("id, tower").eq("society_id", society);
     if (fe) throw fe;
     const ids = (all || []).filter((f: any) => (flat ? String(f.id) === flat : String(f.tower ?? "").trim() === tower)).map((f: any) => String(f.id));
     if (!ids.length) return NextResponse.json({ error: "No such flat." }, { status: 404 });
     if (ids.length > MAX_REMOVE) return NextResponse.json({ error: `Too many flats (${ids.length}) for one go.` }, { status: 400 });
 
-    const { data, error } = await admin.rpc("flat_blockers", { p_flats: ids });
+    const { data, error } = await admin.rpc("flat_blockers", { p_flats: ids, p_society: society });
     if (error) {
-      if (/flat_blockers|schema cache|does not exist/i.test(error.message)) return NextResponse.json({ error: "Run sql-security/15_FLAT_EMPTY_CHECK.sql in Supabase first." }, { status: 500 });
+      if (/flat_blockers|schema cache|does not exist/i.test(error.message)) return NextResponse.json({ error: "Run sql-security/15_FLAT_EMPTY_CHECK.sql and multitenant/MT_11 in Supabase first." }, { status: 500 });
       throw error;
     }
     const rows = (data || []) as FlatBlocker[];
     if (mode === "check") return NextResponse.json({ ok: true, rows, text: removeText(rows) });
 
     if (!canRemoveAll(rows)) {
-      await logAccess(admin, me.email, "refused_remove_flats", tower || flat, "flats hold data");
+      await logAccess(admin, me.email, "refused_remove_flats", tower || flat, "flats hold data", society);
       return NextResponse.json({ error: removeText(rows), rows }, { status: 409 });
     }
     for (let i = 0; i < ids.length; i += 200) {
-      const { error: de } = await admin.from("flats").delete().in("id", ids.slice(i, i + 200));
+      const { error: de } = await admin.from("flats").delete().eq("society_id", society).in("id", ids.slice(i, i + 200));
       if (de) throw new Error(`${i ? "Some flats were removed, then it stopped: " : "Nothing was removed: "}${de.message}`);
     }
-    await logAccess(admin, me.email, "flats_removed", tower || flat, `${ids.length} flat(s)`);
+    await logAccess(admin, me.email, "flats_removed", tower || flat, `${ids.length} flat(s)`, society);
     return NextResponse.json({ ok: true, removed: ids.length });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed" }, { status: 500 });

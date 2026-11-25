@@ -20,3 +20,15 @@ select schemaname || '.' || tablename as tbl, policyname, permissive, cmd
   from pg_policies where schemaname = 'public' and policyname <> 'society_wall'
    and (coalesce(qual, '') || coalesce(with_check, '')) ~* 'my_flat|my_tenant_flat|my_home_flat|is_committee|is_main_admin|can_|flat_is_rented'
  order by tbl, policyname;
+
+-- Block 4 (MT_11): the live text of the group B functions (flat lookups), one row each, line breaks flattened so it pastes as a table.
+-- Read only. Function code is not residents' data (the same code is in this repo), so the rows are safe to paste.
+select p.proname as function_name,
+       case when p.prosecdef then 'DEFINER' else 'invoker' end as runs_as,
+       regexp_replace(pg_get_functiondef(p.oid), '\s*\n\s*', ' ', 'g') as live_text
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+   and p.proname in ('flat_is_rented','flat_has_tenant_login','my_tenant_flat','my_home_flat','my_flat','can_assign_areas','area_rights',
+                     'can_approve_letters','can_approve_booking','my_flat_is_committee','committee_people','flat_people_counts',
+                     'bill_is_tenant','can_set_booking_charge','flat_blockers')
+ order by p.proname;
