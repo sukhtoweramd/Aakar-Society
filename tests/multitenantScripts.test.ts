@@ -185,3 +185,24 @@ test("MT_11 rewrites the flat-lookup functions from their live text, saves the o
   assert.match(mt11test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt11test, /NEVER run it on Aakar/, "the test says it is for the test project only");
 });
+
+// Step 4d-4: the five booking actions act only in the LOGIN'S society (MT_12).
+const mt12 = readFileSync(join(root, "multitenant/MT_12_BOOKING_ACTIONS.sql"), "utf8");
+const mt12undo = readFileSync(join(root, "multitenant/MT_12_UNDO.sql"), "utf8");
+const mt12test = readFileSync(join(root, "multitenant/MT_12_TEST.sql"), "utf8");
+
+test("MT_12 rewrites the booking actions from their live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  for (const f of ["booked_slots", "cancel_booking", "decide_booking", "request_booking", "set_booking_charge"]) {
+    assert.ok(mt12.includes(`public.${f}(`) || mt12.includes(`'${f}'`) || mt12.includes(f), `${f} is rewritten`);
+  }
+  assert.match(mt12, /pg_get_functiondef\(/, "rewritten from the live text");
+  assert.match(mt12, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.match(mt12, /zz_mt12_function_backup/, "the originals are saved for the undo");
+  assert.match(mt12, /MT_11/, "needs MT_11 first and says so");
+  assert.match(mt12, /b\.society_id/, "decide_booking takes the society from the booking itself, not from the fallback");
+  assert.doesNotMatch(mt12, /\bdrop function\b/i, "functions are replaced in place so their grants stay");
+  assert.doesNotMatch(mt12, /^\s*(delete from|update) public\./im, "changes no table and no data (the insert texts in the script are only patterns for the function text)");
+  assert.match(mt12undo, /zz_mt12_function_backup/, "the undo reads the saved copy");
+  assert.match(mt12test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt12test, /NEVER run it on Aakar/, "the test says it is for the test project only");
+});

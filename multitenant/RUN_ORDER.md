@@ -64,3 +64,7 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - `MT_11_FLAT_LOOKUPS.sql` after MT_10: the flat / bill / committee lookup functions look in the login's society; `flat_blockers` takes a society. Check table: 11 / yes / yes / true / false / 12. `MT_11_UNDO.sql` puts every function back.
 - `MT_11_TEST.sql` on the TEST project only (aanganone): lines 1 - 20 and `21 overall: PASS`. Never on live.
 - Run MT_11 on a database BEFORE the app version with the new `/api/flat-remove` is live on it (the route passes `p_society`).
+
+## Step 4d-4 (25 Nov 2026): MT_12 booking actions
+- `MT_12_BOOKING_ACTIONS.sql` after MT_11 (it stops and says so if MT_11 is missing): `booked_slots`, `request_booking`, `cancel_booking`, `decide_booking`, `set_booking_charge` act only in the login's society; `decide_booking` writes the notice, bill and bill counter under the booking's own society. Check table: 5 / yes / true / false (the third line only shows who may call `request_booking`, MT_12 does not change it) / 5. `MT_12_UNDO.sql` puts the five back (check: 0 / yes).
+- `MT_12_TEST.sql` on the TEST project only (aanganone): lines 1 - 19 and `20 overall: PASS`. Never on live.
