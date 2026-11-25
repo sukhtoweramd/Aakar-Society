@@ -133,3 +133,25 @@ test("MT_09 scopes clear_test_documents and restore_society_backup to one societ
   assert.match(mt09undo, /zz_mt09_function_backup/);
   readFileSync(join(root, "multitenant/MT_09_TEST.sql"), "utf8");
 });
+
+// Step 4d-2: the three directory views show only the society of the login that is asking (MT_10).
+const mt10 = readFileSync(join(root, "multitenant/MT_10_DIRECTORY_VIEWS.sql"), "utf8");
+const mt10undo = readFileSync(join(root, "multitenant/MT_10_UNDO.sql"), "utf8");
+const mt10test = readFileSync(join(root, "multitenant/MT_10_TEST.sql"), "utf8");
+
+test("MT_10 rebuilds the three directory views for the caller's society, joins on (society, flat id), and can be undone", () => {
+  for (const v of ["flat_directory", "member_directory", "business_directory"]) {
+    assert.match(mt10, new RegExp(`create or replace view public\\.${v} with \\(security_invoker = false\\)`), `${v} stays an owner-rights view`);
+    assert.ok(mt10undo.includes("zz_mt10_view_backup") && mt10.includes(`'${v}'`), `${v} is saved for the undo`);
+  }
+  assert.equal((mt10.match(/\(select public\.active_society\(\)\)/g) || []).length, 3, "each view filters by the login's society");
+  assert.match(mt10, /m\.society_id = f\.society_id and m\.flat_id = f\.id/, "member_directory joins members on (society, flat id)");
+  assert.match(mt10, /f\.society_id = m\.society_id and f\.id = m\.flat_id/, "business_directory joins flats on (society, flat id)");
+  assert.doesNotMatch(mt10, /on m\.flat_id = f\.id|on f\.id = m\.flat_id/, "never join on the flat id alone");
+  assert.match(mt10, /if d !~ 'active_society' then/, "only the ORIGINAL view text is saved, so a re-run cannot overwrite it");
+  assert.match(mt10, /nothing was changed\. Send me its text/, "an unexpected column list stops the script");
+  assert.match(mt10, /revoke all on public\.flat_directory, public\.member_directory, public\.business_directory from anon, public/);
+  assert.match(mt10, /Run MT_03/, "needs active_society() and says so");
+  assert.match(mt10test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.doesNotMatch(mt10, /\bdrop view\b/i, "views are replaced in place so their grants stay");
+});
