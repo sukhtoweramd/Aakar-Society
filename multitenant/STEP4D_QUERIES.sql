@@ -32,3 +32,13 @@ select p.proname as function_name,
                      'can_approve_letters','can_approve_booking','my_flat_is_committee','committee_people','flat_people_counts',
                      'bill_is_tenant','can_set_booking_charge','flat_blockers')
  order by p.proname;
+
+-- Block 5 (MT_12): the live text of the booking actions (group C, batch 1), one row per function, line breaks flattened so it pastes as a table.
+-- Read only. Function code is not residents' data (the same code is in this repo), so the rows are safe to paste.
+select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as arguments,
+       case when p.prosecdef then 'DEFINER' else 'invoker' end as runs_as,
+       regexp_replace(pg_get_functiondef(p.oid), '\s*\n\s*', ' ', 'g') as live_text
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+   and p.proname in ('request_booking', 'cancel_booking', 'decide_booking', 'set_booking_charge', 'booked_slots')
+ order by p.proname, 2;
