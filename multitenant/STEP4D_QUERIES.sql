@@ -42,3 +42,14 @@ select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as 
  where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
    and p.proname in ('request_booking', 'cancel_booking', 'decide_booking', 'set_booking_charge', 'booked_slots')
  order by p.proname, 2;
+
+-- Block 6 (MT_13): the live text of the event actions (group C, batch 2), one row per function, line breaks flattened so it pastes as a table.
+-- Read only. Function code is not residents' data (the same code is in this repo), so the rows are safe to paste.
+select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as arguments,
+       case when p.prosecdef then 'DEFINER' else 'invoker' end as runs_as,
+       regexp_replace(pg_get_functiondef(p.oid), '\s*\n\s*', ' ', 'g') as live_text
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+   and p.proname in ('my_event_role', 'register_for_event', 'set_event_registration', 'submit_event_payment',
+                     'verify_event_payment', 'set_event_money_settings', 'gate_pass', 'gate_undo')
+ order by p.proname, 2;
