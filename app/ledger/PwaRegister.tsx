@@ -26,7 +26,7 @@ const isStandalone = () =>
 const isIos = () => typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 /** INSTALL APP button (Android / desktop Chrome & Edge) or an "Add to Home Screen" tip on iPhone. */
-export function InstallApp({ variant }: { variant: "bar" | "card" }) {
+export function InstallApp({ variant, label }: { variant: "bar" | "card"; label?: string }) {
   const [, force] = useState(0);
   const [showTip, setShowTip] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -42,7 +42,7 @@ export function InstallApp({ variant }: { variant: "bar" | "card" }) {
     const install = async () => { deferred.prompt(); await deferred.userChoice.catch(() => null); deferred = null; notify(); };
     return variant === "bar"
       ? <button onClick={install} className="border px-3 py-1.5 text-[11px] tracking-[0.06em] font-semibold rounded-[3px] bg-white/10 text-white border-white/20">⬇ INSTALL APP</button>
-      : <button type="button" onClick={install} className="btn-line w-full mono text-[11px] tracking-[0.12em] py-2.5">⬇ INSTALL {SOCIETY.name} APP</button>;
+      : <button type="button" onClick={install} className="btn-line w-full mono text-[11px] tracking-[0.12em] py-2.5">⬇ INSTALL {label || `${SOCIETY.name} APP`}</button>;
   }
 
   if (isIos() && variant === "card") {
