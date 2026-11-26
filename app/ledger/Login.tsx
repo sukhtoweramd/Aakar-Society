@@ -55,7 +55,7 @@ export default function Login() {
       if (!me && slug && slug !== word && !(usesLegacyAddress(word) && usesLegacyAddress(slug))) {
         await supabase.auth.signOut();
         setBusy(false);
-        setError(`This login belongs to another society (${(mine as { name?: string }).name || slug}). Open that society's address or use its society word: ${slug}`);
+        setError(`This login is not for this address. It belongs to ${(mine as { name?: string }).name || slug}. Open that society's own address (/${slug}) and log in there.`);
         return;
       }
     }
