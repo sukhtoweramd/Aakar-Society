@@ -73,3 +73,7 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 ## Step 4d-5 (25 Nov 2026): MT_13 event actions
 - `MT_13_EVENT_ACTIONS.sql` after MT_12 (it stops and says so if MT_11 is missing): `my_event_role`, `gate_pass`, `gate_undo`, `register_for_event`, `set_event_registration`, `set_event_money_settings`, `submit_event_payment`, `verify_event_payment` act only in the login's society; money rows, check-ins and registrations name their society. Check table: 8 / yes / true / false / 8 (the third line only shows who may call `gate_pass`, MT_13 does not change it) / 8. `MT_13_UNDO.sql` puts the eight back (check: 0).
 - `MT_13_TEST.sql` on the TEST project only (aanganone): lines 1 - 25 and `26 overall: PASS`. Never on live.
+
+## Step 4d-6 (26 Nov 2026): MT_14 complaint / letter / meeting / reference actions
+- `MT_14_COMPLAINT_LETTER_ACTIONS.sql` after MT_13 (it stops and says so if MT_11 is missing): `update_complaint`, `reassign_complaint`, `withdraw_letter_request`, `mark_my_action_done`, `my_action_points`, `my_committee_meetings`, `my_meeting`, `utr_already_reported` act only in the login's society. Check table: 8 / yes / no / true / false (the last line only shows who may call `update_complaint`; MT_14 does not change it) / 8. `storage_stats` is left as it is on purpose (database-wide sizes only). `MT_14_UNDO.sql` puts the eight back (check: 0).
+- `MT_14_TEST.sql` on the TEST project only (aanganone): lines 1 - 30 and `31 overall: PASS`. Never on live.

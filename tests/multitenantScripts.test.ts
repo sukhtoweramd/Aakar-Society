@@ -229,3 +229,26 @@ test("MT_13 rewrites the event actions from their live text, saves the originals
   assert.match(mt13test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt13test, /NEVER run it on Aakar/, "the test says it is for the test project only");
 });
+
+// Step 4d-6: the eight complaint / letter-request / meeting / payment-reference actions act only in the LOGIN'S society (MT_14).
+const mt14 = readFileSync(join(root, "multitenant/MT_14_COMPLAINT_LETTER_ACTIONS.sql"), "utf8");
+const mt14undo = readFileSync(join(root, "multitenant/MT_14_UNDO.sql"), "utf8");
+const mt14test = readFileSync(join(root, "multitenant/MT_14_TEST.sql"), "utf8");
+
+test("MT_14 rewrites the complaint, letter, meeting and reference actions from their live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  for (const f of ["mark_my_action_done", "my_action_points", "my_committee_meetings", "my_meeting", "reassign_complaint", "update_complaint", "utr_already_reported", "withdraw_letter_request"]) {
+    assert.ok(mt14.includes(`public.${f}(`), `${f} is rewritten`);
+  }
+  assert.match(mt14, /pg_get_functiondef\(/, "rewritten from the live text");
+  assert.match(mt14, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.match(mt14, /zz_mt14_function_backup/, "the originals are saved for the undo");
+  assert.match(mt14, /MT_11/, "needs MT_11 first and says so");
+  assert.match(mt14, /pr\.society_id = \(select public\.active_society\(\)\)/, "the payment reference check looks in the login's society only");
+  assert.match(mt14, /m0\.society_id = \(select public\.active_society\(\)\)/, "a committee login of another society gets no meeting");
+  assert.match(mt14, /storage_stats\(\)[^\n]*\n?[^\n]*on purpose|NOT changed on purpose: storage_stats/, "storage_stats is left alone on purpose and the script says so");
+  assert.doesNotMatch(mt14, /\bdrop function\b/i, "functions are replaced in place so their grants stay");
+  assert.doesNotMatch(mt14, /^\s*(delete from|update) public\./im, "changes no table and no data");
+  assert.match(mt14undo, /zz_mt14_function_backup/, "the undo reads the saved copy");
+  assert.match(mt14test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt14test, /NEVER run it on Aakar/, "the test says it is for the test project only");
+});
