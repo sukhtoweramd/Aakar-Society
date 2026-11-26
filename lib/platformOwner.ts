@@ -57,3 +57,29 @@ export function societyList(societies: SocietyRow[], users: (OwnerUser & { email
 
 /** True when the login's app metadata has no role (the product owner login must have none). */
 export const hasNoRole = (appMeta: unknown) => roleOf(appMeta) === null;
+
+/** A suggested society word from the name: "Green Park Co-op" -> "green-park-co-op" (3 to 40 characters; "" when nothing usable). */
+export function suggestWord(name: string): string {
+  const w = String(name || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+  return w.length >= 3 ? w : "";
+}
+
+/** What the "new society" form still needs, in words (empty list = ready). Same rules as newSocietyInput, without throwing. */
+export function newSocietyProblems(raw: { name?: string; word?: string; ownerEmail?: string }, usedWords: string[] = []): string[] {
+  const out: string[] = [];
+  const name = String(raw.name ?? "").trim();
+  if (name.length < 3) out.push("Society name (at least 3 letters)");
+  const word = String(raw.word ?? "").trim().toLowerCase();
+  if (!cleanWord(word)) out.push("Society word (3 to 40 small letters, digits or hyphens; not a reserved word)");
+  else if (usedWords.map((w) => w.toLowerCase()).includes(word)) out.push("Society word is already used");
+  if (!EMAIL.test(String(raw.ownerEmail ?? "").trim())) out.push("Owner's email");
+  return out;
+}
+
+/** Totals for the summary strip on the platform page. */
+export function platformTotals(items: SocietyListItem[]) {
+  return items.reduce((t, s) => ({
+    societies: t.societies + 1, active: t.active + (s.status === "active" ? 1 : 0), flats: t.flats + s.flats,
+    logins: t.logins + s.logins.committee + s.logins.flat + s.logins.tenant,
+  }), { societies: 0, active: 0, flats: 0, logins: 0 });
+}
