@@ -6,7 +6,7 @@ import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { flatEmail, normaliseFlat, tenantEmail } from "@/lib/residents";
-import { isMainAdminUser } from "@/lib/mainAdmin";
+import { isMainAdminUser, societyUsers } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
 import { addMembership, membershipRow, societyOfCaller, societyWordOf } from "@/lib/memberships";
 
@@ -15,26 +15,13 @@ export const dynamic = "force-dynamic";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; // no 0/O/1/l/I
 const newPassword = () => Array.from({ length: 10 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 
-async function residentUsers(admin: SupabaseClient): Promise<User[]> {
-  const all: User[] = [];
-  for (let page = 1; page < 50; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    all.push(...data.users);
-    if (data.users.length < 1000) break;
-  }
-  return all.filter((u) => (u.app_metadata as any)?.role === "resident");
+// Logins of the caller's own society only (the server key lists every login of the project).
+async function residentUsers(admin: SupabaseClient, society: string): Promise<User[]> {
+  return (await societyUsers(admin, society)).filter((u) => (u.app_metadata as any)?.role === "resident");
 }
 
-async function tenantUsers(admin: SupabaseClient): Promise<User[]> {
-  const all: User[] = [];
-  for (let page = 1; page < 50; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    all.push(...data.users);
-    if (data.users.length < 1000) break;
-  }
-  return all.filter((u) => (u.app_metadata as any)?.role === "tenant");
+async function tenantUsers(admin: SupabaseClient, society: string): Promise<User[]> {
+  return (await societyUsers(admin, society)).filter((u) => (u.app_metadata as any)?.role === "tenant");
 }
 const BAN = "876000h"; // about 100 years: the login cannot be used; its records stay
 
@@ -45,16 +32,16 @@ async function tenantAction(action: string, body: any, admin: SupabaseClient, me
   const { data: row, error: fe } = await me.db.from("flats").select("id, occupancy, tenant_name").eq("id", flat).maybeSingle();
   if (fe) throw fe;
   if (!row) return NextResponse.json({ error: "No such flat." }, { status: 404 });
-  const users = await tenantUsers(admin);
+  const society = await societyOfCaller(admin, me.userId);   // the server key skips the database wall: every query below names the society
+  const users = await tenantUsers(admin, society);
   const user = users.find((u) => (u.app_metadata as any)?.tenant_flat === flat);
-  const { data: rec } = await admin.from("flat_tenant_logins").select("*").eq("flat_id", flat).eq("active", true).maybeSingle();
+  const { data: rec } = await admin.from("flat_tenant_logins").select("*").eq("society_id", society).eq("flat_id", flat).eq("active", true).maybeSingle();
 
   if (action === "tenant_create") {
     if ((row as any).occupancy !== "tenant") return NextResponse.json({ error: "Mark the flat as rented (with the tenant's name) first." }, { status: 400 });
     if (rec && user && rec.user_id === user.id) return NextResponse.json({ error: "This flat already has a tenant login. Use RESET or REVOKE." }, { status: 409 });
     if (user) { const { error } = await admin.auth.admin.deleteUser(user.id); if (error) throw error; }   // an old, revoked tenant login: removed, its records stay
     const password = newPassword();
-    const society = await societyOfCaller(admin, me.userId);
     const { data: made, error } = await admin.auth.admin.createUser({
       email: tenantEmail(flat, await societyWordOf(admin, society)), password, email_confirm: true,
       app_metadata: { role: "tenant", tenant_flat: flat },
@@ -63,8 +50,8 @@ async function tenantAction(action: string, body: any, admin: SupabaseClient, me
     if (error || !made.user) throw error || new Error("Could not create the login.");
     try { await addMembership(admin, membershipRow(made.user.id, society, "tenant", flat)); }
     catch (e) { await admin.auth.admin.deleteUser(made.user.id); throw e; }
-    await admin.from("flat_tenant_logins").update({ active: false, revoked_at: new Date().toISOString(), revoked_by: me.email, revoke_reason: "replaced" }).eq("flat_id", flat).eq("active", true);
-    const { error: ie } = await admin.from("flat_tenant_logins").insert({ user_id: made.user.id, flat_id: flat, tenant_name: (row as any).tenant_name || null, created_by: me.email });
+    await admin.from("flat_tenant_logins").update({ active: false, revoked_at: new Date().toISOString(), revoked_by: me.email, revoke_reason: "replaced" }).eq("society_id", society).eq("flat_id", flat).eq("active", true);
+    const { error: ie } = await admin.from("flat_tenant_logins").insert({ society_id: society, user_id: made.user.id, flat_id: flat, tenant_name: (row as any).tenant_name || null, created_by: me.email });
     if (ie) { await admin.auth.admin.deleteUser(made.user.id); throw ie; }
     return NextResponse.json({ ok: true, flat_id: flat, login: `${flat}-T`, password });
   }
@@ -79,7 +66,7 @@ async function tenantAction(action: string, body: any, admin: SupabaseClient, me
   if (action === "tenant_revoke") {
     const { error } = await admin.auth.admin.updateUserById(user.id, { ban_duration: BAN });
     if (error) throw error;
-    await admin.from("flat_tenant_logins").update({ active: false, revoked_at: new Date().toISOString(), revoked_by: me.email, revoke_reason: String(body.reason || "revoked by the committee").slice(0, 200) }).eq("user_id", user.id).eq("active", true);
+    await admin.from("flat_tenant_logins").update({ active: false, revoked_at: new Date().toISOString(), revoked_by: me.email, revoke_reason: String(body.reason || "revoked by the committee").slice(0, 200) }).eq("society_id", society).eq("user_id", user.id).eq("active", true);
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -98,9 +85,10 @@ export async function GET(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
   try {
-    const users = await residentUsers(g.admin);
-    const tenants = await tenantUsers(g.admin);
-    const { data: recs } = await g.admin.from("flat_tenant_logins").select("user_id, flat_id, active, created_at, revoked_at, revoke_reason");
+    const society = await societyOfCaller(g.admin, g.me.userId);
+    const users = await residentUsers(g.admin, society);
+    const tenants = await tenantUsers(g.admin, society);
+    const { data: recs } = await g.admin.from("flat_tenant_logins").select("user_id, flat_id, active, created_at, revoked_at, revoke_reason").eq("society_id", society);
     const isMainAdmin = await isMainAdminUser(g.admin, g.me.userId);
     return NextResponse.json({
       isMainAdmin,
@@ -126,16 +114,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || "");
   try {
+    const society = await societyOfCaller(admin, me.userId);
     // PR-15: removing a flat login, revoking a tenant login and creating several flat logins at once are main admin only.
     const manyAtOnce = action === "create" && Array.isArray(body.flats) && body.flats.length > 1;
     if (["remove", "tenant_revoke"].includes(action) || manyAtOnce) {
       if (!(await isMainAdminUser(admin, me.userId))) {
-        await logAccess(admin, me.email, "refused_" + (manyAtOnce ? "bulk_create" : action), String(body.flat || ""));
+        await logAccess(admin, me.email, "refused_" + (manyAtOnce ? "bulk_create" : action), String(body.flat || ""), "", society);
         return NextResponse.json({ error: "Only the main admin login can do this." }, { status: 403 });
       }
     }
     if (action.startsWith("tenant_")) return await tenantAction(action, body, admin, me);
-    const existing = await residentUsers(admin);
+    const existing = await residentUsers(admin, society);
     const byFlat = new Map(existing.map((u) => [String((u.app_metadata as any).flat_id), u]));
 
     if (action === "create") {
@@ -144,7 +133,6 @@ export async function POST(req: NextRequest) {
       const { data: rows, error } = await me.db.from("flats").select("id").in("id", flats);
       if (error) throw error;
       const valid = new Set((rows || []).map((r: any) => r.id));
-      const society = await societyOfCaller(admin, me.userId);
       const word = await societyWordOf(admin, society);
       const created: { flat_id: string; password: string }[] = [];
       const skipped: string[] = [];

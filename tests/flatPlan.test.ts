@@ -77,7 +77,7 @@ test("server route: main admin only, refuses when flats exist, builds its own li
   assert.match(r, /getAuthedClient/);
   assert.match(r, /buildFlatPlan\(towers\)/);
   assert.match(r, /already has/);
-  assert.match(r, /\.delete\(\)\.in\("id"/);
+  assert.match(r, /\.delete\(\)\.eq\("society_id", society\)\.in\("id"/);   // the undo names the society too (step 4d-3)
   assert.doesNotMatch(r, /body\.flats|body\.plan/);
 });
 
