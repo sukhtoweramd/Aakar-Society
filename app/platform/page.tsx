@@ -1,7 +1,7 @@
 "use client";
 // Product owner page: sign in, see every society as counts only, create a society, reset an owner's password.
 // The server (/api/platform) decides who may do this; this screen only shows what the server returns.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Item = { id: string; slug: string; name: string; status: string; created_at: string; owner_email: string | null; flats: number; logins: { committee: number; flat: number; tenant: number } };
@@ -21,6 +21,9 @@ export default function PlatformPage() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
   const [secret, setSecret] = useState<Secret | null>(null);
+  const [who, setWho] = useState("");
+  const [copied, setCopied] = useState(false);
+  const secretRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState(""); const [word, setWord] = useState(""); const [owner, setOwner] = useState("");
 
   const load = useCallback(async () => {
@@ -30,15 +33,17 @@ export default function PlatformPage() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSignedIn(!!data.session); if (data.session) load(); });
+    supabase.auth.getSession().then(({ data }) => { setSignedIn(!!data.session); setWho(data.session?.user.email || ""); if (data.session) load(); });
   }, [load]);
+  // a new first password is shown at the top: bring it into view (the buttons that make it are further down the page)
+  useEffect(() => { if (secret) { setCopied(false); secretRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } }, [secret]);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg("");
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
     setBusy(false);
     if (error) { setMsg("Wrong email or password."); return; }
-    setPass(""); setSignedIn(true); load();
+    setPass(""); setSignedIn(true); setWho(email.trim()); load();
   }
   async function signOut() { await supabase.auth.signOut(); setSignedIn(false); setItems(null); setSecret(null); }
 
@@ -64,7 +69,7 @@ export default function PlatformPage() {
     <div className="min-h-screen bg-[var(--bg)]">
       <div className="bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
         <div className="mx-auto max-w-[900px] px-4 min-h-[44px] flex items-center justify-between gap-2">
-          <span className="font-semibold">AanganOne • Platform</span>
+          <span className="font-semibold min-w-0 break-all">AanganOne • Platform{who && signedIn ? ` • ${who}` : ""}</span>
           {signedIn && <button onClick={signOut} className="min-h-[44px] px-2 underline">Sign out</button>}
         </div>
       </div>
@@ -83,12 +88,13 @@ export default function PlatformPage() {
         {msg && <div className="mono text-[12px] border border-red-300 bg-red-50 text-red-800 p-3">{msg}</div>}
 
         {secret && (
-          <div className={box + " space-y-1 border-[var(--gold)]"}>
+          <div ref={secretRef} className={box + " space-y-1 border-[var(--gold)] scroll-mt-16"}>
             <div className="mono text-[11px] font-bold tracking-[0.1em]">SHOWN ONCE — GIVE IT TO THE SOCIETY OWNER</div>
             {secret.word && <div className="mono text-[13px] break-all">Address: /{secret.word}</div>}
             <div className="mono text-[13px] break-all">Email: {secret.email}</div>
             <div className="mono text-[13px] break-all">First password: <b>{secret.password}</b></div>
             <div className="mono text-[11px] opacity-70">They must choose a new password at the first login.</div>
+            <button type="button" className="btn-line min-h-[44px] px-3 text-[12px] mt-2" onClick={() => { try { navigator.clipboard.writeText(`${secret.word ? `Address: /${secret.word}\n` : ""}Email: ${secret.email}\nFirst password: ${secret.password}`); setCopied(true); } catch {} }}>{copied ? "Copied" : "Copy details"}</button>
           </div>
         )}
 
