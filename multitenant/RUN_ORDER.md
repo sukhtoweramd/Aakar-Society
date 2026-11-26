@@ -90,3 +90,10 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - App: `/<society word>` (e.g. `/sample-gardens`) or the "society word" box on the plain login page. Flat logins of a society other than the first: `a101@<word>.flats.aakarsociety.app` (`lib/societyWord.ts`); Aakar keeps `a101@flats.aakarsociety.app`. A login that belongs to another society than the address says is signed out with a message. Logins created through `/api/residents` get the creating society's word. NOT done yet: the routes still list users across societies (`tenantUsers`, `byFlat`) - fix in the server-routes step before a society is onboarded for real; `FLAT_RULES` (joined B towers) is still one setting for all societies.
 - To try on aanganone: create a login `a101@sample-gardens.flats.aakarsociety.app` (Authentication > Users, auto-confirm), put it in the `flat_email` line of `SAMPLE_DATA_SOCIETY2.sql` and run it again; then log in at `/sample-gardens` with flat number A-101.
 
+## Step 4d-8 (26 Nov 2026): MT_17 - no more silent "first society" in the database
+- Run on aanganone FIRST, then (after a fresh backup download, as always) on live. `MT_17_NO_FALLBACK.sql` stops and changes nothing if a login with a role has no membership, or if a function has a form it does not know (then send me the text).
+- It saves the originals (`zz_mt17_function_backup`, `zz_mt17_default_backup`), adds `require_society(uuid)`, rewrites `clear_test_documents`, `flat_blockers`, `restore_society_backup`, `next_doc_numbers`, `is_committee` from their live text, sets every `society_id` default to `active_society()` and drops `current_society_or_first()`. Changes no data. Safe to run again.
+- Check table (7 lines): none / 39 / 0 / 3 / true / true / `6 / 39`. `MT_17_UNDO.sql` puts everything back (check: true / 39 / 3 / true).
+- `MT_17_TEST.sql` on aanganone ONLY: lines 1 - 9 and `10 overall: PASS` (the red error is expected). Never on live.
+- Afterwards: a script or route that inserts into a society table without naming `society_id` fails (by design). MT_06 / MT_08 and their `_TEST` scripts are history: do not run them again after MT_17.
+
