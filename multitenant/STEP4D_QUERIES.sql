@@ -64,3 +64,14 @@ select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as 
    and p.proname in ('update_complaint', 'reassign_complaint', 'withdraw_letter_request', 'mark_my_action_done', 'my_action_points',
                      'my_committee_meetings', 'my_meeting', 'utr_already_reported', 'storage_stats')
  order by p.proname, 2;
+
+-- Block 8 (MT_15): the live text of the six trigger functions (group D), one row per function, line breaks flattened so it pastes as a table.
+-- Read only. Function code is not residents' data (the same code is in this repo), so the rows are safe to paste.
+select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as arguments,
+       case when p.prosecdef then 'DEFINER' else 'invoker' end as runs_as,
+       regexp_replace(pg_get_functiondef(p.oid), '\s*\n\s*', ' ', 'g') as live_text
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+   and p.proname in ('committee_areas_guard', 'tenant_moved_out', 'event_team_tenant_guard', 'letter_request_before_insert',
+                     'letter_request_guard', 'letters_resident_guard', 'letters_resolution_guard')
+ order by p.proname, 2;
