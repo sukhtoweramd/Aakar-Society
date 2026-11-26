@@ -3,6 +3,7 @@
 import { supabase } from "./supabaseClient";
 import { addressOneLine, addressWithPin, label, regYear, SOCIETY, societyTitle, type Flat, societyShort } from "./society";
 import { backButton, pdfButton } from "./printBack";
+import { hasBuildingBackground, wordFromPath } from "./societyWord";
 
 export type Settings = {
   id: number; bill_prefix: string; bill_last_no: number; other_prefix: string; other_last_no: number;
@@ -175,12 +176,14 @@ tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:
 @media screen{.page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.18)}}@media print{body{background:#fff}.bar{display:none}}`;
 
 // The society's building, faint, behind every letterhead page (as on the printed letterhead). Turn off in the print bar.
-const BG_IMG = `<img class="wm" src="/print/building-bg.jpg" alt="" aria-hidden="true">`;
-const frameStart = `<section class="page"><div class="frame"><div class="inner">${BG_IMG}<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
+// That picture is Aakar's own building, so only the first society prints it (hasBuildingBackground); other societies' papers stay plain.
+const printsBackground = () => typeof window === "undefined" || hasBuildingBackground(wordFromPath(window.location.pathname));
+const BG_IMG = () => (printsBackground() ? `<img class="wm" src="/print/building-bg.jpg" alt="" aria-hidden="true">` : "");
+const frameStart = () => `<section class="page"><div class="frame"><div class="inner">${BG_IMG()}<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
 const frameEnd = `</div></div></section>`;
 /** A generic framed A4 page with the society header (used for minutes and other documents). */
 export function docPage(kind: string, big: string, small: string, inner: string, footLeft: string, footRight = "") {
-  return `${frameStart}${header(kind, big, small)}${inner}<div class="grow"></div><div class="foot"><div>${esc(footLeft)}</div><div>${esc(footRight)}</div></div>${frameEnd}`;
+  return `${frameStart()}${header(kind, big, small)}${inner}<div class="grow"></div><div class="foot"><div>${esc(footLeft)}</div><div>${esc(footRight)}</div></div>${frameEnd}`;
 }
 const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">ॐ</div>
   <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">${esc(addressOneLine())}</div></div>
@@ -204,7 +207,7 @@ export function billHtml(b: Bill, c: PrintCtx, prevDue = 0): string {
       ${s.account_name ? `<span>Account name</span><b>${esc(s.account_name)}</b>` : ""}${s.bank_name ? `<span>Bank &amp; branch</span><b>${esc([s.bank_name, s.bank_branch].filter(Boolean).join(", "))}</b>` : ""}
       ${s.account_no ? `<span>Account no.</span><b>${esc(s.account_no)}</b>` : ""}${s.ifsc ? `<span>IFSC</span><b>${esc(s.ifsc)}</b>` : ""}${s.upi_id ? `<span>UPI ID</span><b>${esc(s.upi_id)}</b>` : ""}</div>
       <div class="ln" style="font-size:7.6pt">Please write <b>${esc(f ? label(f) : b.flat_id)}</b> in the payment remark.</div></div>` : `<div class="box"><div class="lbl">PAY BY BANK TRANSFER</div><div class="ln">Bank details are available from the society office.</div></div>`;
-  return `${frameStart}${b.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
+  return `${frameStart()}${b.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
   ${header(b.kind === "maintenance" ? "MAINTENANCE BILL" : "BILL", f ? label(f) : b.flat_id, `Bill no. <b>${esc(b.bill_no)}</b>`)}
   <div class="meta"><div class="box"><div class="lbl">BILL TO</div><div class="nm">${esc(b.bill_to || f?.owner_name || "Member")}</div><div class="ln">${flatLine(f)}<br>${esc(addressWithPin())}</div></div>
     <div class="box"><div class="lbl">BILL DETAILS</div><div class="kv"><span>Bill date</span><b>${dmy(b.bill_date)}</b>${b.period_from ? `<span>Period</span><b>${dmy(b.period_from)} – ${dmy(b.period_to)}</b>` : ""}${b.due_date ? `<span>Due date</span><b>${dmy(b.due_date)}</b>` : ""}<span>Flat</span><b>${esc(f ? label(f) : b.flat_id)}</b></div></div></div>
@@ -230,7 +233,7 @@ export function receiptHtml(p: Payment, b: Bill, c: PrintCtx, allPays: Payment[]
   const name = p.received_from || b.bill_to || f?.owner_name || "Member";
   const what = b.kind === "maintenance" && b.period_from ? `maintenance charges for the period <b>${dmy(b.period_from, true)} to ${dmy(b.period_to, true)}</b>` : `<b>${esc(b.lines?.[0]?.description || "charges")}</b>`;
   const cheque = p.mode === "Cheque";
-  return `${frameStart}${p.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
+  return `${frameStart()}${p.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
   ${header("RECEIPT", f ? label(f) : p.flat_id, `Receipt no. <b>${esc(p.receipt_no)}</b>`)}
   <div class="meta"><div class="box"><div class="lbl">RECEIVED FROM</div><div class="nm">${esc(name)}</div><div class="ln">${flatLine(f)}<br>${esc(addressWithPin())}</div></div>
     <div class="box"><div class="lbl">RECEIPT DETAILS</div><div class="kv"><span>Receipt date</span><b>${dmy(p.paid_on)}</b><span>Against bill</span><b>${esc(b.bill_no)}</b>${b.period_from ? `<span>Bill period</span><b>${dmy(b.period_from)} – ${dmy(b.period_to)}</b>` : ""}<span>Flat</span><b>${esc(f ? label(f) : p.flat_id)}</b></div></div></div>
@@ -264,7 +267,7 @@ export function statementHtml(f: Flat, bills: Bill[], pays: Payment[], c: PrintC
     const more = ps.slice(1).map((p, k) => { run -= num(p.amount); const last = k === ps.length - 2; return `<tr><td></td><td style="color:var(--mute);font-size:8pt">↳ further payment</td><td></td><td class="r">${inr(p.amount)}</td><td>${dmy(p.paid_on)}</td><td>${esc(p.receipt_no)}</td><td class="r" ${last ? `style="font-weight:700;color:${run > 0 ? "#b26a00" : "#1f8a4c"}"` : ""}>${last ? inr(Math.round(run * 100) / 100) : ""}</td></tr>`; }).join("");
     return first + more;
   }).join("");
-  return `${frameStart}${header("LEDGER STATEMENT", label(f), `As on <b>${dmy(today())}</b>`)}
+  return `${frameStart()}${header("LEDGER STATEMENT", label(f), `As on <b>${dmy(today())}</b>`)}
   <div class="meta"><div class="box"><div class="lbl">MEMBER</div><div class="nm">${esc(f.owner_name || "Owner not recorded")}</div><div class="ln">${flatLine(f)}${f.occupancy === "tenant" && f.tenant_name ? `<br>Tenant: ${esc(f.tenant_name)}` : ""}</div></div>
     <div class="box"><div class="lbl">SUMMARY</div><div class="kv"><span>Total billed</span><b>₹${inr(t.billed, true)}</b><span>Total received</span><b>₹${inr(t.received, true)}</b><span>Balance due</span><b style="color:${t.due > 0 ? "#b26a00" : "#1f8a4c"}">${t.due > 0 ? "₹" + inr(t.due, true) : "NIL"}</b></div></div></div>
   <table><tr><th style="width:12%">BILL DATE</th><th>BILL NO. / PERIOD</th><th class="r" style="width:11%">BILL ₹</th><th class="r" style="width:11%">RECEIVED ₹</th><th style="width:12%">RECD. ON</th><th style="width:18%">RECEIPT NO.</th><th class="r" style="width:11%">BALANCE ₹</th></tr>
@@ -291,7 +294,7 @@ function resolutionHtml(l: Letter, c: PrintCtx): string {
   const paras = l.body.trim().split(/\n\s*\n/).map((para) => `<p style="margin:0 0 2.4mm">${esc(para).replace(/\n/g, "<br>")}</p>`).join("");
   const cell = "border:.3mm solid #444;padding:1.5mm 3mm;";
   const rows = ["Chairman", "Secretary", "Committee Member", "Date"].map((r) => `<tr style="height:11mm"><td style="${cell}width:42mm;font-weight:700">${r}</td><td style="${cell}"></td></tr>`).join("");
-  return `${frameStart}${header("RESOLUTION", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
+  return `${frameStart()}${header("RESOLUTION", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
   <div style="margin-top:4mm;text-align:center;font-size:12.5pt;font-weight:800;letter-spacing:.06em;color:var(--navy);text-decoration:underline;text-underline-offset:1.2mm">${esc(l.subject.toUpperCase())}</div>
   <div style="margin-top:2mm;font-size:9.5pt;color:#2a2822">Ref. No.: <b style="color:var(--navy)">${esc(l.ref_no)}</b> • Flat <b style="color:var(--navy)">${esc(f ? label(f) : l.flat_id)}</b></div>
   <div style="margin-top:3.5mm;font-size:10pt;line-height:1.5;color:#1f1d18;text-align:justify">${paras}</div>
@@ -321,7 +324,7 @@ export function letterHtml(l: Letter, c: PrintCtx): string {
       <div style="margin-top:6mm;font-size:11pt;color:var(--navy)"><b>Subject: ${esc(l.subject)}</b></div>
       <div style="margin-top:2mm;font-size:11pt;color:var(--navy)"><b>Ref.: Flat No. ${esc(flatText)} — Owner: ${esc(l.owner_name || "—")}</b></div>
       <div style="margin-top:6mm;font-size:11pt;color:#1f1d18">Dear Sir / Madam,</div>`;
-  return `${frameStart}${header("LETTER", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
+  return `${frameStart()}${header("LETTER", l.ref_no, `Date <b>${dmy(l.letter_date)}</b>`)}
   ${top}
   <div style="margin-top:${general ? 5 : 4}mm;font-size:11pt;line-height:1.75;color:#1f1d18;text-align:justify">${paras}</div>
   ${l.status === "cancelled" ? `<div class="void">CANCELLED</div>` : ""}
@@ -400,7 +403,7 @@ export function noticeHtml(n: { title: string | null; content: string | null; to
   const date = String(n.created_at).slice(0, 10);
   const paras = String(n.content || "").trim().split(/\n\s*\n/).filter(Boolean).map((p) => `<p style="margin:0 0 4mm">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
   const img = n.file_url && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(n.file_url) ? `<div style="margin-top:4mm;text-align:center"><img src="${esc(n.file_url)}" alt="" style="max-width:100%;max-height:110mm;object-fit:contain;border:.3mm solid var(--line)"></div>` : "";
-  return `${frameStart}${header("NOTICE", towers, `Date <b>${dmy(date)}</b>`)}
+  return `${frameStart()}${header("NOTICE", towers, `Date <b>${dmy(date)}</b>`)}
   <div style="margin-top:6mm;font-size:10.5pt;color:#2a2822">To: <b style="color:var(--navy)">All ${towers === "ALL MEMBERS" ? "members" : `members of Tower ${towers.replace(/^TOWER\s*/, "")}`}</b></div>
   <div style="margin-top:6mm;text-align:center;font-size:15pt;font-weight:800;color:var(--navy);line-height:1.5">${esc(n.title || "Notice")}</div>
   <div style="width:30mm;height:.6mm;background:var(--gold);margin:2.5mm auto 0"></div>
@@ -428,10 +431,10 @@ export function openPrint(title: string, pages: string[], win?: Window | null) {
   // off (remembered on this device), e.g. to save ink when printing many bills.
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${esc(window.location.origin)}/"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
     <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Building background</label></div>${pages.join("")}
-    <script>(function(){var cb=document.getElementById('aakarBg'),on=true;try{on=localStorage.getItem('aakar_print_bg')!=='0'}catch(e){}
+      ${printsBackground() ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Building background</label>` : ""}</div>${pages.join("")}
+    <script>(function(){var cb=document.getElementById('aakarBg');if(cb){var on=true;try{on=localStorage.getItem('aakar_print_bg')!=='0'}catch(e){}
       function set(v){cb.checked=v;document.body.classList.toggle('nobg',!v);try{localStorage.setItem('aakar_print_bg',v?'1':'0')}catch(e){}}
-      set(on);cb.onchange=function(){set(cb.checked)};
+      set(on);cb.onchange=function(){set(cb.checked)}}
       var done=false;function go(){if(done)return;done=true;document.body.dataset.ready='1';window.print()}
       function imgs(){return Promise.all([].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r})}))}
       setTimeout(function(){Promise.all([document.fonts&&document.fonts.ready?document.fonts.ready:0,imgs()]).then(function(){setTimeout(go,150)})},500);setTimeout(go,3500)})()</script></body></html>`);

@@ -26,6 +26,9 @@ export function wordFromPath(pathname: string | null | undefined): string | null
 /** Does this society's flat login use the old address form (no word inside)? True for no word and for the first society. */
 export const usesLegacyAddress = (word: string | null | undefined) => !word || word === FIRST_SOCIETY_WORD;
 
+/** The faint building picture on printed papers (public/print/building-bg.jpg) is Aakar's own building: only the first society prints it; every other society's papers stay plain. */
+export const hasBuildingBackground = (word: string | null | undefined) => usesLegacyAddress(word);
+
 /** The part after the @ for a flat login: "flats.aakarsociety.app" (first society) or "sample-gardens.flats.aakarsociety.app". */
 export function residentDomain(baseDomain: string, word?: string | null): string {
   return usesLegacyAddress(word) ? baseDomain : `${word}.${baseDomain}`;
