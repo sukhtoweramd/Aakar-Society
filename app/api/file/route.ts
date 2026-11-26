@@ -8,8 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getAuthedClient } from "@/lib/serverAuth";
 import { getR2, MAX_FILE_BYTES, ALLOWED_EXT } from "@/lib/r2Client";
-import { folderAccess, parseFileRef, safeFolder } from "@/lib/r2Keys";
-import { publicBases, signKey, SHOW_SECONDS } from "@/lib/r2Access";
+import { folderAccess, keyPrefixOf, parseFileRef, safeFolder, societyOfKey } from "@/lib/r2Keys";
+import { callerSociety, publicBases, signKey, SHOW_SECONDS } from "@/lib/r2Access";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +48,14 @@ export async function GET(req: NextRequest) {
   if (!folder) return NextResponse.json({ error: "Bad folder" }, { status: 400 });
   if (!(await canRead(me, folder))) return forbidden();
   try {
+    const prefix = keyPrefixOf(await callerSociety(me));   // the caller's society only: "" for the first society, s/<id>/ for the others
     const files: any[] = [];
     let token: string | undefined;
     do {
-      const res = await r2.client.send(new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: `${folder}/`, ContinuationToken: token }));
+      const res = await r2.client.send(new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: `${prefix}${folder}/`, ContinuationToken: token }));
       for (const o of res.Contents || []) {
         if (!o.Key || o.Key.endsWith("/")) continue;
-        const rest = o.Key.slice(folder.length + 1);
+        const rest = o.Key.slice(prefix.length + folder.length + 1);
         if (rest.includes("/")) continue; // only direct children
         files.push({ key: o.Key, name: rest.replace(/^\d{10,}_/, ""), url: "", size: o.Size || 0, uploaded: o.LastModified?.toISOString() || null });
       }
@@ -87,7 +88,8 @@ export async function POST(req: NextRequest) {
 
     const safeName = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 60) || "file";
     // Vault slots use a fixed name so a new upload replaces the old document.
-    const key = folder === "vault" && slot ? `vault/${slot}.${ext}` : `${folder}/${Date.now()}_${safeName}.${ext}`;
+    const prefix = keyPrefixOf(await callerSociety(me));   // every file is stored under the caller's own society
+    const key = folder === "vault" && slot ? `${prefix}vault/${slot}.${ext}` : `${prefix}${folder}/${Date.now()}_${safeName}.${ext}`;
     await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: ALLOWED_EXT[ext] })); // type from the extension, never from the browser (audit H3)
     // url = what screens save in their rows: same form as before (public address) while one is set, so rows stay
     // uniform; the address is only read back as a name for the key. view = a signed link to show it now.
@@ -109,6 +111,7 @@ export async function DELETE(req: NextRequest) {
   const { key, folder } = ref;
   if (!(await canWrite(me, folder))) return forbidden();
   try {
+    if (societyOfKey(key) !== (await callerSociety(me)).toLowerCase()) return forbidden();   // another society's file
     await r2.client.send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: key }));
     return NextResponse.json({ ok: true });
   } catch (e: any) {

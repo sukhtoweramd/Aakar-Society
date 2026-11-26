@@ -22,6 +22,7 @@ import { DOC_TYPES, OTHER, docChecklist } from "@/lib/flatDocTypes";
 import { compressForUpload, sizeNote } from "@/lib/compressFile";
 import type { Section } from "@/lib/phoneMenu";
 import { PhoneSection } from "./PhoneHome";
+import { keyWithoutPrefix } from "@/lib/r2Keys";
 
 export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | null }) {
   const { flats, categories, selectedId, selectFlat, go, reloadFlats, isCommittee, myFlat } = ctx;
@@ -90,7 +91,7 @@ export default function DetailTab({ ctx, only }: { ctx: Ctx; only?: Section | nu
   const lockName = !isCommittee && (rented || filledIn(f.owner_name));
   const lockTenantName = !isCommittee && filledIn(f.tenant_name);
   const agreementOver = rented && !!f.agreement_until && new Date(f.agreement_until) < new Date(new Date().toDateString());
-  const vaultDocs = VAULT_SLOTS.map((s) => ({ ...s, file: vault.find((v) => v.key.startsWith(`vault/${s.id}.`)) })).filter((s) => s.file);
+  const vaultDocs = VAULT_SLOTS.map((s) => ({ ...s, file: vault.find((v) => keyWithoutPrefix(v.key).startsWith(`vault/${s.id}.`)) })).filter((s) => s.file);
 
   async function save() {
     setBusy("save"); setError("");

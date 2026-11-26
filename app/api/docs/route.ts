@@ -14,7 +14,7 @@ import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { buildBackup, logAccess, storeBackup } from "@/lib/backup";
 import { societyCommittee } from "@/lib/mainAdmin";
 import { deleteTestFiles } from "@/lib/r2Clear";
-import { FIRST_SOCIETY_ID, societyOfCaller } from "@/lib/memberships";
+import { societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 
@@ -76,14 +76,13 @@ export async function POST(req: NextRequest) {
       if (error) throw new Error(/clear_test_documents/.test(error.message) ? "Run BACKUP_RESTORE.sql and multitenant/MT_09 in Supabase first." : error.message);
       // Files only when the database step cleared everything (script 12 run); with the old function, rows such as
       // events and complaints still point at their files, so the files must stay.
-      // The file folders are shared by all societies for now (lib/testClear.ts), so files are deleted only for the first society (Aakar):
-      // another society's clear never touches files (they stay; R2 folders per society come later).
+      // File folders are per society (lib/r2Keys.ts): only THIS society's test files are deleted.
       const all = data && typeof data === "object" && "events" in data;
-      const files = all && society === FIRST_SOCIETY_ID ? await deleteTestFiles().catch(() => null) : null;
+      const files = all ? await deleteTestFiles(society).catch(() => null) : null;
       const counts = Object.entries(data || {}).filter(([k]) => !(all && k === "receipts")).map(([k, v]) => `${v} ${k}`).join(", "); // "receipts" = payments
       await logAccess(admin, me.email, "test_documents_cleared", counts.slice(0, 500),
         `numbers set to bill ${n(L.bill)}, other ${n(L.other)}, receipt ${n(L.rcpt)}, letter ${n(L.letter)}; backup saved first; `
-        + (all ? (files ? `${files.deleted} files deleted${files.failed ? `, ${files.failed} failed` : ""}` : "files NOT deleted (storage error)") : "old clear (run sql-security/12)") + (all && society !== FIRST_SOCIETY_ID ? "; files not deleted (file folders are not separated per society yet)" : ""), society);
+        + (all ? (files ? `${files.deleted} files deleted${files.failed ? `, ${files.failed} failed` : ""}` : "files NOT deleted (storage error)") : "old clear (run sql-security/12)"), society);
       return NextResponse.json({ ok: true, cleared: data, all, files });
     } catch (e: any) { return NextResponse.json({ error: e.message || "Failed" }, { status: 500 }); }
   }

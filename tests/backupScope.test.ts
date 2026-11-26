@@ -79,9 +79,9 @@ test("/api/docs: society_live, billing_settings, bills, receipts and letters are
   assert.doesNotMatch(s, /from\("billing_settings"\)\.select\("\*"\)\.eq\("id", 1\)/);
 });
 
-test("/api/docs: R2 test files are deleted only for the first society (folders are shared for now)", () => {
+test("/api/docs: R2 test files are deleted for the caller's society only (file folders are per society since 4d-4)", () => {
   const s = read("app/api/docs/route.ts");
-  assert.match(s, /all && society === FIRST_SOCIETY_ID \? await deleteTestFiles\(\)/);
+  assert.match(s, /all \? await deleteTestFiles\(society\)/);
 });
 
 test("every access_log row written by these two routes names the society", () => {
