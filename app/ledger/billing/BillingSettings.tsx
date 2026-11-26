@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { COMMITTEE_ROLES, societyTitle } from "@/lib/society";
+import { letterPrefixFallback, nextYearExample } from "@/lib/billingPrefix";
 import { cleanImage, defaultStamp, docNo, type Settings, type Signatory } from "@/lib/billing";
 
 export default function BillingSettings({ settings, signatories, email, onChanged }: { settings: Settings; signatories: Signatory[]; email: string; onChanged: () => void }) {
@@ -27,7 +28,7 @@ export default function BillingSettings({ settings, signatories, email, onChange
       if (!(m >= 1 && m <= 5)) { setBusy(false); setError("RENTED FLAT MULTIPLIER must be a number from 1 to 5 (e.g. 1.5)."); return; }
       upd.rent_multiplier = m;
     }
-    if ("letter_prefix" in settings) { upd.letter_prefix = s.letter_prefix || "AKR/L/"; upd.letter_last_no = n(s.letter_last_no); }
+    if ("letter_prefix" in settings) { upd.letter_prefix = s.letter_prefix || letterPrefixFallback(s.bill_prefix); upd.letter_last_no = n(s.letter_last_no); }
     // The last number must not be below a number already issued, or the next document would clash.
     const checks: [string, string, string, string, number][] = [
       ["bills", "bill_no", "Bill", upd.bill_prefix, upd.bill_last_no], ["bills", "bill_no", "Bill", upd.other_prefix, upd.other_last_no],
@@ -82,7 +83,7 @@ export default function BillingSettings({ settings, signatories, email, onChange
       {error && <div className="border border-red-200 bg-red-50 text-red-700 p-3">{error}</div>}
       <div className="bg-[var(--surface)] border border-[var(--border)] p-5">
         <div className="serif text-[18px] font-bold">Numbering</div>
-        <div className="opacity-60 mt-0.5">Enter the last number already used on paper. The app continues from the next one. Change the prefix at the start of each financial year (e.g. AKR/27-28/).</div>
+        <div className="opacity-60 mt-0.5">Enter the last number already used on paper. The app continues from the next one. Change the prefix at the start of each financial year (e.g. {nextYearExample(s.bill_prefix)}).</div>
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
           {series("MAINTENANCE BILLS", "bill_prefix", "bill_last_no")}
           {series("OTHER (ONE-OFF) BILLS", "other_prefix", "other_last_no")}
