@@ -5,7 +5,9 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Authed } from "./serverAuth";
 import { getR2Signer } from "./r2Client";
-import { folderAccess, parseFileRef, rowFolder, storedForms } from "./r2Keys";
+import { getAdminClient } from "./serverAuth";
+import { societyOfCaller } from "./memberships";
+import { folderAccess, parseFileRef, rowFolder, societyOfKey, storedForms } from "./r2Keys";
 
 /** How long a link works. Pictures and file lists: 10 minutes. A file opened with a click: 2 minutes. */
 export const SHOW_SECONDS = 600;
@@ -25,6 +27,13 @@ export async function signKey(key: string, seconds = SHOW_SECONDS): Promise<stri
 }
 
 type Me = Pick<Authed, "isCommittee" | "flatId" | "db" | "isTenant" | "tenantFlatId">;
+
+/** The society of the login that is asking. Files are not behind the database wall, so every file route names it (lib/r2Keys.ts). */
+export async function callerSociety(me: { userId: string }): Promise<string> {
+  const admin = getAdminClient();
+  if (!admin) throw new Error("SUPABASE_SECRET_KEY is not set in Vercel environment variables.");
+  return societyOfCaller(admin, me.userId);
+}
 
 /** Is this flat on the organising team of the event (Convenor / Treasurer / Member)? */
 async function onEventTeam(me: Me, eventId: string, memo: Map<string, Promise<boolean>>) {
@@ -56,11 +65,12 @@ async function visibleLinks(me: Me, table: "meetings" | "event_money" | "complai
 }
 
 /** Of these keys, the ones this login may open. */
-export async function allowedKeys(me: Me, items: { key: string; folder: string }[]): Promise<Set<string>> {
+export async function allowedKeys(me: Me, items: { key: string; folder: string }[], society: string): Promise<Set<string>> {
   const ok = new Set<string>();
   const needRecord: { key: string; folder: string }[] = [];
   const memo = new Map<string, Promise<boolean>>();
   for (const it of items) {
+    if (societyOfKey(it.key) !== society.toLowerCase()) continue;   // another society's file: never opened through this login
     const a = folderAccess(it.folder, me);
     if (a === "yes") ok.add(it.key);
     else if (a === "team" && (await onEventTeam(me, it.folder.split("/")[1], memo))) ok.add(it.key);
@@ -91,12 +101,12 @@ export async function allowedKeys(me: Me, items: { key: string; folder: string }
  * Signed links for stored links (keys or old public addresses). Each answer is a link, or null when the file is
  * not one this login may open. Links to other websites come back unchanged.
  */
-export async function linksFor(me: Me, refs: string[], seconds = SHOW_SECONDS): Promise<Record<string, string | null>> {
+export async function linksFor(me: Me & { userId: string }, refs: string[], seconds = SHOW_SECONDS): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
   const bases = publicBases();
   const parsed = refs.map((ref) => ({ ref, p: parseFileRef(ref, bases) }));
   const r2Items = parsed.flatMap(({ p }) => (p?.kind === "r2" ? [{ key: p.key, folder: p.folder }] : []));
-  const ok = await allowedKeys(me, r2Items);
+  const ok = await allowedKeys(me, r2Items, await callerSociety(me));
   for (const { ref, p } of parsed) {
     if (!p) out[ref] = null;
     else if (p.kind === "external") out[ref] = p.url;

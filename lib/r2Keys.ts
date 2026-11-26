@@ -16,6 +16,33 @@
 //                                                                              the complaint is assigned to
 // Not served by these routes: payproofs/ (own route /api/payment-proof) and backups/ (main admin only).
 
+// Per society (multi-tenant step 4d-4, Nov 2026): the FIRST society keeps today's keys (notices/…, flats/A101/…), so none of its files move.
+// Every other society's keys start with s/<society id>/ (s/<id>/notices/…). A key belongs to exactly one society, and a login may list, open,
+// upload or delete only keys of its own society. The folder names above are the same in every society (the "logical" folder).
+import { FIRST_SOCIETY_ID } from "./memberships";
+import { isBackupKey, societyOfBackupKey } from "./backupScope";
+
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const SOCIETY_PREFIX = new RegExp(`^s/(${UUID})/`, "i");
+
+/** What every key of this society starts with: "" for the first society, "s/<society id>/" for the others. */
+export const keyPrefixOf = (society: string): string => (society.toLowerCase() === FIRST_SOCIETY_ID ? "" : `s/${society.toLowerCase()}/`);
+
+/** The society a stored file key belongs to (a key without the prefix is the first society's). */
+export const societyOfKey = (key: string): string => {
+  const m = SOCIETY_PREFIX.exec(String(key || ""));
+  return m ? m[1].toLowerCase() : FIRST_SOCIETY_ID;
+};
+
+/** The key without its society prefix. */
+export const keyWithoutPrefix = (key: string): string => String(key || "").replace(SOCIETY_PREFIX, "");
+
+/** True when this key (file or backup) belongs to this society. */
+export function keyInSociety(key: string, society: string): boolean {
+  const owner = isBackupKey(key) ? societyOfBackupKey(key) : societyOfKey(key);
+  return owner === society.toLowerCase();
+}
+
 export function safeFolder(raw: string): string | null {
   const f = String(raw || "").replace(/^\/+|\/+$/g, "");
   if (f === "notices" || f === "vault" || f === "amc" || f === "minutes") return f;
@@ -29,7 +56,7 @@ export function safeFolder(raw: string): string | null {
 
 /** "notices/1729_x.jpg" → "notices"; null for anything outside the folders above or with an odd name. */
 export function folderOfKey(key: string): string | null {
-  const k = String(key || "");
+  const k = keyWithoutPrefix(String(key || ""));
   const cut = k.lastIndexOf("/");
   if (cut <= 0) return null;
   const name = k.slice(cut + 1);

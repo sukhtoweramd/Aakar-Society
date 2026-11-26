@@ -4,6 +4,7 @@ import { VAULT_SLOTS, type StoredFile } from "@/lib/society";
 import { deleteFile, fmtDate, fmtSize, listFiles, uploadFile } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import { FileLink } from "./SecureFile";
+import { keyWithoutPrefix } from "@/lib/r2Keys";
 
 export default function VaultTab({ ctx }: { ctx: Ctx }) {
   const canEdit = ctx.isCommittee;
@@ -22,7 +23,7 @@ export default function VaultTab({ ctx }: { ctx: Ctx }) {
     setBusy(slot || "other"); setError("");
     try {
       // replacing a slot: remove the old file if it had a different extension
-      if (slot) for (const old of files.filter((x) => x.key.startsWith(`vault/${slot}.`))) await deleteFile({ key: old.key });
+      if (slot) for (const old of files.filter((x) => keyWithoutPrefix(x.key).startsWith(`vault/${slot}.`))) await deleteFile({ key: old.key });
       await uploadFile(file, "vault", slot);
       await load();
     } catch (e: any) { setError(e.message); }
@@ -33,8 +34,8 @@ export default function VaultTab({ ctx }: { ctx: Ctx }) {
     try { await deleteFile({ key: f.key }); await load(); } catch (e: any) { setError(e.message); }
   }
 
-  const slotFile = (id: string) => files.find((f) => f.key.startsWith(`vault/${id}.`));
-  const others = files.filter((f) => !VAULT_SLOTS.some((s) => f.key.startsWith(`vault/${s.id}.`)));
+  const slotFile = (id: string) => files.find((f) => keyWithoutPrefix(f.key).startsWith(`vault/${id}.`));
+  const others = files.filter((f) => !VAULT_SLOTS.some((s) => keyWithoutPrefix(f.key).startsWith(`vault/${s.id}.`)));
   const filled = VAULT_SLOTS.filter((s) => slotFile(s.id)).length;
 
   return (
