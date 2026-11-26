@@ -67,7 +67,7 @@ test("the platform route checks the product owner on the server, writes nothing 
   const guardAt = r.indexOf("await guard(req)");
   assert.ok(guardAt > 0 && r.indexOf("admin.from(\"societies\").insert") > guardAt);
   const tables = (r.match(/\.from\("[a-z_]+"\)/g) || []).map((m) => m.slice(7, -2));
-  assert.deepEqual(Array.from(new Set(tables)).sort(), ["flats", "societies", "society_memberships", "society_profile"], "the platform route may touch only these tables (flats: a count)");
+  assert.deepEqual(Array.from(new Set(tables)).sort(), ["app_settings", "billing_settings", "flats", "societies", "society_memberships", "society_profile"], "the platform route may touch only these tables (flats: a count)");
   assert.ok(!/owner_name|mobile/.test(r.replace(/\/\/.*$/gm, "")), "no resident data");
   assert.ok(read("lib/societyWord.ts").includes('"platform"'));
 });
@@ -94,4 +94,32 @@ test("platform totals", () => {
   const it = (status: string, flats: number, c: number, f: number, t: number): any => ({ status, flats, logins: { committee: c, flat: f, tenant: t } });
   assert.deepEqual(platformTotals([it("active", 90, 3, 80, 4), it("suspended", 24, 1, 1, 0)]), { societies: 2, active: 1, flats: 114, logins: 89 });
   assert.deepEqual(platformTotals([]), { societies: 0, active: 0, flats: 0, logins: 0 });
+});
+
+import { firstBillingRow, fyLabel, societyCode } from "../lib/platformOwner";
+
+test("new society's billing row has its own prefixes, never Aakar's AKR", () => {
+  assert.equal(fyLabel(new Date(2026, 10, 26)), "26-27");   // Nov 2026
+  assert.equal(fyLabel(new Date(2027, 1, 10)), "26-27");    // Feb 2027
+  assert.equal(fyLabel(new Date(2027, 3, 1)), "27-28");     // 1 Apr 2027
+  assert.equal(societyCode("test-park"), "TP");
+  assert.equal(societyCode("green-park-co-op"), "GPC");
+  assert.equal(societyCode("aakar"), "AAK");
+  const r = firstBillingRow(S2, "test-park", new Date(2026, 10, 26));
+  assert.deepEqual(r, { society_id: S2, id: 1, bill_prefix: "TP/26-27/", other_prefix: "TP/O/26-27/", rcpt_prefix: "TP/R/26-27/", letter_prefix: "TP/L/26-27/" });
+  assert.doesNotMatch(JSON.stringify(r), /AKR/);
+});
+
+test("the platform route seeds the settings rows and undoes them on failure", () => {
+  const r = read("app/api/platform/route.ts");
+  assert.match(r, /from\("app_settings"\)\.insert\(\[\{ society_id: id, id: 1 \}\]\)/);
+  assert.match(r, /from\("billing_settings"\)\.insert\(\[firstBillingRow\(id, input\.word\)\]\)/);
+  assert.match(r, /from\("billing_settings"\)\.delete\(\)\.eq\("society_id", id\)/);
+});
+
+test("the one-society seed script never touches Aakar and names society_id", () => {
+  const q = read("multitenant/SEED_SETTINGS_ONE_SOCIETY.sql");
+  assert.match(q, /a4a4a4a4-0000-4000-8000-000000000001/);
+  assert.match(q, /on conflict do nothing/);
+  assert.doesNotMatch(q, /\bupdate\b|\bdelete\b/i);
 });

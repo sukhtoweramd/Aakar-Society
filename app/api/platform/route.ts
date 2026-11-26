@@ -1,6 +1,7 @@
 // Product owner page (/platform): list the societies (counts only) and create a new one. Server only.
 // WHO MAY CALL: the login named by PLATFORM_OWNER_EMAIL, and only while it has no role and no society membership (lib/platformOwner.ts).
 // This is the one route that looks across societies on purpose; it returns counts, names of societies and the owner's email, never resident data.
+// A new society also gets its one-row settings (society_profile, app_settings, billing_settings with its own number prefixes).
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt, randomUUID } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -9,7 +10,7 @@ import { allUsers, logAccess } from "@/lib/backup";
 import { membershipsOf } from "@/lib/mainAdmin";
 import { addMembership, membershipRow } from "@/lib/memberships";
 import { societyOwnerId } from "@/lib/societyOwner";
-import { firstProfileRow, hasNoRole, isPlatformOwner, newSocietyInput, societyList, type SocietyRow } from "@/lib/platformOwner";
+import { firstBillingRow, firstProfileRow, hasNoRole, isPlatformOwner, newSocietyInput, societyList, type SocietyRow } from "@/lib/platformOwner";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,8 @@ export async function POST(req: NextRequest) {
       if (se) throw se;
       const undo = async (userId?: string) => {   // leave nothing half made
         if (userId) await admin.auth.admin.deleteUser(userId);
+        await admin.from("billing_settings").delete().eq("society_id", id);
+        await admin.from("app_settings").delete().eq("society_id", id);
         await admin.from("society_profile").delete().eq("society_id", id);
         await admin.from("societies").delete().eq("id", id);
       };
@@ -88,6 +91,11 @@ export async function POST(req: NextRequest) {
         await addMembership(admin, membershipRow(made.user.id, id, "society_admin"));
         const { error: pe } = await admin.from("society_profile").insert([firstProfileRow(id, input.name)]);
         if (pe) throw pe;
+        // the one-row settings of the society (billing numbers with its OWN prefixes, screen settings); without them BILLING shows "needs BILLING.sql"
+        const { error: ae } = await admin.from("app_settings").insert([{ society_id: id, id: 1 }]);
+        if (ae) throw ae;
+        const { error: be } = await admin.from("billing_settings").insert([firstBillingRow(id, input.word)]);
+        if (be) throw be;
       } catch (e: any) {
         await undo(made.user.id);
         return fail("Could not set up the society: " + (e?.message || "unknown error"), 500);

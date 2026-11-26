@@ -83,3 +83,23 @@ export function platformTotals(items: SocietyListItem[]) {
     logins: t.logins + s.logins.committee + s.logins.flat + s.logins.tenant,
   }), { societies: 0, active: 0, flats: 0, logins: 0 });
 }
+
+/** Indian financial year of a date as used in the bill numbers: Nov 2026 -> "26-27", Feb 2027 -> "26-27". */
+export function fyLabel(d: Date): string {
+  const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  const two = (n: number) => String(n % 100).padStart(2, "0");
+  return `${two(y)}-${two(y + 1)}`;
+}
+
+/** Short letters for bill numbers from the society word: "test-park" -> "TP", "green-park-co-op" -> "GPC", "aakar" -> "AAK" (never Aakar's AKR by accident of a default). */
+export function societyCode(word: string): string {
+  const parts = String(word || "").toLowerCase().split("-").filter(Boolean);
+  const code = parts.length >= 2 ? parts.slice(0, 3).map((p) => p[0]).join("") : (parts[0] || "soc").slice(0, 3);
+  return code.toUpperCase();
+}
+
+/** The new society's own billing_settings row: its own number series (the table's defaults are Aakar's AKR/ prefixes, so every column that carries one is named). */
+export function firstBillingRow(societyId: string, word: string, date: Date = new Date()) {
+  const c = societyCode(word), fy = fyLabel(date);
+  return { society_id: societyId, id: 1, bill_prefix: `${c}/${fy}/`, other_prefix: `${c}/O/${fy}/`, rcpt_prefix: `${c}/R/${fy}/`, letter_prefix: `${c}/L/${fy}/` };
+}
