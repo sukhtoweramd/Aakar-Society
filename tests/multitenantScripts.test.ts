@@ -324,7 +324,7 @@ test("MT_17 removes the first-society fallback from the live text, saves the ori
 const mt18 = readFileSync(join(root, "multitenant/MT_18_WALLS_TEST.sql"), "utf8");
 test("MT_18 tries to read, change, delete and insert across the society wall on every walled table, and rolls everything back", () => {
   assert.match(mt18, /policyname = 'society_wall'/, "the tables are found from the database, not typed in");
-  for (const part of ["A", "B", "C", "D", "E", "F", "G", "H", "I"]) assert.ok(mt18.includes(`BAD ${part}`) || mt18.includes(`\n${part} `) || mt18.includes(`-- ${part} `), `part ${part}`);
+  for (const part of ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]) assert.ok(mt18.includes(`BAD ${part}`) || mt18.includes(`\n${part} `) || mt18.includes(`-- ${part} `), `part ${part}`);
   assert.match(mt18, /set local role authenticated/);
   assert.match(mt18, /set local role anon/);
   assert.match(mt18, /sqlstate = '23505'/, "a duplicate key proves the row rule let the insert through");

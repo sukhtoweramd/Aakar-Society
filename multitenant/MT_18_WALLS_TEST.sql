@@ -6,7 +6,7 @@
 --   B  tries to change them                          -> must change 0 rows (or be refused)
 --   C  tries to delete them                          -> must delete 0 rows (or be refused)
 --   D  tries to INSERT a copy of one of them (naming the first society) -> must be refused by the row rule
--- then: E a login with no membership sees nothing anywhere; F the "anon" (not logged in) role gets nothing; G the three directory views show nothing of the first society;
+-- then: E a login with no membership sees nothing anywhere; F the "anon" (not logged in) role gets nothing; J the wall rule is the same, restrictive and complete on every table (also those with no rows to try); G the three directory views show nothing of the first society;
 -- H functions that run with owner rights give nothing of the first society; I a forged "active society" in the login does not work.
 -- Needs the first society with data and one committee login (the sample data of the test project) and MT_17 run. A line marked BAD fails the test; a line marked UNCLEAR is
 -- an insert that was stopped by something other than the row rule or a duplicate key (a trigger, a check; read it: it is not a hole by itself, but send it to me).
@@ -88,6 +88,29 @@ begin
   end loop;
   execute 'reset role';
   res := res || E'\nF not logged in (anon): tables where it sees anything: ' || hits || ' (want 0)';
+
+  -- J - the wall itself, on EVERY table including those with no rows to try it on: same rule text, restrictive, for all commands, row security on, nothing for anon
+  declare
+    ref_q text; ref_c text; q text; c text; rx boolean; anon_ok boolean; pol record; anon_n int := 0;
+  begin
+    hits := 0;
+    foreach t in array tabs loop
+      continue when to_regclass('public.' || quote_ident(t)) is null;
+      select p.qual, p.with_check, p.permissive, p.cmd, p.roles::text into pol from pg_policies p where p.schemaname = 'public' and p.tablename = t and p.policyname = 'society_wall';
+      q := regexp_replace(coalesce(pol.qual, ''), '\s+', '', 'g'); c := regexp_replace(coalesce(pol.with_check, pol.qual, ''), '\s+', '', 'g');   -- no separate check = the USING rule is used for new rows too
+      if ref_q is null then ref_q := q; ref_c := c; end if;
+      select c2.relrowsecurity into rx from pg_class c2 where c2.oid = to_regclass('public.' || quote_ident(t));
+      anon_ok := has_table_privilege('anon', 'public.' || quote_ident(t), 'select') or has_table_privilege('anon', 'public.' || quote_ident(t), 'insert')
+              or has_table_privilege('anon', 'public.' || quote_ident(t), 'update') or has_table_privilege('anon', 'public.' || quote_ident(t), 'delete');
+      if anon_ok then anon_n := anon_n + 1; end if;
+      if pol.permissive is distinct from 'RESTRICTIVE' or pol.cmd is distinct from 'ALL' or q <> ref_q or c <> ref_c or q not like '%society_id%' or q not like '%active_society%'
+         or c not like '%society_id%' or c not like '%active_society%' or rx is not true then
+        hits := hits + 1; bad := bad + 1;
+        res := res || E'\nBAD J  ' || t || ': wall differs (permissive=' || coalesce(pol.permissive, '?') || ', cmd=' || coalesce(pol.cmd, '?') || ', row security on=' || coalesce(rx::text, '?') || ', same rule text=' || (q = ref_q and c = ref_c)::text || ')';
+      end if;
+    end loop;
+    res := res || E'\nJ wall rule on all ' || array_length(tabs, 1) || ' tables identical, restrictive, for all commands, row security on: tables that differ: ' || hits || ' (want 0); tables where anon still holds a table privilege (blocked by row security anyway, see F; info): ' || anon_n || '; the rule is: ' || left(coalesce(ref_q, '?'), 90);
+  end;
 
   -- put the login into the empty society again for G - I
   insert into public.society_memberships (user_id, society_id, role) values (uid, other, 'committee');
