@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { roleOf } from "@/lib/roles";
-import { buildCategories, sortFlats, SOCIETY, type Flat } from "@/lib/society";
+import { buildCategories, sortFlats, SOCIETY, societyAppName, type Flat } from "@/lib/society";
 import { applySocietyProfile, joinParts, profileFromRow, readCachedProfile, terraceCodes, towersFromRows, writeCachedProfile } from "@/lib/societySetup";
 import { TABS, type Ctx, type Tab } from "./ledger/ctx";
 import { residentTabs, tenantTabs } from "@/lib/memberTabs";
@@ -130,7 +130,7 @@ export default function Home() {
       ]);
       if (!isCurrent() || !got) return;
       const [p, t] = got;
-      if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { const ms = await supabase.rpc("my_society"); writeCachedProfile(window.localStorage, prof, ms.error ? null : (ms.data as { slug?: string } | null)?.slug || null); } catch {} }
+      if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { document.title = [societyAppName(), SOCIETY.building].filter(Boolean).join(" • "); } catch {} try { const ms = await supabase.rpc("my_society"); writeCachedProfile(window.localStorage, prof, ms.error ? null : (ms.data as { slug?: string } | null)?.slug || null); } catch {} }
       setTowerRows(!t.error && Array.isArray(t.data) ? t.data : null);
       setSetupVersion((n) => n + 1);
     } catch { /* keep today's values */ }
@@ -223,7 +223,7 @@ export default function Home() {
           <div className="flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-2 font-semibold">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              SOCIETY LEDGER LIVE
+              SOCIETY LEDGER
             </span>
             <span className="opacity-40">•</span>
             <span>{SOCIETY.city}</span>

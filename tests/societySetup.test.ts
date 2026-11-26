@@ -124,3 +124,10 @@ test("screens take the society name and towers from the setup, not from typed-in
     assert.doesNotMatch(readFileSync(f, "utf8"), /<h1>(ॐ )?AAKAR CO-OP/, f);
   }
 });
+
+test("screens do not print Aakar's storage bucket or founding year", () => {
+  for (const f of ["app/ledger/Sidebar.tsx", "app/ledger/VaultTab.tsx", "app/ledger/FloorTab.tsx", "app/ledger/NoticesTab.tsx", "app/ledger/CoverTab.tsx"]) {
+    const src = readFileSync(f, "utf8");
+    assert.doesNotMatch(src, /aakar-vault|EST 1994/, f);
+  }
+});

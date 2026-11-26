@@ -1,5 +1,5 @@
 "use client";
-import { SOCIETY, committeeRoster } from "@/lib/society";
+import { SOCIETY, committeeRoster, regYear } from "@/lib/society";
 import type { Ctx } from "./ctx";
 
 export default function Sidebar({ ctx }: { ctx: Ctx }) {
@@ -18,7 +18,7 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
             {SOCIETY.addressLines.map((l) => <span key={l}>{l}<br /></span>)}
           </div>
           <div className="mt-4 inline-flex items-center gap-2 text-[11px] mono border border-white/20 px-2.5 py-1 rounded-[3px] bg-white/5">
-            <span className="h-2 w-2 bg-[var(--gold)] rounded-full" /> EST 1994 • {flats.length} FLATS
+            <span className="h-2 w-2 bg-[var(--gold)] rounded-full" /> {regYear() ? `EST ${regYear()} • ` : ""}{flats.length} FLATS
           </div>
         </div>
         <div className="p-3 space-y-3">
@@ -60,7 +60,7 @@ export default function Sidebar({ ctx }: { ctx: Ctx }) {
           <div className="border-t border-[var(--border)] pt-3 mono text-[11px] leading-relaxed opacity-70">
             <div className="flex justify-between"><span>Owners recorded</span><span>{occupied} / {flats.length}</span></div>
             <div className="flex justify-between"><span>Terrace Logic</span><span>Top floor = Owner</span></div>
-            <div className="flex justify-between"><span>Document Vault</span><span>R2 • aakar-vault</span></div>
+            <div className="flex justify-between"><span>Document Vault</span><span>Stored securely</span></div>
           </div>
         </div>
       </div>
