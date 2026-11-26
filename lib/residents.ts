@@ -1,4 +1,6 @@
 // Flat logins use an internal email address so residents can log in with just their flat number.
+// First society (Aakar): a101@flats.aakarsociety.app. Any other society: a101@<society word>.flats.aakarsociety.app (lib/societyWord.ts).
+import { residentDomain, wordFromDomain } from "./societyWord";
 export const RESIDENT_DOMAIN = "flats.aakarsociety.app";
 /** How flat numbers become logins. Needed before anyone is logged in, so it lives in code (one setting per society's own copy of the app). */
 export type FlatRules = {
@@ -25,9 +27,9 @@ export function normaliseFlat(input: string, rules: FlatRules = FLAT_RULES): str
   }
   return `${m[1]}${m[2]}`;
 }
-export const flatEmail = (flatId: string) => `${flatId.toLowerCase()}@${RESIDENT_DOMAIN}`;
+export const flatEmail = (flatId: string, word?: string | null) => `${flatId.toLowerCase()}@${residentDomain(RESIDENT_DOMAIN, word)}`;
 /** Tenant login of a rented flat (30 Oct 2026): logs in with the flat number + T, e.g. "A-101-T". */
-export const tenantEmail = (flatId: string) => `${flatId.toLowerCase()}.tenant@${RESIDENT_DOMAIN}`;
+export const tenantEmail = (flatId: string, word?: string | null) => `${flatId.toLowerCase()}.tenant@${residentDomain(RESIDENT_DOMAIN, word)}`;
 /** What was typed on the login screen: a flat ("A-101"), a tenant ("A-101-T", "A101T", "A 101 tenant") or null. */
 export function parseLogin(input: string): { flat: string; tenant: boolean } | null {
   const s = input.trim();
@@ -36,4 +38,11 @@ export function parseLogin(input: string): { flat: string; tenant: boolean } | n
   const flat = normaliseFlat(s);
   return flat ? { flat, tenant: false } : null;
 }
-export const isFlatEmail = (email?: string | null) => !!email && email.toLowerCase().endsWith(`@${RESIDENT_DOMAIN}`);
+/** Is this the internal address of a flat or tenant login (of any society)? */
+export function isFlatEmail(email?: string | null): boolean {
+  const e = String(email || "").toLowerCase();
+  const at = e.lastIndexOf("@");
+  if (at < 1) return false;
+  const d = e.slice(at + 1);
+  return d === RESIDENT_DOMAIN || wordFromDomain(d, RESIDENT_DOMAIN) !== null;
+}

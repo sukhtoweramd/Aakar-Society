@@ -30,3 +30,10 @@ export async function addMembership(admin: SupabaseClient, row: MembershipRow): 
   const { error } = await admin.from("society_memberships").upsert(row, { onConflict: "user_id,society_id" });
   if (error) throw error;
 }
+
+/** The society word (slug) of a society: used to build the internal address of its flat and tenant logins (lib/societyWord.ts). */
+export async function societyWordOf(admin: SupabaseClient, societyId: string): Promise<string | null> {
+  const { data, error } = await admin.from("societies").select("slug").eq("id", societyId).maybeSingle();
+  if (error) throw error;
+  return (data as { slug?: string } | null)?.slug || null;
+}

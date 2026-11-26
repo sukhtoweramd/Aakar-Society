@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { normaliseFlat } from "@/lib/residents";
+import { normaliseFlat, isFlatEmail } from "@/lib/residents";
 import { logAccess, mainAdminId } from "@/lib/backup";
 import { isCommitteeMeta } from "@/lib/roles";
 import { addMembership, membershipRow, societyOfCaller } from "@/lib/memberships";
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       const email = String(body.email || "").trim().toLowerCase();
       const name = String(body.name || "").trim().slice(0, 80);
       if (!EMAIL.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
-      if (email.endsWith("@flats.aakarsociety.app")) return NextResponse.json({ error: "That is a flat login address." }, { status: 400 });
+      if (isFlatEmail(email)) return NextResponse.json({ error: "That is a flat login address." }, { status: 400 });
       const password = newPassword();
       const { data: made, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email, password_changed: false } });
       if (error || !made?.user) return NextResponse.json({ error: error && /already/i.test(error.message) ? "A login with this email already exists." : error?.message || "Could not create the login." }, { status: 400 });
