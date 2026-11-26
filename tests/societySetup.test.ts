@@ -75,12 +75,19 @@ test("towers: inactive rows are left out, but a tower the flats use is never hid
 
 test("towers: no rows (table missing or empty) falls back to the towers in the flats, then to A, B, C", () => {
   const flats = [{ tower: "B" }, { tower: "A" }, { tower: "C" }, { tower: null }];
-  for (const rows of [null, undefined, [], [{ code: "" }]]) {
+  for (const rows of [null, undefined, [], [{ code: "" }]]) {   // (with flats present every case falls back to the towers in the flats)
     const t = towersFromRows(rows as any, flats);
     assert.deepEqual(t.map((x) => x.code), ["A", "B", "C"]);
     assert.deepEqual(terraceCodes(t), TERRACE_TOWERS);
   }
-  assert.deepEqual(towersFromRows(null, []).map((x) => x.code), ["A", "B", "C"]);
+  assert.deepEqual(towersFromRows(null, []).map((x) => x.code), ["A", "B", "C"]);   // table unreadable: as before
+  assert.deepEqual(towersFromRows(undefined, []).map((x) => x.code), ["A", "B", "C"]);
+});
+
+test("towers: a new society (table read, empty, no flats) shows no towers and no 90 flats", () => {
+  assert.deepEqual(towersFromRows([], []), []);
+  assert.deepEqual(towersFromRows([{ code: "" }], []), []);
+  assert.doesNotMatch(readFileSync("app/page.tsx", "utf8"), /\|\| 90\b/);
 });
 
 test("buildCategories: terrace towers come from the setup; the default is unchanged", () => {
