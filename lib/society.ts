@@ -1,5 +1,6 @@
 // Shared types and helpers for the Society Ledger app.
 import { ageOf } from "./dob";
+import { wordFromPath } from "./societyWord";
 
 export type Flat = {
   id: string;
@@ -54,7 +55,13 @@ export const nameLines = (name: string): [string, string] => { const w = String(
 /** What follows the short name in the full name: "AAKAR CO-OP" + "AAKAR CO-OP HOUSING SOCIETY LTD." -> "HOUSING SOCIETY LTD." (full name when it does not start with the short name). */
 export const nameSuffix = () => { const n = SOCIETY.name.trim(), f = SOCIETY.full.trim(); return f.toUpperCase().startsWith(n.toUpperCase()) ? f.slice(n.length).trim() : f; };
 /** The web address members use: the profile's public address, else the address this page was opened from. */
-export const siteUrl = () => SOCIETY.publicUrl || (typeof window !== "undefined" ? window.location.origin : "");
+export const siteUrl = () => {
+  if (SOCIETY.publicUrl) return SOCIETY.publicUrl;
+  if (typeof window === "undefined") return "";
+  // no address set for this society: the address being used, with the society word when it has one (a flat login is looked up inside that society)
+  const word = wordFromPath(window.location.pathname);
+  return window.location.origin + (word ? `/${word}` : "");
+};
 /** "Aakar Co-op Housing Society": the full name in words without the trailing "Ltd." (start of WhatsApp messages). */
 export const societyShort = () => societyTitle().replace(/\s+Ltd\.?$/i, "");
 /** The name members use in everyday messages: "AAKAR CO-OP" -> "Aakar" (a trailing CO-OP is dropped), "GREEN VIEW" -> "Green View". */

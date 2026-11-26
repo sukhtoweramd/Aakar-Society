@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { label, SOCIETY, titleCase, fileSlug } from "@/lib/society";
+import { label, SOCIETY, titleCase, fileSlug, siteUrl } from "@/lib/society";
 import { api } from "@/lib/ledgerClient";
 import type { Ctx } from "./ctx";
 import { backBar } from "@/lib/printBack";
@@ -62,7 +62,7 @@ export default function LoginsPanel({ ctx }: { ctx: Ctx }) {
   function printSlips() {
     const w = window.open("", "_blank");
     if (!w) { alert("Please allow pop-ups."); return; }
-    const site = window.location.origin;
+    const site = siteUrl();   // carries the society word for a society other than the first (public_url, else the address in use)
     w.document.write(`<html><head><title>${esc(titleCase(SOCIETY.name))} login slips</title><style>
       body{font-family:Arial,sans-serif;margin:16px} .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       .slip{border:1px dashed #0f1d3d;padding:12px 14px;page-break-inside:avoid} h3{margin:0 0 4px;color:#0f1d3d;font-size:14px}
