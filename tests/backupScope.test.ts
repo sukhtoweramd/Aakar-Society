@@ -29,10 +29,10 @@ test("bad backup keys are refused", () => {
   assert.equal(societyOfBackupKey("backups/a/b.json"), null);
 });
 
-test("logins in a backup: only that society's (a login with no membership counts as the first society's)", () => {
+test("logins in a backup: only that society's (a login with no membership belongs to none)", () => {
   const users = [{ id: "u1" }, { id: "u2" }, { id: "u3" }];
   const m = [{ user_id: "u1", society_id: FIRST_SOCIETY_ID }, { user_id: "u2", society_id: OTHER }];
-  assert.deepEqual(loginsOfSociety(users, m, FIRST_SOCIETY_ID).map((u) => u.id), ["u1", "u3"]);
+  assert.deepEqual(loginsOfSociety(users, m, FIRST_SOCIETY_ID).map((u) => u.id), ["u1"]);
   assert.deepEqual(loginsOfSociety(users, m, OTHER).map((u) => u.id), ["u2"]);
 });
 

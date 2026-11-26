@@ -40,10 +40,11 @@ test("a login of another society is never the owner, and a society without commi
   assert.deepEqual(committeeOfSociety(users, mem, S2).map((x) => x.id).sort(), ["u3", "u4"]);
   assert.ok(!committeeOfSociety(users, mem, FIRST_SOCIETY_ID).some((x) => x.id === "u3"));
 });
-test("flat logins never count; a committee login with no membership counts as the first society's", () => {
+test("flat logins never count; a committee login with no membership belongs to no society (never the owner)", () => {
   assert.ok(!committeeOfSociety(users, mem, FIRST_SOCIETY_ID).some((x) => x.id === "u5"));
   const loose = u("u9", "loose@first.test", "2025-12-01");
-  assert.equal(societyOwnerId([...users, loose], mem, FIRST_SOCIETY_ID), "u9");
+  assert.equal(societyOwnerId([...users, loose], mem, FIRST_SOCIETY_ID), societyOwnerId(users, mem, FIRST_SOCIETY_ID));
+  assert.ok(!committeeOfSociety([...users, loose], mem, FIRST_SOCIETY_ID).some((x) => x.id === "u9"));
   assert.equal(societyOwnerId([...users, loose], mem, S2), "u3");
 });
 test("ownerByEmailOrOldest: empty list gives null", () => {

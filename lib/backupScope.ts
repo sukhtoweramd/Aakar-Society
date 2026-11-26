@@ -24,14 +24,14 @@ export const keyBelongsTo = (society: string, key: string): boolean => societyOf
 
 /**
  * Logins to list in a society's backup (reference only): those with a membership in that society.
- * TRANSITION: a login with no membership at all counts as the first society's (same fallback as societyOfCaller).
+ * A login with no membership at all belongs to no society (MT_17: no first-society fallback).
  */
 export function loginsOfSociety<T extends { id: string }>(users: T[], memberships: Pick<MembershipRow, "user_id" | "society_id">[], society: string): T[] {
   const byUser = new Map<string, Set<string>>();
   for (const m of memberships) { const s = byUser.get(m.user_id) || new Set<string>(); s.add(m.society_id.toLowerCase()); byUser.set(m.user_id, s); }
   return users.filter((u) => {
     const s = byUser.get(u.id);
-    return s ? s.has(society.toLowerCase()) : society === FIRST_SOCIETY_ID;
+    return s ? s.has(society.toLowerCase()) : false;
   });
 }
 

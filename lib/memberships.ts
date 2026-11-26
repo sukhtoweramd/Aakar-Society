@@ -17,12 +17,14 @@ export function membershipRow(userId: string, societyId: string, role: Membershi
   return { user_id: userId, society_id: societyId, role, flat_id: flatId ? String(flatId) : null };
 }
 
-/** The society of the person who is making the change (their oldest membership). TRANSITION: no membership yet = the first society. */
+/** The society of the person who is making the change (their oldest membership). A login with no membership has no society: throws (MT_17 removed the first-society fallback). */
 export async function societyOfCaller(admin: SupabaseClient, userId: string): Promise<string> {
   const { data, error } = await admin.from("society_memberships").select("society_id").eq("user_id", userId)
     .order("created_at", { ascending: true }).limit(1);
   if (error) throw error;
-  return (data && data[0]?.society_id) || FIRST_SOCIETY_ID;
+  const society = data && data[0]?.society_id;
+  if (!society) throw new Error("This login belongs to no society.");
+  return society;
 }
 
 /** Store the membership (one per login and society). Throws on failure; the caller removes the new login again. */
