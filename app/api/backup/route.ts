@@ -7,7 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { backupSocietyError } from "@/lib/backupScope";
 import { societyOfCaller } from "@/lib/memberships";
-import { allUsers, backupId, keyForId, buildBackup, isCommitteeUser, listBackups, logAccess, mainAdminId, readStoredBackup, storeBackup, type Backup } from "@/lib/backup";
+import { isMainAdminUser, societyCommittee } from "@/lib/mainAdmin";
+import { backupId, keyForId, buildBackup, listBackups, logAccess, readStoredBackup, storeBackup, type Backup } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ async function guard(req: NextRequest) {
 // A backup holds every resident's records, so downloading one (or making one that is handed to the browser) is
 // for the main admin login only (audit PR-5). Other committee logins can still see the list and the access log.
 async function isMainAdminLogin(admin: any, userId: string) {
-  const committee = (await allUsers(admin)).filter(isCommitteeUser);
-  return mainAdminId(committee) === userId;
+  return isMainAdminUser(admin, userId);   // the owner of the caller's own society (lib/societyOwner.ts)
 }
 const MAIN_ADMIN_ONLY = () => NextResponse.json({ error: "Only the main admin login can download a backup." }, { status: 403 });
 
@@ -47,8 +47,8 @@ export async function GET(req: NextRequest) {
       const { data, error } = await admin.from("access_log").select("*").eq("society_id", society).order("at", { ascending: false }).limit(30);
       return NextResponse.json({ log: error ? null : data, needsSql: !!error });
     }
-    const committee = (await allUsers(admin)).filter(isCommitteeUser);
-    const main = committee.find((u) => u.id === mainAdminId(committee));
+    const { committee, ownerId } = await societyCommittee(admin, society);
+    const main = committee.find((u) => u.id === ownerId);
     const backups = await listBackups(society);
     return NextResponse.json({ backups: backups && backups.map((b) => ({ id: backupId(b.key), kind: b.kind, created: b.created, size: b.size })), r2: backups !== null, isMainAdmin: main?.id === me.userId, mainAdminEmail: main?.email || null });
   } catch (e: any) {
@@ -70,8 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ backup: b, stored: !!key });
     }
     if (body.action === "restore") {
-      const committee = (await allUsers(admin)).filter(isCommitteeUser);
-      if (mainAdminId(committee) !== me.userId) return NextResponse.json({ error: "Only the main admin login can restore a backup." }, { status: 403 });
+      if (!(await isMainAdminLogin(admin, me.userId))) return NextResponse.json({ error: "Only the main admin login can restore a backup." }, { status: 403 });
       let b: Backup = body.backup;
       if (body.id) { const key = await keyForId(String(body.id), society); if (!key) return NextResponse.json({ error: "Backup not found." }, { status: 404 }); b = await readStoredBackup(key, society); }
       if (!b || b.app !== "aakar-society" || typeof b.tables !== "object" || !Array.isArray(b.tables.flats) || !b.tables.flats.length)

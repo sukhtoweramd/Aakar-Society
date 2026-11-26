@@ -11,7 +11,8 @@
 // POST { action: "go_live" } → locks test clearing for ever (one row in society_live that cannot be changed)
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { allUsers, buildBackup, isCommitteeUser, logAccess, mainAdminId, storeBackup } from "@/lib/backup";
+import { buildBackup, logAccess, storeBackup } from "@/lib/backup";
+import { societyCommittee } from "@/lib/mainAdmin";
 import { deleteTestFiles } from "@/lib/r2Clear";
 import { FIRST_SOCIETY_ID, societyOfCaller } from "@/lib/memberships";
 
@@ -29,8 +30,8 @@ async function guard(req: NextRequest) {
   if (!me.isCommittee) return { error: NextResponse.json({ error: "Committee only." }, { status: 403 }) };
   const admin = getAdminClient();
   if (!admin) return { error: NextResponse.json({ error: "SUPABASE_SECRET_KEY is not set in Vercel environment variables." }, { status: 500 }) };
-  const committee = (await allUsers(admin)).filter(isCommitteeUser);
-  return { me, admin, isMain: mainAdminId(committee) === me.userId, society: await societyOfCaller(admin, me.userId) }; // the server key skips the database wall: every read and write below names this society
+  const society = await societyOfCaller(admin, me.userId);
+  return { me, admin, isMain: (await societyCommittee(admin, society)).ownerId === me.userId, society }; // the server key skips the database wall: every read and write below names this society
 }
 
 export async function GET(req: NextRequest) {
