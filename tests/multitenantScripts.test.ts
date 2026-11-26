@@ -292,3 +292,30 @@ test("MT_16 gives the login page only the name and word of an ACTIVE society, an
   assert.match(mt16undo, /drop function if exists public\.society_public/);
   assert.match(mt16test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
 });
+
+// Step 4d-8 (MT_17): no silent first-society fallback in the database.
+const mt17 = readFileSync(join(root, "multitenant/MT_17_NO_FALLBACK.sql"), "utf8");
+const mt17undo = readFileSync(join(root, "multitenant/MT_17_UNDO.sql"), "utf8");
+const mt17test = readFileSync(join(root, "multitenant/MT_17_TEST.sql"), "utf8");
+
+test("MT_17 removes the first-society fallback from the live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  assert.match(mt17, /raise exception '% login\(s\) have a role but belong to no society/, "stops while a login has no membership");
+  assert.match(mt17, /create table if not exists public\.zz_mt17_function_backup/);
+  assert.match(mt17, /create table if not exists public\.zz_mt17_default_backup/);
+  assert.match(mt17, /revoke all on public\.zz_mt17_function_backup from anon, authenticated/);
+  assert.match(mt17, /create or replace function public\.require_society\(p uuid\)/);
+  assert.match(mt17, /Society missing/);
+  assert.match(mt17, /pg_get_functiondef\(s::regprocedure\)/, "rewritten from the live text");
+  assert.match(mt17, /nothing was changed\. Send me its text/, "unknown forms stop the script");
+  for (const fn of ["clear_test_documents", "flat_blockers", "restore_society_backup", "next_doc_numbers", "is_committee"]) {
+    assert.ok(mt17.includes(fn), `${fn} is handled`);
+  }
+  assert.match(mt17, /set default public\.active_society\(\)/);
+  assert.match(mt17, /drop function if exists public\.current_society_or_first\(\)/);
+  assert.doesNotMatch(mt17, /^\s*(insert into public\.(?!zz_mt17)|update public\.|delete from public\.)/im, "changes no society data");
+  assert.match(mt17undo, /set default public\.current_society_or_first\(\)/);
+  assert.match(mt17undo, /zz_mt17_function_backup/);
+  assert.match(mt17undo, /drop function if exists public\.require_society/);
+  assert.match(mt17test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt17test, /overall: /);
+});

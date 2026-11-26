@@ -75,3 +75,15 @@ select p.proname as function_name, pg_get_function_identity_arguments(p.oid) as 
    and p.proname in ('committee_areas_guard', 'tenant_moved_out', 'event_team_tenant_guard', 'letter_request_before_insert',
                      'letter_request_guard', 'letters_resident_guard', 'letters_resolution_guard')
  order by p.proname, 2;
+
+-- Fallbacks still in the database (read-only; after MT_17 every line should say "none" / 0)
+select 'functions using current_society_or_first' as what,
+       coalesce((select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+                  and pg_get_functiondef(p.oid) like '%current_society_or_first%'), 'none') as value
+union all select 'columns whose default is current_society_or_first',
+       (select count(*) from pg_attrdef df join pg_class c on c.oid = df.adrelid
+         where c.relnamespace = 'public'::regnamespace and pg_get_expr(df.adbin, df.adrelid) like '%current_society_or_first%')::text
+union all select 'logins with a role but no membership',
+       (select count(*) from auth.users u where u.raw_app_meta_data ->> 'role' in ('committee', 'resident', 'tenant')
+           and not exists (select 1 from public.society_memberships m where m.user_id = u.id))::text;
+
