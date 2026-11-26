@@ -137,7 +137,7 @@ export default function NoticesTab({ ctx }: { ctx: Ctx }) {
       <div className="max-w-[900px]">
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
           <div className="serif text-[22px] font-bold">Society Notices</div>
-          <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored in R2</div>
+          <div className="mono text-[11px] opacity-60">{notices.length} notices • Common + tower-wise • Attachments stored securely</div>
           {(() => { const live = notices.filter((x) => x.is_banner && (!x.banner_until || x.banner_until >= today())).length; return live > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-2 mono text-[11px]">
               <span><b>{live}</b> notice{live === 1 ? " is" : "s are"} shown as a login banner{ctx.isCommittee ? "" : " for some towers"}.</span>

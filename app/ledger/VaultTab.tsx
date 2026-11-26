@@ -43,10 +43,10 @@ export default function VaultTab({ ctx }: { ctx: Ctx }) {
       <div className="bg-[var(--navy)] text-[#fdfcf5] border border-[var(--navy)] rounded-[4px] p-5 flex flex-wrap justify-between gap-4">
         <div>
           <div className="serif text-[22px] font-bold tracking-wide">SOCIETY DOCUMENT VAULT</div>
-          <div className="mono text-[11px] mt-1 opacity-80">{filled} of {VAULT_SLOTS.length} official documents uploaded • {others.length} other files • Stored permanently in R2</div>
+          <div className="mono text-[11px] mt-1 opacity-80">{filled} of {VAULT_SLOTS.length} official documents uploaded • {others.length} other files • Stored permanently</div>
         </div>
         <div className="mono text-[10px] border border-white/20 p-2 bg-white/5 self-start">
-          <div>Bucket: aakar-vault/vault</div>
+          <div>Society document vault</div>
           <div className="text-[var(--gold)]">{canEdit ? "Committee can upload" : "View only"}</div>
         </div>
       </div>

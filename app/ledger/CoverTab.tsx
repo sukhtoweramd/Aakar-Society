@@ -82,7 +82,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
           </div>
           <div className="mt-10 border-t border-dashed border-[var(--border)] pt-6 grid grid-cols-1 md:grid-cols-3 gap-6 mono text-[11px]">
             <div><div className="font-bold tracking-[0.16em]">01 • TERRACE LOGIC</div><div className="opacity-70 mt-1">Top floor flats own the terrace as per registered agreement. Higher sqft and maintenance.</div></div>
-            <div><div className="font-bold tracking-[0.16em]">02 • VAULT</div><div className="opacity-70 mt-1">Legal documents stored in the Society Document Vault on Cloudflare R2.</div></div>
+            <div><div className="font-bold tracking-[0.16em]">02 • VAULT</div><div className="opacity-70 mt-1">Legal documents stored in the Society Document Vault.</div></div>
             <div><div className="font-bold tracking-[0.16em]">03 • CHARGES</div><div className="opacity-70 mt-1">Control panel for maintenance per category. Yellow = terrace ownership.</div></div>
           </div>
           <div className="mt-8 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">

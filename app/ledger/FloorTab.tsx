@@ -36,7 +36,7 @@ export default function FloorTab({ ctx }: { ctx: Ctx }) {
         <div className="flex flex-wrap justify-between gap-4 items-start">
           <div>
             <div className="serif text-[24px] font-bold">Floor Plans • {titleCase(SOCIETY.building)}</div>
-            <div className="mono text-[11px] opacity-60 mt-1">Architectural drawings • Terrace logic annotated • Stored permanently in R2 (aakar-vault/floor-plans)</div>
+            <div className="mono text-[11px] opacity-60 mt-1">Architectural drawings • Terrace logic annotated • Stored permanently</div>
           </div>
           {ctx.isCommittee
             ? <div className="mono text-[10px] px-3 py-2 border rounded-[3px] bg-emerald-50 border-emerald-200 text-emerald-800">● COMMITTEE • You can upload floor plans</div>
