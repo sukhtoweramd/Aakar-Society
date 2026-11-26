@@ -77,3 +77,8 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 ## Step 4d-6 (26 Nov 2026): MT_14 complaint / letter / meeting / reference actions
 - `MT_14_COMPLAINT_LETTER_ACTIONS.sql` after MT_13 (it stops and says so if MT_11 is missing): `update_complaint`, `reassign_complaint`, `withdraw_letter_request`, `mark_my_action_done`, `my_action_points`, `my_committee_meetings`, `my_meeting`, `utr_already_reported` act only in the login's society. Check table: 8 / yes / no / true / false (the last line only shows who may call `update_complaint`; MT_14 does not change it) / 8. `storage_stats` is left as it is on purpose (database-wide sizes only). `MT_14_UNDO.sql` puts the eight back (check: 0).
 - `MT_14_TEST.sql` on the TEST project only (aanganone): lines 1 - 30 and `31 overall: PASS`. Never on live.
+
+## Step 4d-7 (26 Nov 2026): MT_15 trigger functions (group D)
+- `MT_15_TRIGGERS.sql` after MT_14 (it stops and says so if MT_11 is missing): `tenant_moved_out` (only this society's tenant login is switched off), `committee_areas_guard` (the "on the committee" check and the backup limit use the area's society), `letter_request_before_insert` (the letter format is looked up in the request's society). The triggers stay attached. `event_team_tenant_guard`, `letter_request_guard` and `letters_resolution_guard` are left as they are on purpose (they read no other society's rows). Check table: 3 / 3 / 0 / 3. `MT_15_UNDO.sql` puts the three back (check: 0).
+- `MT_15_TEST.sql` on the TEST project only (aanganone): lines 1 - 7 and `8 overall: PASS`. Never on live.
+

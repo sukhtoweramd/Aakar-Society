@@ -252,3 +252,27 @@ test("MT_14 rewrites the complaint, letter, meeting and reference actions from t
   assert.match(mt14test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt14test, /NEVER run it on Aakar/, "the test says it is for the test project only");
 });
+
+// Step 4d-7: three trigger functions look only at rows of the ROW'S society (MT_15, group D).
+const mt15 = readFileSync(join(root, "multitenant/MT_15_TRIGGERS.sql"), "utf8");
+const mt15undo = readFileSync(join(root, "multitenant/MT_15_UNDO.sql"), "utf8");
+const mt15test = readFileSync(join(root, "multitenant/MT_15_TEST.sql"), "utf8");
+
+test("MT_15 rewrites the three trigger functions from their live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  for (const f of ["tenant_moved_out", "committee_areas_guard", "letter_request_before_insert"]) {
+    assert.ok(mt15.includes(`public.${f}()`), `${f} is rewritten`);
+  }
+  assert.match(mt15, /pg_get_functiondef\(/, "rewritten from the live text");
+  assert.match(mt15, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.match(mt15, /zz_mt15_function_backup/, "the originals are saved for the undo");
+  assert.match(mt15, /MT_11/, "needs MT_11 first and says so");
+  assert.match(mt15, /where society_id = new\.society_id and flat_id = new\.id and active/, "a tenant moving out switches off only this society's tenant login");
+  assert.match(mt15, /f\.society_id = new\.society_id and f\.id = x and f\.is_committee/, "the committee check looks in the area's society");
+  assert.match(mt15, /letter_templates where society_id = new\.society_id and id = new\.template_id/, "the letter format is looked up in the request's society");
+  assert.match(mt15, /NOT changed on purpose/, "the three untouched trigger functions are named with the reason");
+  assert.doesNotMatch(mt15, /\bdrop (function|trigger)\b/i, "functions are replaced in place so the triggers stay attached");
+  assert.doesNotMatch(mt15, /^\s*(delete from|update) public\./im, "changes no table and no data");
+  assert.match(mt15undo, /zz_mt15_function_backup/, "the undo reads the saved copy");
+  assert.match(mt15test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt15test, /NEVER run it on Aakar/, "the test says it is for the test project only");
+});
