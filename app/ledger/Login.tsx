@@ -9,6 +9,8 @@ import { InstallApp } from "./PwaRegister";
 import { cleanWord, FIRST_SOCIETY_WORD, usesLegacyAddress, wordFromPath } from "@/lib/societyWord";
 
 const WORD_KEY = "society-word";
+// The app swaps this screen for the ledger the moment a login succeeds, so a refusal made after that is kept here and shown when the login screen comes back.
+const NOTICE_KEY = "login-notice";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,6 +23,7 @@ export default function Login() {
   const word = pathWord || cleanWord(typedWord);
   const [society, setSociety] = useState<{ slug: string; name: string } | null>(null);
   const [lookedUp, setLookedUp] = useState(false);
+  useEffect(() => { try { const n = window.sessionStorage.getItem(NOTICE_KEY); if (n) { window.sessionStorage.removeItem(NOTICE_KEY); setError(n); } } catch {} }, []);
   useEffect(() => { try { const w = window.localStorage.getItem(WORD_KEY); if (w && !pathWord) setTypedWord(w); } catch {} }, [pathWord]);
   useEffect(() => {
     let alive = true;
@@ -53,9 +56,11 @@ export default function Login() {
       const { data: mine, error: me } = await supabase.rpc("my_society");
       const slug = (mine as { slug?: string } | null)?.slug;
       if (!me && slug && slug !== word && !(usesLegacyAddress(word) && usesLegacyAddress(slug))) {
+        const msg = `This login is not for this address. It belongs to ${(mine as { name?: string }).name || slug}. Open that society's own address (/${slug}) and log in there.`;
+        try { window.sessionStorage.setItem(NOTICE_KEY, msg); } catch {}
         await supabase.auth.signOut();
         setBusy(false);
-        setError(`This login is not for this address. It belongs to ${(mine as { name?: string }).name || slug}. Open that society's own address (/${slug}) and log in there.`);
+        setError(msg);
         return;
       }
     }
