@@ -48,8 +48,9 @@ begin
 
   -- 1. the society
   insert into public.societies (id, slug, name) values (soc2, 'sample-gardens', 'Sample Gardens');
-  insert into public.society_profile (society_id, id, name, full_name, building, address, city)
-  values (soc2, 1, 'Sample Gardens', 'Sample Gardens Co-op Housing Society Ltd', 'Sample Gardens', 'Garden Lane', 'Sampleville');
+  -- public_url: the address printed on login slips / messages. It must carry the society word, because a flat login ("A-101") is looked up inside the society named in the address.
+  insert into public.society_profile (society_id, id, name, full_name, building, address, city, public_url)
+  values (soc2, 1, 'Sample Gardens', 'Sample Gardens Co-op Housing Society Ltd', 'Garden Court', 'Garden Lane', 'Sampleville', 'https://aakarsociety.vercel.app/sample-gardens');
   insert into public.towers (society_id, code, name, has_terrace, sort) values (soc2, 'A', 'Tower A', true, 10), (soc2, 'C', 'Tower C', false, 20);
 
   -- 2. flats (A101 - A304, C101 - C304) and one head of family each
