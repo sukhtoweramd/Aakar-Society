@@ -52,12 +52,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   try {
     const { users: members, main } = await committeeUsers(admin, me.userId);
+    const society = await societyOfCaller(admin, me.userId);
     // Audit H2: adding logins, resetting passwords and linking flats is for the main admin login only,
     // otherwise any committee login could reset the main admin's password and take it over.
     const isMain = main === me.userId;
     // PR-14: removing a committee login (one, or all linked to a flat) is main admin only too.
     if (["add", "reset", "link", "remove", "revoke_flat"].includes(body.action) && !isMain) {
-      await logAccess(admin, me.email, "refused_" + body.action, String(body.email || body.id || ""));
+      await logAccess(admin, me.email, "refused_" + body.action, String(body.email || body.id || ""), "", society);
       return NextResponse.json({ error: "Only the main admin login can do this." }, { status: 403 });
     }
     // Optional link to the committee member's own flat ("A301"); "" / null = not linked
@@ -73,12 +74,12 @@ export async function POST(req: NextRequest) {
       const { data: made, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: "committee", flat_id: flatId }, user_metadata: { name, added_by: me.email, password_changed: false } });
       if (error || !made?.user) return NextResponse.json({ error: error && /already/i.test(error.message) ? "A login with this email already exists." : error?.message || "Could not create the login." }, { status: 400 });
       try {   // the new login joins the society of the main admin who made it; if that fails the login is removed again
-        await addMembership(admin, membershipRow(made.user.id, await societyOfCaller(admin, me.userId), "committee", flatId));
+        await addMembership(admin, membershipRow(made.user.id, society, "committee", flatId));
       } catch (e: any) {
         await admin.auth.admin.deleteUser(made.user.id);
         return NextResponse.json({ error: "Could not add the login to the society: " + (e?.message || "unknown error") }, { status: 500 });
       }
-      await logAccess(admin, me.email, "login_added", email, flatId ? `own flat ${flatId}` : "");
+      await logAccess(admin, me.email, "login_added", email, flatId ? `own flat ${flatId}` : "", society);
       return NextResponse.json({ ok: true, email, password });
     }
     // A flat is no longer on the committee: remove every committee login linked to it.
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
         const { error } = await admin.auth.admin.deleteUser(m.id);
         if (error) throw error;
         removed.push(m.email || m.id);
-        await logAccess(admin, me.email, "login_removed", m.email || m.id, `left the committee (flat ${flatId})`);
+        await logAccess(admin, me.email, "login_removed", m.email || m.id, `left the committee (flat ${flatId})`, society);
       }
       return NextResponse.json({ ok: true, removed, kept });
     }
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
       // first login after a reset must choose a new password (31 Oct 2026)
       const { error } = await admin.auth.admin.updateUserById(target.id, { password, user_metadata: { ...(target.user_metadata || {}), password_changed: false } });
       if (error) throw error;
-      await logAccess(admin, me.email, "password_reset", target.email || target.id);
+      await logAccess(admin, me.email, "password_reset", target.email || target.id, "", society);
       return NextResponse.json({ ok: true, email: target.email, password });
     }
     if (body.action === "link") {
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       if (target.id === main) return NextResponse.json({ error: "The main admin login cannot be removed." }, { status: 400 });
       const { error } = await admin.auth.admin.deleteUser(target.id);
       if (error) throw error;
-      await logAccess(admin, me.email, "login_removed", target.email || target.id, String(body.reason || "removed from ADMIN"));
+      await logAccess(admin, me.email, "login_removed", target.email || target.id, String(body.reason || "removed from ADMIN"), society);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

@@ -117,6 +117,7 @@ export async function readStoredBackup(key: string, society: string): Promise<Ba
 
 /** Records an action in access_log. Never fails the main action (table may not exist yet).
  *  Name the society when the action belongs to one: the server key has no login, so without it the row would be filed under the first society. */
-export async function logAccess(admin: SupabaseClient, actor: string, action: string, target = "", details = "", society?: string) {
-  try { await admin.from("access_log").insert([society ? { actor, action, target, details, society_id: society } : { actor, action, target, details }]); } catch { /* ignore */ }
+// The society is required (since 4e): the server key skips the database default of the login, so a log row without it would land in the first society.
+export async function logAccess(admin: SupabaseClient, actor: string, action: string, target: string, details: string, society: string) {
+  try { await admin.from("access_log").insert([{ actor, action, target, details, society_id: society }]); } catch { /* ignore */ }
 }

@@ -35,3 +35,9 @@ test("residents: resident and tenant logins come from the caller's society", () 
 test("flat-plan: the flats it inserts carry the society", () => {
   assert.match(read("app/api/flat-plan/route.ts"), /\.map\(\(p\) => \(\{ \.\.\.p, society_id: society \}\)\)/);
 });
+
+test("access log rows always name the society (logAccess needs it; the server key skips the login's default)", () => {
+  const b = read("lib/backup.ts");
+  assert.match(b, /export async function logAccess\(admin: SupabaseClient, actor: string, action: string, target: string, details: string, society: string\)/);
+  assert.match(b, /insert\(\[\{ actor, action, target, details, society_id: society \}\]\)/);
+});
