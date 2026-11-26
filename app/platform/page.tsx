@@ -188,7 +188,6 @@ export default function PlatformPage() {
                     </div>
                   ) : (
                     <div className="flex gap-2 flex-wrap">
-                      <a href={`/${s.slug}`} target="_blank" rel="noreferrer" className="btn-line min-h-[44px] px-4 text-[12px] inline-flex items-center">Open ↗</a>
                       <button onClick={() => copy(s.id, addr(s.slug))} className="btn-line min-h-[44px] px-4 text-[12px]">{copied === s.id ? "Copied ✓" : "Copy address"}</button>
                       <button onClick={() => setConfirmReset(s.id)} disabled={busy || !s.owner_email} className="btn-line min-h-[44px] px-4 text-[12px]">Reset owner</button>
                     </div>

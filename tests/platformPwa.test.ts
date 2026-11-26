@@ -40,3 +40,8 @@ test("platform service worker: its own scope, navigations only, no data and no A
   assert.match(read("app/platform/PlatformPwa.tsx"), /register\("\/platform-sw\.js", \{ scope: "\/platform" \}\)/);
   assert.match(read("app/ledger/PwaRegister.tsx"), /register\("\/sw\.js"\)/);  // the society app's worker is unchanged
 });
+
+test("platform page has no Open link into a society (the product owner has no access there)", () => {
+  const p = read("app/platform/page.tsx");
+  assert.doesNotMatch(p, />Open ↗</);
+});
