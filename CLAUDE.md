@@ -116,6 +116,8 @@
 
 - Screens (26 Nov 2026): no storage bucket name, no founding year typed in (`EST` comes from `regYear()`, hidden when empty), top strip says "SOCIETY LEDGER" (the old "LIVE" was static text, not the GO LIVE flag); browser tab title is set from the profile after login. `layout.tsx` / manifest / offline page keep Aakar's name (static files, see Flat setup).
 
+- Product owner page (26 Nov 2026, PR for `/platform`): `app/platform/page.tsx` + `app/api/platform/route.ts` + `lib/platformOwner.ts` (pure, `tests/platformOwner.test.ts`). Who: the login whose email is the Vercel variable `PLATFORM_OWNER_EMAIL`, only while it has NO role and NO society membership (create it by hand in Supabase Auth on each database; never give it a role). The route is the one place that looks across societies on purpose; it touches only `societies`, `society_memberships`, `society_profile` (insert) and a flat COUNT per society, never resident data (test lists the tables). Create society = `societies` row + owner login (`role committee` + membership `society_admin`) + first `society_profile` row (own name, empty fields, so Aakar's values never show); undone if any step fails. Not built: pause / resume (whether a paused society blocks logins is UNKNOWN), society owner checklist.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.
@@ -133,7 +135,7 @@
   and every Vercel environment variable: its NAME, what it is for, and where to get it (site + screen). Never the values.
 - Current variables read by the code: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY, R2_ACCOUNT_ID / CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
-  R2_BUCKET_NAME, R2_PUBLIC_URL / CLOUDFLARE_R2_PUBLIC_URL, MAIN_ADMIN_EMAIL, CLOUDFLARE_AI_TOKEN (Workers AI, reads "I have paid" screenshots; added 21 Oct 2026).
+  R2_BUCKET_NAME, R2_PUBLIC_URL / CLOUDFLARE_R2_PUBLIC_URL, MAIN_ADMIN_EMAIL, PLATFORM_OWNER_EMAIL (product owner of /platform; added 26 Nov 2026), CLOUDFLARE_AI_TOKEN (Workers AI, reads "I have paid" screenshots; added 21 Oct 2026).
 - GitHub Actions secrets (Repository > Settings > Secrets and variables > Actions; not Vercel), used only by
   `.github/workflows/supabase-keepalive.yml` (daily keep-alive, 11 Nov 2026): AAKAR_SUPABASE_URL, AAKAR_SUPABASE_PUBLISHABLE_KEY
   (publishable / anon key only; never the secret or service-role key). It calls `public.keepalive()` (KEEPALIVE.sql, returns 1, reads no data).
