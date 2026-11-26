@@ -97,3 +97,9 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - `MT_17_TEST.sql` on aanganone ONLY: lines 1 - 9 and `10 overall: PASS` (the red error is expected). Never on live.
 - Afterwards: a script or route that inserts into a society table without naming `society_id` fails (by design). MT_06 / MT_08 and their `_TEST` scripts are history: do not run them again after MT_17.
 
+## Step 4e (26 Nov 2026): MT_18_WALLS_TEST.sql - a login of another society tries to cross every wall
+- `MT_18_WALLS_TEST.sql` on the TEST project only (aanganone). Never on live. Changes nothing (ends with a deliberate error, read the lines after "RESULT:"). Needs MT_17 run.
+- It finds every table with the `society_wall` rule from the database, moves the first committee login into a new empty society and, on each table: looks at the first society's rows (A), tries to change them (B), delete them (C) and insert a copy of one (D). Then: a login with no membership (E), the not-logged-in role (F), the three directory views (G), owner-rights functions (H), a forged "active society" claim (I).
+- Result: `overall: PASS`. A line starting `BAD` is a hole (send it to me at once). A line starting `UNCLEAR` is an insert stopped by a trigger or check instead of the row rule: send it to me, it is not a hole by itself.
+- The test was proven locally to catch a weakened wall (read, change, insert and no-membership holes each showed as BAD).
+
