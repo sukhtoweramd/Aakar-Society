@@ -332,3 +332,24 @@ test("MT_18 tries to read, change, delete and insert across the society wall on 
   assert.doesNotMatch(mt18, /^\s*(drop|alter|truncate) /im, "changes no structure");
 });
 
+// Demo society on the real database: only the new society's rows, proof that Aakar is untouched, never twice.
+const demo = readFileSync(join(root, "multitenant/DEMO_SOCIETY_LIVE.sql"), "utf8");
+const demoUndo = readFileSync(join(root, "multitenant/DEMO_SOCIETY_LIVE_UNDO.sql"), "utf8");
+test("the live demo script adds only Sample Gardens rows, proves the first society is unchanged, and refuses to run twice or with a used login", () => {
+  assert.match(demo, /already exists here\. This script runs only once/);
+  assert.match(demo, /already has a role or belongs to a society/);
+  assert.match(demo, /A row of the first society would have changed\. The whole script was rolled back/);
+  assert.match(demo, /md5\(string_agg\(md5\(x::text\)/, "fingerprint of every first-society row");
+  assert.match(demo, /Run MT_17_NO_FALLBACK\.sql first/);
+  assert.match(demo, /Run MT_16_SOCIETY_PUBLIC\.sql first/);
+  assert.match(demo, /PUT-EMAIL-HERE/, "no email is committed");
+  assert.doesNotMatch(demo, /\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b/i, "no email address in the script");
+  assert.doesNotMatch(demo, /^\s*(delete from|truncate|drop )/im, "removes nothing");
+  assert.doesNotMatch(demo, /\bupdate public\./i, "updates no society table");
+  assert.doesNotMatch(demo, /on conflict/i, "no silent skipping: a clash stops the script");
+  assert.match(demo, /society_memberships \(user_id, society_id, role\) values \(uid, soc2, 'committee'\)/);
+  assert.match(demoUndo, /delete from public\.%I where society_id = \$1/, "every delete names the demo society");
+  assert.match(demoUndo, /That id is not Sample Gardens/);
+  assert.doesNotMatch(demoUndo, /delete from public\.societies where (?!id = soc2)/);
+});
+

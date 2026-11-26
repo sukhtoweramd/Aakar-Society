@@ -103,3 +103,10 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - Result: `overall: PASS`. A line starting `BAD` is a hole (send it to me at once). A line starting `UNCLEAR` is an insert stopped by a trigger or check instead of the row rule: send it to me, it is not a hole by itself.
 - The test was proven locally to catch a weakened wall (read, change, insert and no-membership holes each showed as BAD).
 
+## The demo society on live (26 Nov 2026): DEMO_SOCIETY_LIVE.sql
+- Goal: Aakar live, plus "Sample Gardens" (address `/sample-gardens`, same live site) as a demo society with FAKE data. Needs MT_01 - MT_17 on live (MT_16 too). Fresh backup first.
+- Create ONE login in Supabase (Authentication > Users > Add user, auto-confirm, strong password), put its email in the EDIT line of `DEMO_SOCIETY_LIVE.sql`, run it. It refuses a login that already has a role or belongs to a society, refuses to run twice, adds only rows that name the new society, and reads a fingerprint of every Aakar row before and after: any difference rolls the whole script back.
+- Check table (4 lines): 24 / 24, 2 / 1 / 2 / 3, 1, `aakar, sample-gardens`. Aakar's screens are unchanged (check BILLING / notices after).
+- Then open `<live address>/sample-gardens`, log in with the demo committee email; ADMIN > RESIDENT LOGINS creates the demo flat logins (`a101@sample-gardens.flats.aakarsociety.app`) through the app.
+- `DEMO_SOCIETY_LIVE_UNDO.sql` removes only Sample Gardens (every delete names its id); then delete the demo login(s) in Supabase. Never run `SAMPLE_DATA_SOCIETY2.sql` on live (it refuses anyway).
+
