@@ -3,9 +3,10 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { allUsers } from "./backup";
 import { societyOfCaller } from "./memberships";
+import { loginsOfSociety } from "./backupScope";
 import { committeeOfSociety, societyOwnerId, type OwnerMembership } from "./societyOwner";
 
-async function membershipsOf(admin: SupabaseClient): Promise<OwnerMembership[]> {
+export async function membershipsOf(admin: SupabaseClient): Promise<OwnerMembership[]> {
   const out: OwnerMembership[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await admin.from("society_memberships").select("user_id, society_id, role").range(from, from + 999);
@@ -25,4 +26,10 @@ export async function societyCommittee(admin: SupabaseClient, society: string): 
 export async function isMainAdminUser(admin: SupabaseClient, userId: string): Promise<boolean> {
   const society = await societyOfCaller(admin, userId);
   return (await societyCommittee(admin, society)).ownerId === userId;
+}
+
+/** Every login of ONE society (any role): the server key lists all logins of the project, so each route that lists or looks up logins uses this. */
+export async function societyUsers(admin: SupabaseClient, society: string): Promise<User[]> {
+  const [users, memberships] = await Promise.all([allUsers(admin), membershipsOf(admin)]);
+  return loginsOfSociety(users, memberships, society);
 }

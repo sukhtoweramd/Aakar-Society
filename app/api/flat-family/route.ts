@@ -6,6 +6,7 @@ import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { normaliseFlat } from "@/lib/residents";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
+import { societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 const missingTable = (msg: string) => /does not exist|could not find the table|schema cache/i.test(msg);
@@ -20,20 +21,21 @@ export async function POST(req: NextRequest) {
   const flat = normaliseFlat(String(body.flat || ""));
   if (!flat) return NextResponse.json({ error: "Which flat?" }, { status: 400 });
   try {
+    const society = await societyOfCaller(admin, me.userId);   // the server key skips the database wall: every query names the society
     if (!(await isMainAdminUser(admin, me.userId))) {
-      await logAccess(admin, me.email, "refused_clear_family", flat);
+      await logAccess(admin, me.email, "refused_clear_family", flat, "", society);
       return NextResponse.json({ error: "Only the main admin login can remove everyone at once. Remove people one by one with ✕, or ask the main admin." }, { status: 403 });
     }
-    const { data: exists, error: fe } = await admin.from("flats").select("id").eq("id", flat).maybeSingle();
+    const { data: exists, error: fe } = await admin.from("flats").select("id").eq("society_id", society).eq("id", flat).maybeSingle();
     if (fe) throw fe;
     if (!exists) return NextResponse.json({ error: "No such flat." }, { status: 404 });
     for (const t of ["vehicles", "emergency_contacts"]) {
-      const { error } = await admin.from(t).delete().eq("flat_id", flat);
+      const { error } = await admin.from(t).delete().eq("society_id", society).eq("flat_id", flat);
       if (error && !missingTable(error.message)) throw error;
     }
-    const { data, error } = await admin.from("members").delete().eq("flat_id", flat).select("id");
+    const { data, error } = await admin.from("members").delete().eq("society_id", society).eq("flat_id", flat).select("id");
     if (error) throw error;
-    await logAccess(admin, me.email, "family_cleared", flat, `${data?.length || 0} member(s) removed`);
+    await logAccess(admin, me.email, "family_cleared", flat, `${data?.length || 0} member(s) removed`, society);
     return NextResponse.json({ ok: true, removed: data?.length || 0 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed" }, { status: 500 });
