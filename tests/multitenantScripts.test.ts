@@ -319,3 +319,16 @@ test("MT_17 removes the first-society fallback from the live text, saves the ori
   assert.match(mt17test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt17test, /overall: /);
 });
+
+// Step 4e (MT_18): the wall-crossing test finds the walled tables itself, tries every kind of access, and rolls back.
+const mt18 = readFileSync(join(root, "multitenant/MT_18_WALLS_TEST.sql"), "utf8");
+test("MT_18 tries to read, change, delete and insert across the society wall on every walled table, and rolls everything back", () => {
+  assert.match(mt18, /policyname = 'society_wall'/, "the tables are found from the database, not typed in");
+  for (const part of ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]) assert.ok(mt18.includes(`BAD ${part}`) || mt18.includes(`\n${part} `) || mt18.includes(`-- ${part} `), `part ${part}`);
+  assert.match(mt18, /set local role authenticated/);
+  assert.match(mt18, /set local role anon/);
+  assert.match(mt18, /sqlstate = '23505'/, "a duplicate key proves the row rule let the insert through");
+  assert.match(mt18, /raise exception E'RESULT/, "ends with a deliberate error so everything is rolled back");
+  assert.doesNotMatch(mt18, /^\s*(drop|alter|truncate) /im, "changes no structure");
+});
+
