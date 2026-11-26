@@ -71,3 +71,27 @@ test("the platform route checks the product owner on the server, writes nothing 
   assert.ok(!/owner_name|mobile/.test(r.replace(/\/\/.*$/gm, "")), "no resident data");
   assert.ok(read("lib/societyWord.ts").includes('"platform"'));
 });
+
+import { newSocietyProblems, platformTotals, suggestWord } from "../lib/platformOwner";
+
+test("suggested word from the name", () => {
+  assert.equal(suggestWord("Green Park Co-op"), "green-park-co-op");
+  assert.equal(suggestWord("  Sai Krupa  Residency! "), "sai-krupa-residency");
+  assert.equal(suggestWord("Café Heights"), "cafe-heights");
+  assert.equal(suggestWord("ab"), "");
+  assert.ok(suggestWord("x".repeat(80) + " tower").length <= 40);
+});
+
+test("form problems are listed in words and match the server rules", () => {
+  assert.deepEqual(newSocietyProblems({ name: "Green Park", word: "green-park", ownerEmail: "a@b.com" }), []);
+  assert.equal(newSocietyProblems({}).length, 3);
+  assert.match(newSocietyProblems({ name: "Green Park", word: "platform", ownerEmail: "a@b.com" })[0], /word/i);
+  assert.deepEqual(newSocietyProblems({ name: "Green Park", word: "aakar", ownerEmail: "a@b.com" }, ["aakar"]), ["Society word is already used"]);
+  assert.match(newSocietyProblems({ name: "Green Park", word: "green-park", ownerEmail: "nope" })[0], /email/i);
+});
+
+test("platform totals", () => {
+  const it = (status: string, flats: number, c: number, f: number, t: number): any => ({ status, flats, logins: { committee: c, flat: f, tenant: t } });
+  assert.deepEqual(platformTotals([it("active", 90, 3, 80, 4), it("suspended", 24, 1, 1, 0)]), { societies: 2, active: 1, flats: 114, logins: 89 });
+  assert.deepEqual(platformTotals([]), { societies: 0, active: 0, flats: 0, logins: 0 });
+});
