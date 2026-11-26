@@ -5,8 +5,8 @@ import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { normaliseFlat, isFlatEmail } from "@/lib/residents";
-import { logAccess, mainAdminId } from "@/lib/backup";
-import { isCommitteeMeta } from "@/lib/roles";
+import { logAccess } from "@/lib/backup";
+import { societyCommittee } from "@/lib/mainAdmin";
 import { addMembership, membershipRow, societyOfCaller } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
@@ -15,15 +15,10 @@ const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const newPassword = () => Array.from({ length: 12 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-async function committeeUsers(admin: SupabaseClient): Promise<User[]> {
-  const all: User[] = [];
-  for (let page = 1; page < 50; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    all.push(...data.users);
-    if (data.users.length < 1000) break;
-  }
-  return all.filter((u) => isCommitteeMeta(u.app_metadata));
+// The server key skips the database wall, so every list below is only the caller's own society (lib/societyOwner.ts).
+async function committeeUsers(admin: SupabaseClient, userId: string): Promise<{ users: User[]; main: string | null }> {
+  const { committee, ownerId } = await societyCommittee(admin, await societyOfCaller(admin, userId));
+  return { users: committee, main: ownerId };
 }
 
 async function guard(req: NextRequest) {
@@ -39,8 +34,7 @@ export async function GET(req: NextRequest) {
   const g = await guard(req);
   if ("error" in g) return g.error;
   try {
-    const users = await committeeUsers(g.admin);
-    const main = mainAdminId(users);
+    const { users, main } = await committeeUsers(g.admin, g.me.userId);
     return NextResponse.json({
       members: users
         .map((u) => ({ id: u.id, email: u.email, name: (u.user_metadata as any)?.name || "", flat_id: (u.app_metadata as any)?.flat_id || null, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at || null, self: u.id === g.me.userId, main: u.id === main }))
@@ -57,10 +51,10 @@ export async function POST(req: NextRequest) {
   const { admin, me } = g;
   const body = await req.json().catch(() => ({}));
   try {
-    const members = await committeeUsers(admin);
+    const { users: members, main } = await committeeUsers(admin, me.userId);
     // Audit H2: adding logins, resetting passwords and linking flats is for the main admin login only,
     // otherwise any committee login could reset the main admin's password and take it over.
-    const isMain = mainAdminId(members) === me.userId;
+    const isMain = main === me.userId;
     // PR-14: removing a committee login (one, or all linked to a flat) is main admin only too.
     if (["add", "reset", "link", "remove", "revoke_flat"].includes(body.action) && !isMain) {
       await logAccess(admin, me.email, "refused_" + body.action, String(body.email || body.id || ""));
@@ -90,7 +84,6 @@ export async function POST(req: NextRequest) {
     // A flat is no longer on the committee: remove every committee login linked to it.
     if (body.action === "revoke_flat") {
       if (!flatId) return NextResponse.json({ error: "Flat missing." }, { status: 400 });
-      const main = mainAdminId(members);
       const linked = members.filter((m) => (m.app_metadata as any)?.flat_id === flatId);
       const removed: string[] = [], kept: string[] = [];
       for (const m of linked) {
@@ -122,7 +115,7 @@ export async function POST(req: NextRequest) {
     if (body.action === "remove") {
       if (target.id === me.userId) return NextResponse.json({ error: "You cannot remove your own login." }, { status: 400 });
       if (members.length <= 1) return NextResponse.json({ error: "At least one committee login must remain." }, { status: 400 });
-      if (target.id === mainAdminId(members)) return NextResponse.json({ error: "The main admin login cannot be removed." }, { status: 400 });
+      if (target.id === main) return NextResponse.json({ error: "The main admin login cannot be removed." }, { status: 400 });
       const { error } = await admin.auth.admin.deleteUser(target.id);
       if (error) throw error;
       await logAccess(admin, me.email, "login_removed", target.email || target.id, String(body.reason || "removed from ADMIN"));

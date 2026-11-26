@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getR2 } from "./r2Client";
+import { ownerByEmailOrOldest } from "./societyOwner";
 import { backupFolderOf, isBackupKey, keyBelongsTo, loginsOfSociety } from "./backupScope";
 
 /** Every table with society records, in the order they are restored (parents first). */
@@ -36,12 +37,9 @@ export async function allUsers(admin: SupabaseClient): Promise<User[]> {
 }
 export const isCommitteeUser = (u: User) => isCommitteeMeta(u.app_metadata);
 
-/** The main admin: MAIN_ADMIN_EMAIL in Vercel if set, otherwise the oldest committee login (the society's own account). */
+/** The owner among the committee logins of ONE society: MAIN_ADMIN_EMAIL in Vercel if set, otherwise the oldest (see lib/societyOwner.ts for the per-society rule). */
 export function mainAdminId(committee: User[]): string | null {
-  const env = (process.env.MAIN_ADMIN_EMAIL || "").trim().toLowerCase();
-  if (env) { const u = committee.find((x) => (x.email || "").toLowerCase() === env); if (u) return u.id; }
-  const sorted = [...committee].sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
-  return sorted[0]?.id || null;
+  return ownerByEmailOrOldest(committee, process.env.MAIN_ADMIN_EMAIL);
 }
 
 /** Every membership row (platform table), read in pages. */
