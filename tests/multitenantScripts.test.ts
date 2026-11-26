@@ -276,3 +276,19 @@ test("MT_15 rewrites the three trigger functions from their live text, saves the
   assert.match(mt15test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt15test, /NEVER run it on Aakar/, "the test says it is for the test project only");
 });
+
+// Society-choice login, step 1 (MT_16): two read-only functions for the login page.
+const mt16 = readFileSync(join(root, "multitenant/MT_16_SOCIETY_PUBLIC.sql"), "utf8");
+const mt16undo = readFileSync(join(root, "multitenant/MT_16_UNDO.sql"), "utf8");
+const mt16test = readFileSync(join(root, "multitenant/MT_16_TEST.sql"), "utf8");
+
+test("MT_16 gives the login page only the name and word of an ACTIVE society, and my_society needs a login", () => {
+  assert.match(mt16, /create or replace function public\.society_public\(p_word text\)/);
+  assert.match(mt16, /s\.status = 'active'/, "a paused or closed society is not shown");
+  assert.match(mt16, /jsonb_build_object\('slug', s\.slug, 'name', s\.name\)/, "only the word and the name are returned");
+  assert.match(mt16, /grant execute on function public\.society_public\(text\) to anon/, "the login page (not logged in) may ask");
+  assert.match(mt16, /revoke all on function public\.my_society\(\) from public, anon/, "my_society needs a login");
+  assert.doesNotMatch(mt16, /^\s*(insert into|update|delete from) /im, "changes no data");
+  assert.match(mt16undo, /drop function if exists public\.society_public/);
+  assert.match(mt16test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+});

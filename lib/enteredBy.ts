@@ -2,7 +2,7 @@
 // (`created_by`, set from the login itself, never from a form), so nobody can fake it. Flat logins use an internal address
 // (A-502 → a502@flats…, tenant → a502.tenant@flats…); committee logins use their own email.
 // Pure helpers: no Supabase import, so the tests can load this file.
-import { RESIDENT_DOMAIN } from "./residents";
+import { isFlatEmail } from "./residents";
 
 const prettyFlat = (id: string) => id.toUpperCase().replace(/^([A-Z]+)(\d)/, "$1-$2");
 
@@ -13,7 +13,7 @@ export function enteredByLabel(createdBy: string | null | undefined, viewerIsCom
   if (!raw || raw.toLowerCase() === "unknown") return "Not recorded";
   const email = raw.toLowerCase();
   const at = email.lastIndexOf("@");
-  if (at > 0 && email.slice(at + 1) === RESIDENT_DOMAIN) {
+  if (at > 0 && isFlatEmail(email)) {
     const local = email.slice(0, at);
     return local.endsWith(".tenant") ? `Tenant login ${prettyFlat(local.slice(0, -7))}` : `Flat login ${prettyFlat(local)}`;
   }
