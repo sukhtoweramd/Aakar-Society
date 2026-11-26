@@ -37,3 +37,18 @@ test("'entered by' names flat logins of any society and still hides committee em
   assert.equal(enteredByLabel(tenantEmail("A102", "sample-gardens"), false), "Tenant login A-102");
   assert.equal(enteredByLabel("chair@example.com", false), "Committee");
 });
+
+test("the saved society profile is kept per society word, so one device can show the right name on two login pages", async () => {
+  const { readCachedProfile, writeCachedProfile, profileFromRow } = await import("../lib/societySetup");
+  const mem = new Map<string, string>();
+  const store = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
+  const a = profileFromRow({ name: "First", full_name: "First Society Ltd" });
+  const b = profileFromRow({ name: "Second", full_name: "Second Society Ltd" });
+  writeCachedProfile(store, a, "aakar");
+  writeCachedProfile(store, b, "sample-gardens");
+  assert.equal(readCachedProfile(store)?.name, "First", "no word = the first society, same key as before");
+  assert.equal(readCachedProfile(store, "aakar")?.name, "First");
+  assert.equal(readCachedProfile(store, "sample-gardens")?.name, "Second");
+  assert.equal(readCachedProfile(store, "other-one"), null, "a society never seen on this device has nothing saved");
+  assert.ok(mem.has("society_profile_v1"), "the first society keeps the old storage key");
+});

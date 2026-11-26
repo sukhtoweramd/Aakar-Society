@@ -15,6 +15,7 @@ import CommitteeTab from "./ledger/CommitteeTab";
 import LoginBanner, { clearBannerDismissal } from "./ledger/LoginBanner";
 import { label } from "@/lib/society";
 import Login from "./ledger/Login";
+import { wordFromPath } from "@/lib/societyWord";
 import Sidebar from "./ledger/Sidebar";
 import CoverTab from "./ledger/CoverTab";
 import IndexTab from "./ledger/IndexTab";
@@ -79,7 +80,7 @@ export default function Home() {
 
   useEffect(() => {
     // the login screen (before login the profile table cannot be read) shows the last profile seen on this device
-    try { const c = readCachedProfile(window.localStorage); if (c) applySocietyProfile(c); } catch {}
+    try { const c = readCachedProfile(window.localStorage, wordFromPath(window.location.pathname)); if (c) applySocietyProfile(c); } catch {}
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
@@ -129,7 +130,7 @@ export default function Home() {
       ]);
       if (!isCurrent() || !got) return;
       const [p, t] = got;
-      if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { writeCachedProfile(window.localStorage, prof); } catch {} }
+      if (!p.error && p.data) { const prof = profileFromRow(p.data); applySocietyProfile(prof); try { const ms = await supabase.rpc("my_society"); writeCachedProfile(window.localStorage, prof, ms.error ? null : (ms.data as { slug?: string } | null)?.slug || null); } catch {} }
       setTowerRows(!t.error && Array.isArray(t.data) ? t.data : null);
       setSetupVersion((n) => n + 1);
     } catch { /* keep today's values */ }
