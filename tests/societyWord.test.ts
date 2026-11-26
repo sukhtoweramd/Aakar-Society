@@ -1,7 +1,7 @@
 // Society word (multi-tenant login): the helpers behind /<word> addresses and the internal flat-login address.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWord, FIRST_SOCIETY_WORD, residentDomain, usesLegacyAddress, wordFromDomain, wordFromPath } from "../lib/societyWord";
+import { cleanWord, FIRST_SOCIETY_WORD, hasBuildingBackground, residentDomain, usesLegacyAddress, wordFromDomain, wordFromPath } from "../lib/societyWord";
 import { flatEmail, isFlatEmail, tenantEmail, RESIDENT_DOMAIN } from "../lib/residents";
 import { enteredByLabel } from "../lib/enteredBy";
 
@@ -51,4 +51,11 @@ test("the saved society profile is kept per society word, so one device can show
   assert.equal(readCachedProfile(store, "sample-gardens")?.name, "Second");
   assert.equal(readCachedProfile(store, "other-one"), null, "a society never seen on this device has nothing saved");
   assert.ok(mem.has("society_profile_v1"), "the first society keeps the old storage key");
+});
+
+test("the building picture on printed papers is Aakar's only", () => {
+  assert.equal(hasBuildingBackground("aakar"), true);
+  assert.equal(hasBuildingBackground(null), true);
+  assert.equal(hasBuildingBackground("sample-gardens"), false);
+  assert.equal(hasBuildingBackground("test-park"), false);
 });
