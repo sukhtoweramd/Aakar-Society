@@ -228,7 +228,7 @@ export default function Home() {
             <span className="opacity-40">•</span>
             <span>{SOCIETY.city}</span>
             <span className="opacity-40">•</span>
-            <span className="text-[var(--gold)] font-semibold">{flats.length || 90} FLATS {SOCIETY.reg}</span>
+            <span className="text-[var(--gold)] font-semibold">{flats.length} FLATS {SOCIETY.reg}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-4 opacity-80 mr-2 text-[11px]">

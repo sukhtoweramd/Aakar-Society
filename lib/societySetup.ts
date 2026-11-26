@@ -37,7 +37,7 @@ export function applySocietyProfile(p: SocietyProfile) {
 
 /** Towers for selects, filters and charges: the active rows of `towers`, in their order, plus any tower a flat uses that
  *  the table does not list (never hide a flat). No usable rows: the towers found in the flats, terrace as today's
- *  TERRACE_TOWERS; no flats either: A, B, C as before. */
+ *  TERRACE_TOWERS; no flats either: A, B, C as before only when the table could not be read (null); a table read as empty = no towers. */
 export function towersFromRows(rows: any[] | null | undefined, flats: { tower?: string | null }[] = []): TowerInfo[] {
   const used = Array.from(new Set(flats.map((f) => (f.tower || "").trim()).filter(Boolean))).sort();
   const valid = (Array.isArray(rows) ? rows : []).filter((r) => r && typeof r.code === "string" && r.code.trim());
@@ -46,6 +46,7 @@ export function towersFromRows(rows: any[] | null | undefined, flats: { tower?: 
     .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0) || String(a.code).localeCompare(String(b.code)))
     .map((r) => ({ code: String(r.code).trim(), name: text(r.name, `Tower ${String(r.code).trim()}`), terrace: !!r.has_terrace }));
   if (!valid.length) {
+    if (Array.isArray(rows) && !used.length) return [];   // the table was read and is empty, and no flats: a brand-new society shows no towers (never Aakar's A, B, C)
     const codes = used.length ? used : ["A", "B", "C"];
     return codes.map((code) => ({ code, name: `Tower ${code}`, terrace: TERRACE_TOWERS.includes(code) }));
   }
