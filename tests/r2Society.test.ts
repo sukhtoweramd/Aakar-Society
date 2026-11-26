@@ -59,3 +59,19 @@ test("storage and clear: only the caller's society", () => {
 test("screens match vault slot files without the society prefix", () => {
   for (const f of ["app/ledger/VaultTab.tsx", "app/ledger/DetailTab.tsx"]) assert.ok(!/\.key\.startsWith\(`vault\//.test(read(f)), f + " compares the raw key");
 });
+test("payment screenshots: stored under the caller's society, opened only when the row's society owns the key", () => {
+  const p = read("app/api/payment-proof/route.ts");
+  assert.match(p, /`\$\{keyPrefixOf\(await callerSociety\(me\)\)\}\$\{PROOF_FOLDER\}\/\$\{flat\}\//);
+  assert.match(p, /select\("flat_id, proof_key, society_id"\)/);
+  assert.match(p, /societyOfKey\(data\.proof_key\) !== String\(data\.society_id/);
+  assert.match(p, /keyWithoutPrefix\(String\(data\.proof_key\)\)\.startsWith\(`\$\{PROOF_FOLDER\}\/\$\{data\.flat_id\}\/`\)/);
+});
+test("HELP and screenshot reading read no society data with the server key", () => {
+  for (const f of ["app/api/help/route.ts", "app/api/read-payment/route.ts"]) {
+    const t = read(f);
+    assert.ok(!/getAdminClient|SUPABASE_SECRET|SERVICE_ROLE/.test(t), f + " must not use the server key (the database wall applies only to the member's own client)");
+  }
+});
+test("payproofs sit in the test-file folders that clearing deletes, per society", () => {
+  assert.match(read("lib/testClear.ts"), /"payproofs\/"/);
+});

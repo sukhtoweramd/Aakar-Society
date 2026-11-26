@@ -38,7 +38,7 @@
   until a rule is added there.
 - Rows keep the stored form (old public address or key); both are read as the key. `R2_PUBLIC_URL` stays set after the
   bucket is made private: it is only used to recognise old links.
-- Payment screenshots (`payproofs/`) and backups (`backups/`) never go through these routes.
+- Payment screenshots (`payproofs/`) and backups (`backups/`) never go through these routes (payproofs: `/api/payment-proof`; both are per society, see Multi-tenant).
 
 ## Screens (Oct 2026)
 - Most members use the app on phones: build every new screen for a phone first (about 390 px wide): cards instead of
@@ -101,10 +101,10 @@
   and `/api/committee` lists / changes only the caller's own society's committee logins. Never pick the owner from all logins of the project. The database `is_main_admin()` still means "oldest committee login of the project" (MT_17 to follow).
   Step 4d-3 (26 Nov 2026): `/api/flat-family`, `/api/flat-plan`, `/api/residents` name the caller's society in every server-key query (flats, towers, members, vehicles, emergency_contacts, flat_tenant_logins incl. the insert) and list only that society's logins
   (`societyUsers` in `lib/mainAdmin.ts`; never `auth.admin.listUsers` in a route). `tests/serverRoutesSociety.test.ts` fails if a server-key table query in these routes stops naming the society. `/api/payment-proof` left as is on purpose: its server-key branch only serves a
-  signed link that was given after the member's own (walled) read. Still open in 4d routes: `help`, `read-payment`, `payproofs/` per society, removing the `societyOfCaller` fallback.
+  signed link that was given after the member's own (walled) read. Still open in 4d: removing the `societyOfCaller` / `current_society_or_first()` fallbacks.
   Step 4d-4 (26 Nov 2026): R2 files are per society. The FIRST society keeps today's keys (nothing moved); every other society's keys start with `s/<society id>/` (`keyPrefixOf`, `societyOfKey`, `keyWithoutPrefix`, `keyInSociety` in `lib/r2Keys.ts`).
   `/api/file` (list / upload / delete), `/api/file/link` (`allowedKeys(me, items, society)`), `/api/storage` and `deleteTestFiles(society)` use the caller's society (`callerSociety` in `lib/r2Access.ts`); another society's key is never listed, opened or deleted. A screen that
-  matches files by key text must use `keyWithoutPrefix(key)` (vault slots do). `payproofs/` is NOT per society yet (own route). `tests/r2Society.test.ts`.
+  matches files by key text must use `keyWithoutPrefix(key)` (vault slots do). `payproofs/` is per society too (4d-5): `/api/payment-proof` stores under the caller's prefix and opens a file only when `societyOfKey(proof_key)` equals the row's `society_id`. `/api/help` and `/api/read-payment` use no server key (checked 26 Nov 2026; keep it so). `tests/r2Society.test.ts`.
   Society-choice login (26 Nov 2026): the society word = `societies.slug`; `lib/societyWord.ts` (pure helpers), address `/<word>` (`app/[society]/page.tsx` re-uses the home page), "society word" box on `Login.tsx`. Flat / tenant login address: first society (word `aakar` or none) `a101@flats.aakarsociety.app` (unchanged), any other society `a101@<word>.flats.aakarsociety.app` (`flatEmail(flat, word)`, `tenantEmail(flat, word)`; `isFlatEmail()` recognises all). Server routes that create flat / tenant logins pass the creating society's word (`societyWordOf`). MT_16 = `society_public(word)` (anon, active society's name + word only) and `my_society()`; the login page signs a login out when it belongs to another society than the address. Still open: `FLAT_RULES` is one setting for all societies; `/api/residents` still lists logins across societies (4d routes step); the offline cache is not per login.
 
 ## Never in this repo (it is public)

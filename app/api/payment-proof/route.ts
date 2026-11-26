@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { getR2, MAX_FILE_BYTES } from "@/lib/r2Client";
+import { callerSociety } from "@/lib/r2Access";
+import { keyPrefixOf, keyWithoutPrefix, societyOfKey } from "@/lib/r2Keys";
 
 export const dynamic = "force-dynamic";
 const TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", pdf: "application/pdf" };
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     if (!TYPES[ext]) return NextResponse.json({ error: "Please attach a photo (JPG, PNG) or a PDF." }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is larger than 4 MB." }, { status: 400 });
-    const key = `${PROOF_FOLDER}/${flat}/${Date.now()}_${randomBytes(16).toString("hex")}.${ext}`;
+    const key = `${keyPrefixOf(await callerSociety(me))}${PROOF_FOLDER}/${flat}/${Date.now()}_${randomBytes(16).toString("hex")}.${ext}`;
     await r2.client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: TYPES[ext] })); // type from the extension, never from the browser (audit H3)
     return NextResponse.json({ key });
   } catch (e: any) {
@@ -65,18 +67,18 @@ export async function GET(req: NextRequest) {
   const kind = q.get("kind") === "ev" ? "ev" : "";
   const table = kind ? "event_registrations" : "payment_reports";
   if (!/^[0-9a-f-]{36}$/.test(id)) return NextResponse.json({ error: "Bad request" }, { status: 400 });
-  let data: { flat_id: string; proof_key: string | null } | null = null;
+  let data: { flat_id: string; proof_key: string | null; society_id: string } | null = null;
   if (q.get("sig")) {
     // Opening a viewing link: no login header here, the signature proves it was handed out after one.
     if (!validLink(id, Number(q.get("exp")), q.get("sig") || "", kind)) return new NextResponse("This link has expired. Close this tab and click view screenshot again.", { status: 403 });
     const admin = getAdminClient();
     if (!admin) return NextResponse.json({ error: "Not set up" }, { status: 500 });
-    data = (await admin.from(table).select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
+    data = (await admin.from(table).select("flat_id, proof_key, society_id").eq("id", id).maybeSingle()).data as any;
   } else {
     const me = await getAuthedClient(req);
     if (!me) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
     // Read through the user's own database session: the rules let a flat see only its own reports.
-    data = (await me.db.from(table).select("flat_id, proof_key").eq("id", id).maybeSingle()).data as any;
+    data = (await me.db.from(table).select("flat_id, proof_key, society_id").eq("id", id).maybeSingle()).data as any;
     if (data?.proof_key && q.get("link") === "1") {
       const exp = Math.floor(Date.now() / 1000) + LINK_SECONDS;
       if (!linkSecret()) return NextResponse.json({ error: "Not set up" }, { status: 500 });
@@ -84,7 +86,9 @@ export async function GET(req: NextRequest) {
     }
   }
   if (!data?.proof_key) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!String(data.proof_key).startsWith(`${PROOF_FOLDER}/${data.flat_id}/`)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // the file must sit in this flat's folder AND in the society of the row that names it (files are per society, lib/r2Keys.ts)
+  if (societyOfKey(data.proof_key) !== String(data.society_id || "").toLowerCase()) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!keyWithoutPrefix(String(data.proof_key)).startsWith(`${PROOF_FOLDER}/${data.flat_id}/`)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const r2 = getR2();
   if (!r2) return NextResponse.json({ error: "File storage is not set up." }, { status: 500 });
   try {
