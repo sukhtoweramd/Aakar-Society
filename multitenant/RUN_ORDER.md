@@ -68,3 +68,8 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 ## Step 4d-4 (25 Nov 2026): MT_12 booking actions
 - `MT_12_BOOKING_ACTIONS.sql` after MT_11 (it stops and says so if MT_11 is missing): `booked_slots`, `request_booking`, `cancel_booking`, `decide_booking`, `set_booking_charge` act only in the login's society; `decide_booking` writes the notice, bill and bill counter under the booking's own society. Check table: 5 / yes / true / false (the third line only shows who may call `request_booking`, MT_12 does not change it) / 5. `MT_12_UNDO.sql` puts the five back (check: 0 / yes).
 - `MT_12_TEST.sql` on the TEST project only (aanganone): lines 1 - 19 and `20 overall: PASS`. Never on live.
+
+
+## Step 4d-5 (25 Nov 2026): MT_13 event actions
+- `MT_13_EVENT_ACTIONS.sql` after MT_12 (it stops and says so if MT_11 is missing): `my_event_role`, `gate_pass`, `gate_undo`, `register_for_event`, `set_event_registration`, `set_event_money_settings`, `submit_event_payment`, `verify_event_payment` act only in the login's society; money rows, check-ins and registrations name their society. Check table: 8 / yes / true / false / 8 (the third line only shows who may call `gate_pass`, MT_13 does not change it) / 8. `MT_13_UNDO.sql` puts the eight back (check: 0).
+- `MT_13_TEST.sql` on the TEST project only (aanganone): lines 1 - 25 and `26 overall: PASS`. Never on live.

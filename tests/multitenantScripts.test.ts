@@ -206,3 +206,26 @@ test("MT_12 rewrites the booking actions from their live text, saves the origina
   assert.match(mt12test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
   assert.match(mt12test, /NEVER run it on Aakar/, "the test says it is for the test project only");
 });
+
+// Step 4d-5: the eight event actions act only in the LOGIN'S society (MT_13).
+const mt13 = readFileSync(join(root, "multitenant/MT_13_EVENT_ACTIONS.sql"), "utf8");
+const mt13undo = readFileSync(join(root, "multitenant/MT_13_UNDO.sql"), "utf8");
+const mt13test = readFileSync(join(root, "multitenant/MT_13_TEST.sql"), "utf8");
+
+test("MT_13 rewrites the event actions from their live text, saves the originals, refuses unknown forms, and can be undone", () => {
+  for (const f of ["my_event_role", "gate_pass", "gate_undo", "register_for_event", "set_event_money_settings", "set_event_registration", "submit_event_payment", "verify_event_payment"]) {
+    assert.ok(mt13.includes(`public.${f}(`), `${f} is rewritten`);
+  }
+  assert.match(mt13, /pg_get_functiondef\(/, "rewritten from the live text");
+  assert.match(mt13, /unexpected form \(%\); nothing was changed/, "an unknown function text stops the script and says which check failed");
+  assert.match(mt13, /zz_mt13_function_backup/, "the originals are saved for the undo");
+  assert.match(mt13, /MT_11/, "needs MT_11 first and says so");
+  assert.match(mt13, /where t\.society_id = \(select public\.active_society\(\)\) and t\.event_id = p_event and/, "the team role is looked up in the login's society");
+  assert.match(mt13, /where f\.society_id = r\.society_id and f\.id = r\.cash_to/, "the cash taker's flat is looked up in the registration's society");
+  assert.match(mt13, /Event not found\./, "another society's event gives a clear message, not a quiet no-op");
+  assert.doesNotMatch(mt13, /\bdrop function\b/i, "functions are replaced in place so their grants stay");
+  assert.doesNotMatch(mt13, /^\s*(delete from|update) public\./im, "changes no table and no data (the insert texts in the script are only patterns for the function text)");
+  assert.match(mt13undo, /zz_mt13_function_backup/, "the undo reads the saved copy");
+  assert.match(mt13test, /raise exception E'RESULT/, "the test ends with a deliberate error so everything is rolled back");
+  assert.match(mt13test, /NEVER run it on Aakar/, "the test says it is for the test project only");
+});
