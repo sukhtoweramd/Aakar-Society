@@ -65,15 +65,17 @@ export const terraceCodes = (towers: TowerInfo[]) => towers.filter((t) => t.terr
 // Last profile seen on this device, so the login screen (before login the table cannot be read) shows the society's name.
 // Only the public society details are kept: no resident data. Storage can be missing or blocked: every call is guarded.
 const CACHE_KEY = "society_profile_v1";
+/** One cache entry per society word, so a device used for two societies shows the right name on each login page. The first society (and no word) keeps the old key. */
+const cacheKey = (word?: string | null) => (!word || word === "aakar" ? CACHE_KEY : `${CACHE_KEY}:${word}`);
 type Store = Pick<Storage, "getItem" | "setItem">;
-export function readCachedProfile(store: Store | null | undefined): SocietyProfile | null {
+export function readCachedProfile(store: Store | null | undefined, word?: string | null): SocietyProfile | null {
   try {
-    const raw = store?.getItem(CACHE_KEY);
+    const raw = store?.getItem(cacheKey(word));
     if (!raw) return null;
     const j = JSON.parse(raw);
     return j && typeof j === "object" ? profileFromRow({ name: j.name, full_name: j.full, reg_no: j.reg, reg_date: j.regDate, building: j.building, address: j.address, address_lines: j.addressLines, city: j.city, public_url: j.publicUrl }) : null;
   } catch { return null; }
 }
-export function writeCachedProfile(store: Store | null | undefined, p: SocietyProfile) {
-  try { store?.setItem(CACHE_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+export function writeCachedProfile(store: Store | null | undefined, p: SocietyProfile, word?: string | null) {
+  try { store?.setItem(cacheKey(word), JSON.stringify(p)); } catch { /* ignore */ }
 }
