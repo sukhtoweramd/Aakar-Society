@@ -20,7 +20,7 @@ export function ownerByEmailOrOldest<T extends OwnerUser>(committee: T[], envEma
   return oldestFirst(committee)[0]?.id || null;
 }
 
-/** Committee logins of one society (a login with no membership at all counts as the first society's, like societyOfCaller). */
+/** Committee logins of one society (a login with no membership belongs to no society). */
 export function committeeOfSociety<T extends OwnerUser>(users: T[], memberships: OwnerMembership[], society: string): T[] {
   return loginsOfSociety(users, memberships, society).filter((u) => isCommitteeMeta(u.app_metadata));
 }
