@@ -9,7 +9,7 @@ import { SOCIETY } from "@/lib/society";
 import { EMPTY_FACTS, checklistProgress, checklistSteps, factsFrom, type ChecklistFacts, type Step } from "@/lib/ownerChecklist";
 import type { Ctx } from "./ctx";
 
-export default function OwnerChecklist({ ctx }: { ctx: Ctx }) {
+export default function OwnerChecklist({ ctx, onOpenSection }: { ctx: Ctx; onOpenSection: (section: string) => void }) {
   const [extra, setExtra] = useState<{ settings: any; signatories: number; notices: number; live: boolean } | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
 
@@ -53,7 +53,7 @@ export default function OwnerChecklist({ ctx }: { ctx: Ctx }) {
     const t = s.target;
     if (t.view) setViewHint(t.tab, t.view);
     if (t.tab !== "ADMIN") { ctx.go(t.tab as any); return; }
-    if (t.anchor) document.getElementById(t.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (t.section) onOpenSection(t.section);
   }
 
   const loading = !extra;

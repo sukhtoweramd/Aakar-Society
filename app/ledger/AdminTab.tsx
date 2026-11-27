@@ -8,6 +8,7 @@ import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
 import FlatSetupPanel from "./FlatSetupPanel";
 import OwnerChecklist from "./OwnerChecklist";
+import { ADMIN_SECTIONS, isAdminSection, sectionTitle, type AdminSection } from "@/lib/adminSections";
 import BookingAreasPanel from "./BookingAreasPanel";
 import BackupPanel from "./BackupPanel";
 import MemberScreensPanel from "./MemberScreensPanel";
@@ -69,10 +70,37 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
   const terraceCount = categories.filter((c) => c.terrace).reduce((n, c) => n + c.ids.length, 0);
   const preview = categories.reduce((n, c) => n + (Number(rows[c.key]?.maint) || 0) * c.ids.length, 0);
 
+  const [section, setSection] = useState<AdminSection | null>(null);
+  const openSection = (k: string) => { if (isAdminSection(k)) { setSection(k); window.scrollTo({ top: 0 }); } };
+
+  if (!section) return (
+    <div className="space-y-4 fade-in">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4 sm:p-6 min-w-0">
+        <div className="serif text-[20px] sm:text-[22px] font-bold">ADMIN</div>
+        <div className="mono text-[11px] opacity-60 mt-1">Choose what to open.</div>
+        <div className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {ADMIN_SECTIONS.map((x) => (
+            <button key={x.key} onClick={() => openSection(x.key)} className="min-w-0 min-h-[88px] text-left border border-[var(--border)] bg-white hover:bg-[var(--bg-soft)] rounded-[3px] p-3 flex flex-col gap-1">
+              <span className="text-[20px] leading-none" aria-hidden="true">{x.icon}</span>
+              <span className="mono text-[12px] font-bold break-words">{x.title}</span>
+              <span className="mono text-[10px] opacity-60 leading-snug break-words">{x.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 fade-in">
-      <OwnerChecklist ctx={ctx} />
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={() => { setSection(null); window.scrollTo({ top: 0 }); }} className="btn-line mono text-[11px] font-bold tracking-[0.08em] px-4 min-h-[44px]">← ADMIN</button>
+        <div className="serif text-[18px] font-bold min-w-0 break-words">{sectionTitle(section)}</div>
+      </div>
 
+      {section === "CHECKLIST" && <OwnerChecklist ctx={ctx} onOpenSection={openSection} />}
+
+      {section === "RATES" && (
       <div id="panel-rates" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 scroll-mt-4">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
@@ -131,22 +159,27 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
           </div>
         </div>
       </div>
+      )}
 
-      <FlatSetupPanel ctx={ctx} />
+      {section === "FLATSETUP" && <FlatSetupPanel ctx={ctx} />}
 
-      <BookingAreasPanel />
+      {section === "BOOKING" && <BookingAreasPanel />}
 
-      <CommitteePanel flats={ctx.flats} />
+      {section === "COMMITTEE" && <CommitteePanel flats={ctx.flats} />}
 
-      <LoginsPanel ctx={ctx} />
+      {section === "LOGINS" && <LoginsPanel ctx={ctx} />}
 
-      <MemberScreensPanel email={ctx.email} />
-      <BackupPanel />
+      {section === "SCREENS" && <MemberScreensPanel email={ctx.email} />}
 
-      <TestDataPanel />
-      <AiReadPanel />
-      <HelpGuidePanel email={ctx.email} />
-      <StoragePanel />
+      {section === "BACKUP" && <BackupPanel />}
+
+      {section === "TEST" && <TestDataPanel />}
+
+      {section === "AI" && <AiReadPanel />}
+
+      {section === "HELP" && <HelpGuidePanel email={ctx.email} />}
+
+      {section === "STORAGE" && <StoragePanel />}
     </div>
   );
 }

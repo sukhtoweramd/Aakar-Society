@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { isAdminSection } from "../lib/adminSections";
 import { EMPTY_FACTS, checklistProgress, checklistSteps, factsFrom } from "../lib/ownerChecklist";
 
 const ok = { profileFilled: true, towers: 2, flats: 10, flatsWithOwner: 10, committeeFlats: 3, flatsWithRate: 10, payDetails: true, signatories: 2, notices: 1, live: true };
@@ -63,10 +64,7 @@ test("every step opens somewhere, and opening only navigates: the ticks never de
   assert.equal(steps.find((x) => x.key === "notice")!.target.tab, "NOTICES");
   const c = readFileSync("app/ledger/OwnerChecklist.tsx", "utf8");
   assert.doesNotMatch(c, /useState<[^>]*done|setDone|localStorage/);          // no stored 'done' flag anywhere
-  for (const id of ["panel-flat-setup", "panel-rates", "panel-committee-logins", "panel-backup", "panel-go-live"]) {
-    const files = ["FlatSetupPanel", "AdminTab", "CommitteePanel", "BackupPanel", "TestDataPanel"].map((f) => readFileSync(`app/ledger/${f}.tsx`, "utf8")).join("\n");
-    assert.ok(files.includes(`id="${id}"`), id);
-  }
+  for (const st of steps) if (st.target.tab === "ADMIN") assert.ok(isAdminSection(st.target.section), `${st.key} opens a real ADMIN section`);
   assert.match(readFileSync("app/ledger/billing/BillingTab.tsx", "utf8"), /takeViewHint\("BILLING"\)/);
 });
 
