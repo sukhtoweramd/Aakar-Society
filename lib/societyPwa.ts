@@ -51,6 +51,10 @@ export function iconPlan(size: IconSize) {
   return { px, maskable, inner };
 }
 
+/** When the lookup FAILED (not "no such society"): a stand-in made from the address word only, so the app never shows the first society's name by mistake.
+ *  "sample-gardens" -> "Sample Gardens". Marked temporary by the callers (no caching). */
+export const fallbackSociety = (word: string): PublicSociety => ({ slug: word, name: word.split("-").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || word, logo: null });
+
 /** For the routes: which word is asked, and whether it is a society that gets its own files (not the first society, not a reserved word). */
 export function ownFilesWord(raw: string | null | undefined): string | null {
   const w = cleanWord(raw);

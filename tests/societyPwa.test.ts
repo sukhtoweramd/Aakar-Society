@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ICON_SIZES, iconLetter, iconPlan, isIconSize, ownFilesWord, shortNameOf, societyManifest } from "../lib/societyPwa";
+import { ICON_SIZES, fallbackSociety, iconLetter, iconPlan, isIconSize, ownFilesWord, shortNameOf, societyManifest } from "../lib/societyPwa";
 
 const read = (f: string) => readFileSync(f, "utf8");
 
@@ -44,6 +44,7 @@ test("routes read public facts only: publishable key, no server key, no society 
     assert.doesNotMatch(read(f), /getAdminClient|SECRET_KEY|SERVICE_ROLE|auth\.admin/, f);
   }
   assert.match(read("lib/societyPublicServer.ts"), /rpc\("society_public"/);
+  assert.match(read("lib/societyPublicServer.ts"), /first\.failed \? once\(word\)/);   // one retry
   assert.doesNotMatch(read("lib/societyPublicServer.ts"), /\.from\(/);
   assert.match(read("app/api/society-icon/[word]/[size]/route.tsx"), /iconReadyLogo\(safeLogo\(/);   // a logo is checked, and WEBP is converted, before it is drawn
 });
@@ -52,10 +53,23 @@ test("the first society's static manifest and layout are unchanged", () => {
   const m = JSON.parse(read("public/manifest.webmanifest"));
   assert.equal(m.name, "Aakar Co-op • Sukh Tower"); assert.equal(m.start_url, "/");
   assert.match(read("app/layout.tsx"), /manifest: "\/manifest\.webmanifest"/);
-  assert.match(read("app/[society]/layout.tsx"), /if \(!word \|\| !s\) return \{\};/);
+  assert.match(read("app/[society]/layout.tsx"), /if \(!society && !failed\) return \{\};/);   // only "no such society" keeps the default head
 });
 
 test("offline page: society name from the saved profile, Aakar only as the first society's fallback", () => {
   const h = read("public/offline.html");
   assert.match(h, /society_profile_v1/); assert.doesNotMatch(h, /<title>[^<]*Aakar/); assert.doesNotMatch(h, /<p>Aakar/);
+});
+
+test("a failed lookup never becomes the first society's identity", () => {
+  assert.deepEqual(fallbackSociety("sample-gardens"), { slug: "sample-gardens", name: "Sample Gardens", logo: null });
+  assert.equal(fallbackSociety("test-park").name, "Test Park");
+  assert.doesNotMatch(JSON.stringify(societyManifest(fallbackSociety("sample-gardens"))), /aakar/i);
+  for (const f of ["app/api/society-manifest/[word]/route.ts", "app/api/society-icon/[word]/[size]/route.tsx", "app/[society]/layout.tsx"]) {
+    const c = read(f);
+    assert.match(c, /lookupSociety\(/, f); assert.match(c, /fallbackSociety\(/, f);
+    assert.match(c, /!society && !failed/, f);        // only a lookup that WORKED and found nothing falls back to the static files
+  }
+  assert.match(read("app/api/society-manifest/[word]/route.ts"), /"no-store"/);
+  assert.match(read("app/api/society-icon/[word]/[size]/route.tsx"), /"no-store"/);
 });
