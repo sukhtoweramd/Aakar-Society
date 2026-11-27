@@ -5,6 +5,8 @@ import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
 import SocietyLogo from "./SocietyLogo";
+import { supabase } from "@/lib/supabaseClient";
+import { ledgerStatus } from "@/lib/ledgerStatus";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "INDEX", title: "ALL FLATS", desc: "Grid of all flats A/B/C" },
@@ -29,6 +31,15 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
   const [amcDue, setAmcDue] = useState(0);
   useEffect(() => { loadAreas().then(setAreas); if (ctx.isCommittee) loadAmc().then((d) => setAmcDue(d ? amcAlerts(d.amc).length : 0)); }, [ctx.isCommittee]);
   const contacts = (areas || []).filter((a) => a.holder_flat);
+  // The real GO LIVE flag, read through the committee login's own client (members cannot read it, so they see no status line).
+  const [live, setLive] = useState<boolean | null>(null);
+  useEffect(() => {
+    let off = false;
+    if (!ctx.isCommittee) { setLive(null); return; }
+    supabase.from("society_live").select("id").eq("id", 1).maybeSingle().then(({ data, error }) => { if (!off) setLive(error ? null : !!data); }, () => { if (!off) setLive(null); });
+    return () => { off = true; };
+  }, [ctx.isCommittee]);
+  const status = ledgerStatus(live);
 
   return (
     <div className="space-y-6 fade-in">
@@ -67,8 +78,8 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
                 </div>
               </div>
               <div className="border border-[var(--border)] bg-[var(--bg)] p-3 mono text-[10px]">
-                <div className="flex justify-between"><span>Ledger Status</span><span className="text-emerald-600">● LIVE</span></div>
-                <div className="flex justify-between mt-1"><span>Owners recorded</span><span>{flats.filter((f) => f.owner_name).length} / {flats.length}</span></div>
+                {status && <div className="flex justify-between"><span>Ledger Status</span><span className={status.tone === "live" ? "text-emerald-600" : "text-amber-600"}>● {status.text}</span></div>}
+                <div className={`flex justify-between${status ? " mt-1" : ""}`}><span>Owners recorded</span><span>{flats.filter((f) => f.owner_name).length} / {flats.length}</span></div>
                 <div className="mt-2 pt-2 border-t border-dashed border-[var(--border)]">
                   <div className="opacity-60 mb-1">COMMITTEE</div>
                   {committee.length === 0 && <div className="opacity-60">Not recorded yet • mark in DETAIL</div>}
