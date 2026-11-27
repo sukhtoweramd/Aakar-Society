@@ -29,3 +29,8 @@ test("the TEST MODE banner is for committee logins only, reads the real flag thr
   assert.equal((p.match(/<TestModeBanner/g) || []).length, 1);
   assert.match(p, /<TestModeBanner isCommittee=\{isCommittee\}/);
 });
+
+test("the top strip has no blinking green dot that looks like a live signal (it is not tied to GO LIVE)", () => {
+  const s = readFileSync(join(__dirname, "..", "app/page.tsx"), "utf8");
+  assert.ok(!/emerald-400 animate-pulse/.test(s));
+});
