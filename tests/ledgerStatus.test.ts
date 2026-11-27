@@ -18,3 +18,8 @@ test("the cover reads the flag through the member's own client and never types L
   assert.ok(!/●\s*LIVE/.test(s), "the cover must not say LIVE in static text");
   assert.ok(!/admin\.from|getAdminClient/.test(s), "no server key on the cover");
 });
+
+test("the top strip has no blinking green dot that looks like a live signal (it is not tied to GO LIVE)", () => {
+  const s = readFileSync(join(__dirname, "..", "app/page.tsx"), "utf8");
+  assert.ok(!/emerald-400 animate-pulse/.test(s));
+});

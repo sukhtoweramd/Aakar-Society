@@ -230,7 +230,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[38px] py-1.5 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-2 font-semibold">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--gold)]" />
               SOCIETY LEDGER
             </span>
             <span className="opacity-40">•</span>
