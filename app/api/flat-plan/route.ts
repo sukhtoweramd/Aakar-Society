@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
-import { societyOfCaller } from "@/lib/memberships";
+import { societyOfCaller, societyWordOf } from "@/lib/memberships";
+import { rulesFor } from "@/lib/residents";
 import { buildFlatPlan, planClashes, planError, planWarnings, type TowerPlan } from "@/lib/flatPlan";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,10 @@ export async function POST(req: NextRequest) {
       await logAccess(admin, me.email, "refused_create_flats", "", "", society);
       return NextResponse.json({ error: "Only the main admin login can create flats." }, { status: 403 });
     }
-    const bad = planError(towers);
+    const rules = rulesFor(await societyWordOf(admin, society));   // this society's own flat-number rule
+    const bad = planError(towers, rules);
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
-    const warn = planWarnings(towers);
+    const warn = planWarnings(towers, rules);
     if (warn.length) return NextResponse.json({ error: warn[0] }, { status: 400 });
     const { data: have, error: ce } = await admin.from("flats").select("id, tower").eq("society_id", society);
     if (ce) throw ce;
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     const missing = towers.map((t) => t.code).filter((c) => !known.has(c));
     if (missing.length) return NextResponse.json({ error: `Add tower ${missing.join(", ")} in FLAT SETUP → TOWERS first.` }, { status: 400 });
 
-    const plan = buildFlatPlan(towers);
+    const plan = buildFlatPlan(towers, rules);
     const clash = planClashes(plan, (have || []).map((f: any) => String(f.id)));
     if (clash.length) return NextResponse.json({ error: `Flat number ${clash.slice(0, 5).join(", ")}${clash.length > 5 ? " …" : ""} already exists, so none are created.` }, { status: 409 });
     for (let i = 0; i < plan.length; i += 200) {

@@ -2,7 +2,7 @@
 // AND by the server route /api/flat-plan, which builds the list again from these same numbers (it never trusts a list from the browser).
 // Numbering: tower letter + floor + 2-digit position: A101, A102 … A1001 (the form the rest of the app reads, see lib/society.ts).
 
-import { FLAT_RULES, normaliseFlat, type FlatRules } from "./residents";
+import { normaliseFlat, type FlatRules } from "./residents";
 
 export type TowerPlan = {
   code: string;        // one letter A-Z: member logins and flat numbers are built from it
@@ -30,7 +30,7 @@ export const parseNumbers = (text: string): string[] =>
 const whole = (n: unknown) => typeof n === "number" && Number.isInteger(n);
 
 /** Error text for the plan, or "" when it can be created. */
-export function planError(towers: TowerPlan[]): string {
+export function planError(towers: TowerPlan[], rules: FlatRules): string {
   if (!Array.isArray(towers) || towers.length === 0) return "Add at least one tower.";
   const seen = new Set<string>();
   let total = 0;
@@ -52,7 +52,7 @@ export function planError(towers: TowerPlan[]): string {
         if (nums.length > MAX_PER_FLOOR) return `Tower ${c}, floor ${row.floor}: at most ${MAX_PER_FLOOR} flats on a floor.`;
         for (const n of nums) {
           if (!/^[A-Z]\d{2,5}$/.test(n)) return `"${n}" is not a flat number: use one capital letter and 2 to 5 digits, like ${c}101.`;
-          if (normaliseFlat(n) !== n) return `${n}: in this copy of the app that number logs in as ${normaliseFlat(n)} (joined home rule, FLAT_RULES in lib/residents.ts), so it cannot be created as a flat of its own.`;
+          if (normaliseFlat(n, rules) !== n) return `${n}: in this society that number logs in as ${normaliseFlat(n, rules)} (joined home rule, rulesFor in lib/residents.ts), so it cannot be created as a flat of its own.`;
           if (allNumbers.has(n)) return `Flat ${n} is typed twice.`;
           allNumbers.add(n);
         }
@@ -71,8 +71,8 @@ export function planError(towers: TowerPlan[]): string {
 }
 
 /** The flats of the plan, in tower / floor / position order. Throws when the plan is not valid. */
-export function buildFlatPlan(towers: TowerPlan[]): PlannedFlat[] {
-  const err = planError(towers);
+export function buildFlatPlan(towers: TowerPlan[], rules: FlatRules): PlannedFlat[] {
+  const err = planError(towers, rules);
   if (err) throw new Error(err);
   const out: PlannedFlat[] = [];
   for (const t of [...towers].sort((a, b) => a.code.localeCompare(b.code))) {
@@ -114,7 +114,7 @@ export function planSummary(towers: TowerPlan[]) {
   });
 }
 
-/** A tower the login lookup treats as joined homes (lib/residents.ts FLAT_RULES) cannot hold ordinary flats at position 02: B102 would log in as B101. */
-export const planWarnings = (towers: TowerPlan[], rules: FlatRules = FLAT_RULES) =>
+/** A tower the login lookup treats as joined homes (lib/residents.ts `rulesFor`) cannot hold ordinary flats at position 02: B102 would log in as B101. */
+export const planWarnings = (towers: TowerPlan[], rules: FlatRules) =>
   towers.filter((t) => !t.layout && rules.joinedLetters.includes(t.code) && t.perFloor >= 2)
-    .map((t) => `Tower ${t.code}: this copy of the app treats flats ${t.code}102, ${t.code}202 … as one joined home with ${t.code}101, ${t.code}201 …, so ${t.code}102 could not log in on its own. Use another letter, or switch the rule off (FLAT_RULES in lib/residents.ts) before creating this tower.`);
+    .map((t) => `Tower ${t.code}: this society treats flats ${t.code}102, ${t.code}202 … as one joined home with ${t.code}101, ${t.code}201 …, so ${t.code}102 could not log in on its own. Use another letter for this tower.`);
