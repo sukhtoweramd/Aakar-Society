@@ -1,5 +1,5 @@
 "use client";
-// BILLING → LETTERS → LETTER FORMATS (committee): the society's standard letters. Members choose one when they ask for a
+// COMMITTEE → LETTERS → LETTER FORMATS (committee): the society's standard letters. Members choose one when they ask for a
 // letter; the committee's draft is filled from the flat's records. "Bank" formats are issued unsigned (signed by hand).
 // Formats are switched off, never deleted.
 import { useState } from "react";

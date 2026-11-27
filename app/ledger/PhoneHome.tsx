@@ -55,15 +55,16 @@ export function Icon({ name, className = "h-7 w-7" }: { name: string; className?
   );
 }
 
-function TileGrid({ tiles, cols, onOpen, small }: { tiles: Tile[]; cols: 3 | 4; onOpen: (t: Tile) => void; small?: boolean }) {
+function TileGrid({ tiles, cols, onOpen, small, badges }: { tiles: Tile[]; cols: 3 | 4; onOpen: (t: Tile) => void; small?: boolean; badges?: Record<string, number> }) {
   if (!tiles.length) return null;
   return (
     <div className={`grid gap-2 ${cols === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
       {tiles.map((t) => (
         <button key={t.key} type="button" onClick={() => onOpen(t)}
-          className={`min-w-0 bg-[var(--surface)] border border-[var(--border)] active:border-[var(--gold)] active:bg-[var(--bg-soft)] flex flex-col items-center justify-center text-center text-[var(--navy)] font-bold tracking-[0.04em] leading-tight px-1 ${small ? "min-h-[66px] gap-1.5 text-[9.5px]" : "min-h-[84px] gap-2 text-[10.5px]"}`}>
+          className={`relative min-w-0 bg-[var(--surface)] border border-[var(--border)] active:border-[var(--gold)] active:bg-[var(--bg-soft)] flex flex-col items-center justify-center text-center text-[var(--navy)] font-bold tracking-[0.04em] leading-tight px-1 ${small ? "min-h-[66px] gap-1.5 text-[9.5px]" : "min-h-[84px] gap-2 text-[10.5px]"}`}>
           <Icon name={t.icon} className={small ? "h-[22px] w-[22px]" : "h-[26px] w-[26px]"} />
           <span className="break-words">{t.label}</span>
+          {(badges?.[t.key] || 0) > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] leading-[20px] font-bold" aria-label={`${badges![t.key]} waiting`}>{badges![t.key]}</span>}
         </button>
       ))}
     </div>
@@ -99,7 +100,7 @@ function useOpenActions(on: boolean) {
 
 const Head = ({ children }: { children: React.ReactNode }) => <div className="mono text-[10px] font-bold tracking-[0.16em] text-[#8a6d1e]">{children}</div>;
 
-export default function PhoneHome({ ctx, allowed, onOpen }: { ctx: Ctx; allowed: Tab[]; onOpen: (t: Tile) => void }) {
+export default function PhoneHome({ ctx, allowed, onOpen, badges }: { ctx: Ctx; allowed: Tab[]; onOpen: (t: Tile) => void; badges?: Record<string, number> }) {
   const { isCommittee, isTenant, myFlat, tenantFlat, homeFlat, flats } = ctx;
   const flatId = isTenant ? tenantFlat || null : myFlat;
   const f = flats.find((x) => x.id === flatId) || null;
@@ -115,7 +116,7 @@ export default function PhoneHome({ ctx, allowed, onOpen }: { ctx: Ctx; allowed:
           <div className="serif text-[22px] font-bold leading-tight mt-1">{SOCIETY.building}</div>
           <div className="mono text-[11px] opacity-70 mt-1 break-all">{ctx.email}{homeFlat ? ` • Flat ${label({ id: homeFlat, flat_no: homeFlat } as any)}` : ""}</div>
         </div>
-        <TileGrid tiles={m.work} cols={3} onOpen={onOpen} />
+        <TileGrid tiles={m.work} cols={3} onOpen={onOpen} badges={badges} />
         {actions > 0 && homeFlat && <button type="button" onClick={() => onOpen({ key: "actions", label: "ACTION POINTS", icon: "check", section: "actions" })} className="w-full min-h-[44px] border-2 border-[var(--gold)] bg-[#fffdf5] mono text-[12px] font-bold">MY ACTION POINTS • {actions} OPEN</button>}
         <Head>SOCIETY</Head>
         <TileGrid tiles={m.society} cols={4} onOpen={onOpen} small />

@@ -1,9 +1,9 @@
 "use client";
-// COMMITTEE tab (committee only): areas of responsibility (one accountable person per area) and the AMC register.
+// COMMITTEE tab (committee only): complaints, bookings, letters (moved here from BILLING, 27 Nov 2026), areas of responsibility (one accountable person per area), the AMC register and minutes.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { byCommitteeRole, committeeText, label, ownerText, type Flat } from "@/lib/society";
-import { dmy, inr, num, today } from "@/lib/billing";
+import { dmy, inr, loadSettings, loadSignatories, num, today, type PrintCtx, type Settings, type Signatory } from "@/lib/billing";
 import { uploadFile } from "@/lib/ledgerClient";
 import { amcAlerts, amcState, assignmentError, backupsOf, daysLeft, loadAmc, loadAreas, personOf, type Amc, type Area, type AreaRights, type Visit } from "@/lib/committee";
 import type { Ctx } from "./ctx";
@@ -13,8 +13,9 @@ import BookingPanel from "./BookingPanel";
 import { loadComplaints } from "@/lib/complaints";
 import { isOverdue, loadMeetings, type Action, type Meeting } from "@/lib/minutes";
 import { FileLink } from "./SecureFile";
+import LettersRegister from "./billing/LettersRegister";
 
-const VIEWS = ["COMPLAINTS", "BOOKINGS", "RESPONSIBILITIES", "AMC CONTRACTS", "MINUTES"] as const;
+const VIEWS = ["COMPLAINTS", "BOOKINGS", "LETTERS", "RESPONSIBILITIES", "AMC CONTRACTS", "MINUTES"] as const;
 type View = (typeof VIEWS)[number];
 const addYear = (d: string) => { const x = new Date(d); x.setFullYear(x.getFullYear() + 1); x.setDate(x.getDate() - 1); return x.toISOString().slice(0, 10); };
 const nextDay = (d: string) => { const x = new Date(d); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10); };
@@ -26,9 +27,13 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
   const [mins, setMins] = useState<{ meetings: Meeting[]; actions: Action[] } | null | undefined>(undefined);
   const [openComplaints, setOpenComplaints] = useState(0);
   const [waitingBookings, setWaitingBookings] = useState(0);
+  const [letterReqs, setLetterReqs] = useState(0);   // letters members asked for, waiting to be issued (moved here from BILLING, 27 Nov 2026)
+  const [pc, setPc] = useState<PrintCtx | null>(null);   // settings + signatories for printing letters
   async function load() { const [a, m, mt] = await Promise.all([loadAreas(true), loadAmc(), loadMeetings()]); setAreas(a); setAmc(m); setMins(mt && { meetings: mt.meetings.filter((x) => x.kind !== "Event"), actions: mt.actions.filter((x) => mt.meetings.some((y) => y.id === x.meeting_id && y.kind !== "Event")) }); }
   useEffect(() => {
-    load(); loadComplaints().then((c) => setOpenComplaints((c || []).filter((x) => x.status !== "closed").length));
+    load(); Promise.all([loadSettings(), loadSignatories()]).then(([settings, signatories]) => setPc({ settings: settings as Settings | null, signatories: signatories as Signatory[], flats: ctx.flats }));
+    supabase.from("letter_requests").select("id", { count: "exact", head: true }).in("status", ["requested", "approved"]).then(({ count, error }) => setLetterReqs(error ? 0 : count || 0));
+    loadComplaints().then((c) => setOpenComplaints((c || []).filter((x) => x.status !== "closed").length));
     supabase.from("bookings").select("group_id").eq("status", "pending").then(({ data }) => setWaitingBookings(new Set(((data as any[]) || []).map((r) => r.group_id)).size));
   }, []);
   const committee = useMemo(() => ctx.flats.filter((f) => f.is_committee).sort(byCommitteeRole), [ctx.flats]);
@@ -46,13 +51,14 @@ export default function CommitteeTab({ ctx }: { ctx: Ctx }) {
           <div className="mono text-[11px] opacity-60">{areas.filter((a) => a.active).length} areas{unassigned ? <> • <b className="text-amber-700">{unassigned} without a responsible member</b></> : ""} • {amc.amc.filter((a) => a.status === "active").length} AMC contracts{alerts.length ? <> • <b className="text-red-700">{alerts.length} need renewal</b></> : ""}</div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {VIEWS.map((v) => { const n = v === "COMPLAINTS" ? openComplaints : v === "BOOKINGS" ? waitingBookings : v === "AMC CONTRACTS" ? alerts.length : v === "MINUTES" ? (mins?.actions || []).filter(isOverdue).length : unassigned; return (
+          {VIEWS.map((v) => { const n = v === "COMPLAINTS" ? openComplaints : v === "BOOKINGS" ? waitingBookings : v === "LETTERS" ? letterReqs : v === "AMC CONTRACTS" ? alerts.length : v === "MINUTES" ? (mins?.actions || []).filter(isOverdue).length : unassigned; return (
             <button key={v} onClick={() => setView(v)} className={`mono text-[11px] font-bold tracking-[0.06em] px-3 py-2 border rounded-[3px] ${view === v ? "bg-[var(--navy)] text-white border-[var(--navy)]" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)]"}`}>
               {v}{n > 0 && <span className={`ml-1.5 inline-block min-w-[18px] px-1 rounded-full text-white text-[10px] ${v === "RESPONSIBILITIES" ? "bg-amber-600" : "bg-red-600"}`}>{n}</span>}</button>); })}
         </div>
       </div>
       {view === "COMPLAINTS" && <ComplaintsPanel mode="committee" flats={ctx.flats} flatId={ctx.homeFlat} isCommittee onCount={setOpenComplaints} />}
       {view === "BOOKINGS" && <BookingPanel mode="committee" flats={ctx.flats} flatId={ctx.homeFlat} isCommittee onCount={setWaitingBookings} />}
+      {view === "LETTERS" && (pc ? <LettersRegister flats={ctx.flats} pc={{ ...pc, flats: ctx.flats }} email={ctx.email} onCount={setLetterReqs} openFlat={(id) => { ctx.selectFlat(id); ctx.go("DETAIL"); setTimeout(() => document.getElementById("sec-letters")?.scrollIntoView({ behavior: "smooth" }), 600); }} /> : <div className="mono text-[12px] opacity-60 p-6">Loading letters…</div>)}
       {view === "RESPONSIBILITIES" && <Responsibilities areas={areas} committee={committee} flats={ctx.flats} email={ctx.email} amc={amc.amc} onChanged={load} />}
       {view === "AMC CONTRACTS" && <AmcRegister data={amc} areas={areas} flats={ctx.flats} email={ctx.email} onChanged={load} />}
       {view === "MINUTES" && (mins ? <MinutesPanel data={mins} flats={ctx.flats} committee={committee} email={ctx.email} onChanged={load} />

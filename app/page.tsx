@@ -31,6 +31,8 @@ import DirectoryTab from "./ledger/DirectoryTab";
 import AdminTab from "./ledger/AdminTab";
 import ReportsTab from "./ledger/ReportsTab";
 import PhoneHome, { PhoneBar, useIsPhone } from "./ledger/PhoneHome";
+import { usePending } from "./ledger/usePending";
+import { pendingTotals } from "@/lib/pendingTotals";
 import { SECTION_TITLE, TAB_TITLE, type Section, type Tile } from "@/lib/phoneMenu";
 
 export default function Home() {
@@ -152,6 +154,11 @@ export default function Home() {
   const residentAllowed = useMemo(() => (isTenant ? tenantTabs(memberTabs) : residentTabs(memberTabs)), [memberTabs, isTenant]);
   useEffect(() => { if ((role === "resident" || role === "tenant") && !residentAllowed.includes(tab)) setTab("DETAIL"); }, [role, residentAllowed, tab]);
 
+  // red numbers on the committee buttons (main page and phone home): what waits for this committee login
+  const pendingParts = usePending(isCommittee, tab + (section || ""));
+  const pend = pendingTotals(pendingParts);
+  const pendingFor = (m: string) => (m === "COMMITTEE" ? pend.committee : m === "BILLING" ? pend.billing : 0);
+
   function go(t: Tab) {
     if (!isCommittee && !residentAllowed.includes(t)) { alert("This screen is not open for members. Please ask the committee."); return; }
     setTab(t);
@@ -261,6 +268,7 @@ export default function Home() {
               <button key={m} onClick={() => go(m)}
                 className={`mono text-[12px] tracking-[0.06em] px-3.5 py-2 rounded-[4px] border transition-all shrink-0 font-semibold ${tab === m ? "bg-[var(--navy)] text-white border-[var(--navy)] shadow-sm" : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--gold)] hover:bg-[var(--bg-soft)]"}`}>
                 {m === "VAULT" ? "VAULT 🔒" : m === "DETAIL" && !isCommittee ? "MY FLAT" : m}
+                {isCommittee && pendingFor(m) > 0 && <span className="ml-1.5 inline-block min-w-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[16px] align-middle" aria-label={`${pendingFor(m)} waiting`}>{pendingFor(m)}</span>}
               </button>
             ))}
           </nav>
@@ -274,7 +282,7 @@ export default function Home() {
             SOCIETY LEDGER • TAB {tab} • {flats.length} FLATS {towers.map((t) => ` • ${t.code} ${towerCount(t.code)}`).join("")}
           </div>}
           {loadError && <div className="mb-4 border border-red-200 bg-red-50 text-red-700 p-3 mono text-[12px]">{loadError}</div>}
-          {isPhone && phoneHome ? <PhoneHome ctx={ctx} allowed={residentAllowed} onOpen={openTile} /> : <>
+          {isPhone && phoneHome ? <PhoneHome ctx={ctx} allowed={residentAllowed} onOpen={openTile} badges={{ COMMITTEE: pend.committee, BILLING: pend.billing }} /> : <>
           {tab === "COVER" && <CoverTab ctx={ctx} />}
           {tab === "INDEX" && <IndexTab ctx={ctx} />}
           {tab === "FLOOR" && <FloorTab ctx={ctx} />}

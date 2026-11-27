@@ -1,5 +1,5 @@
 "use client";
-// BILLING → LETTERS: every letter issued to every flat (committee). Search, view / print, open the flat,
+// COMMITTEE → LETTERS: every letter issued to every flat (committee). Search, view / print, open the flat,
 // and issue a new letter by choosing the flat (the same form as on the flat's page). Phone first: one card per letter.
 import { fillFields, fieldLabel } from "@/lib/letterFields";
 import { useEffect, useMemo, useState } from "react";
