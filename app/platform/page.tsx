@@ -104,7 +104,7 @@ export default function PlatformPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[900px] px-4 py-5 space-y-5">
+      <div className="mx-auto max-w-[900px] px-4 pt-5 pb-28 space-y-5">
         {signedIn === null && <div className="space-y-3">{[0, 1].map((i) => <div key={i} className={box + " h-24 animate-pulse"} />)}</div>}
 
         {signedIn === false && <PlatformWelcome />}
