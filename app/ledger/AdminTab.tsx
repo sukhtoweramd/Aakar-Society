@@ -16,6 +16,7 @@ import TestDataPanel from "./TestDataPanel";
 import AiReadPanel from "./AiReadPanel";
 import StoragePanel from "./StoragePanel";
 import HelpGuidePanel from "./HelpGuidePanel";
+import LegalPanel from "./LegalPanel";
 
 type Row = { maint: string; sqft: string; bhk: string };
 
@@ -180,6 +181,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
       {section === "HELP" && <HelpGuidePanel email={ctx.email} />}
 
       {section === "STORAGE" && <StoragePanel />}
+
+      {section === "LEGAL" && <LegalPanel />}
     </div>
   );
 }

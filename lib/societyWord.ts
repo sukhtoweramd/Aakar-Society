@@ -8,7 +8,7 @@ export const FIRST_SOCIETY_WORD = "aakar";
 /** Same rule as the database (societies.slug). */
 export const WORD_PATTERN = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 /** First path parts that are the app's own pages, never a society word. */
-export const RESERVED_WORDS = ["api", "ledger", "platform", "login", "logout", "admin", "static", "assets", "_next", "icons", "manifest", "offline", "sw", "favicon"];
+export const RESERVED_WORDS = ["api", "ledger", "platform", "login", "logout", "admin", "static", "assets", "_next", "icons", "manifest", "offline", "sw", "favicon", "legal", "terms", "privacy"];
 
 /** What was typed or found in the address -> a clean word, or null when it cannot be one. */
 export function cleanWord(input: string | null | undefined): string | null {

@@ -17,7 +17,7 @@ test("ADMIN opens as a menu; each section shows its own panel, with a way back",
   assert.match(a, /← ADMIN/);                                          // and a back button in every section
   for (const s of ADMIN_SECTIONS) assert.match(a, new RegExp(`section === "${s.key}"`), `${s.key} has a panel`);
   // every panel is drawn in exactly one section (none lost, none shown twice)
-  for (const p of ["OwnerChecklist", "FlatSetupPanel", "BookingAreasPanel", "CommitteePanel", "LoginsPanel", "MemberScreensPanel", "BackupPanel", "TestDataPanel", "AiReadPanel", "HelpGuidePanel", "StoragePanel"]) {
+  for (const p of ["OwnerChecklist", "FlatSetupPanel", "BookingAreasPanel", "CommitteePanel", "LoginsPanel", "MemberScreensPanel", "BackupPanel", "TestDataPanel", "AiReadPanel", "HelpGuidePanel", "StoragePanel", "LegalPanel"]) {
     assert.equal((a.match(new RegExp(`<${p}[ />]`, "g")) || []).length, 1, p);
   }
   assert.match(a, /SOCIETY CHARGES CONTROL PANEL/);
