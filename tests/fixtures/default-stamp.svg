@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><path id="t" d="M 115.1,415.5 A 218,218 0 1,1 484.9,415.5"/><path id="b" d="M 52,300 A 248,248 0 0,0 548,300"/></defs>
+  <g fill="none" stroke="#1f3a93"><circle cx="300" cy="300" r="286" stroke-width="12"/><circle cx="300" cy="300" r="268" stroke-width="3"/><circle cx="300" cy="300" r="166" stroke-width="5"/></g>
+  <g font-family="Inter,Arial,sans-serif" font-weight="800" fill="#1f3a93"><text font-size="44" letter-spacing="4"><textPath href="#t" startOffset="50%" text-anchor="middle">AAKAR CO-OP HOUSING SOC. LTD.</textPath></text>
+  <text font-size="34" letter-spacing="6"><textPath href="#b" startOffset="50%" text-anchor="middle">★  AHMEDABAD  ★</textPath></text></g>
+  <g fill="#1f3a93" text-anchor="middle" font-family="Inter,Arial,sans-serif"><text x="300" y="268" font-size="26" font-weight="700" letter-spacing="6">REG. NO.</text>
+  <text x="300" y="328" font-size="58" font-weight="800" letter-spacing="2">G-16551</text><line x1="200" y1="350" x2="400" y2="350" stroke="#1f3a93" stroke-width="3"/>
+  <text x="300" y="392" font-size="30" font-weight="700" letter-spacing="6">EST. 1994</text></g></svg>
