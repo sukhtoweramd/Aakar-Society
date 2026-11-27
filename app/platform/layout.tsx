@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 import PlatformPwa from "./PlatformPwa";
 
 export const metadata: Metadata = {
-  title: "AanganOne Platform",
+  title: "GrihSahara Platform",
   description: "Product owner page: create and look after societies.",
   manifest: "/platform.webmanifest",
-  applicationName: "AanganOne Platform",
-  appleWebApp: { capable: true, title: "AanganOne", statusBarStyle: "default" },
+  applicationName: "GrihSahara Platform",
+  appleWebApp: { capable: true, title: "GrihSahara", statusBarStyle: "default" },
   robots: { index: false, follow: false },
 };
 
