@@ -23,7 +23,7 @@ export default function TestDataPanel() {
   if (!info) return null;
 
   if (info.live) return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] px-6 py-4 mono text-[11px] flex flex-wrap gap-2 items-center">
+    <div id="panel-go-live" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] px-6 py-4 mono text-[11px] flex flex-wrap gap-2 items-center scroll-mt-4">
       <span className="tag bg-emerald-50 text-emerald-700 font-bold">LIVE</span>
       <span>Live since {when(info.live.live_at)}{info.live.live_by ? ` (${info.live.live_by})` : ""}. Clearing test documents is locked for ever; wrong documents are cancelled with a reason.</span>
     </div>
@@ -62,7 +62,7 @@ export default function TestDataPanel() {
   );
 
   return (
-    <div className="bg-[#fff8f0] border-2 border-dashed border-amber-400 rounded-[4px] p-6 mono text-[11px]">
+    <div id="panel-go-live" className="bg-[#fff8f0] border-2 border-dashed border-amber-400 rounded-[4px] p-6 mono text-[11px] scroll-mt-4">
       <div className="flex flex-wrap gap-2 items-center"><span className="tag bg-amber-100 text-amber-800 font-bold">TESTING</span><span className="font-bold tracking-[0.12em]">TEST DOCUMENTS • BEFORE GOING LIVE</span></div>
       <div className="opacity-70 mt-2 max-w-[760px] leading-relaxed">
         Now: {c.bills ?? 0} bills, {c.receipts ?? 0} receipts{c.letters != null ? `, ${c.letters} letters` : ""} in the app.

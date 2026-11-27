@@ -3,12 +3,14 @@
 // Read only: counts come through the logged-in committee member's own database rules; nothing is written here. Steps in lib/ownerChecklist.ts.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/ledgerClient";
+import { setViewHint } from "@/lib/viewHint";
 import { SOCIETY } from "@/lib/society";
-import { EMPTY_FACTS, checklistProgress, checklistSteps, factsFrom, type ChecklistFacts } from "@/lib/ownerChecklist";
+import { EMPTY_FACTS, checklistProgress, checklistSteps, factsFrom, type ChecklistFacts, type Step } from "@/lib/ownerChecklist";
 import type { Ctx } from "./ctx";
 
 export default function OwnerChecklist({ ctx }: { ctx: Ctx }) {
-  const [extra, setExtra] = useState<{ settings: any; signatories: number; notices: number; live: boolean } | null>(null);
+  const [extra, setExtra] = useState<{ settings: any; signatories: number; notices: number; live: boolean; lastBackupDays?: number | null } | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -20,17 +22,34 @@ export default function OwnerChecklist({ ctx }: { ctx: Ctx }) {
         supabase.from("notices").select("id", { count: "exact", head: true }),
         supabase.from("society_live").select("id").eq("id", 1).maybeSingle(),
       ]);
-      if (!off) setExtra({ settings: s.data || null, signatories: g.count || 0, notices: n.count || 0, live: !!l.data });
+      // Newest saved backup (same list as ADMIN -> BACKUP). No list (storage off / call fails) = the step stays advice only.
+      let lastBackupDays: number | null | undefined;
+      try {
+        const b = await api("/api/backup");
+        if (Array.isArray(b?.backups)) {
+          const t = b.backups.filter((x: any) => x.kind === "manual").map((x: any) => new Date(x.created).getTime()).filter((x: number) => x > 0);
+          lastBackupDays = t.length ? Math.max(0, Math.floor((Date.now() - Math.max(...t)) / 864e5)) : null;
+        }
+      } catch { /* leave undefined */ }
+      if (!off) setExtra({ settings: s.data || null, signatories: g.count || 0, notices: n.count || 0, live: !!l.data, lastBackupDays });
     })();
     return () => { off = true; };
   }, []);
 
   const facts: ChecklistFacts = useMemo(() => !extra ? EMPTY_FACTS : factsFrom({
     profile: { name: SOCIETY.name, full: SOCIETY.full, address: SOCIETY.address, reg: SOCIETY.reg },
-    towers: ctx.towers.length, flats: ctx.flats, settings: extra.settings, signatories: extra.signatories, notices: extra.notices, live: extra.live,
+    towers: ctx.towers.length, flats: ctx.flats, settings: extra.settings, signatories: extra.signatories, notices: extra.notices, live: extra.live, lastBackupDays: extra.lastBackupDays,
   }), [extra, ctx.towers, ctx.flats]);
   const steps = useMemo(() => checklistSteps(facts), [facts]);
   const p = checklistProgress(steps);
+
+  // Opening a step only goes to the screen; whether it is ticked is decided by the data alone (see lib/ownerChecklist.ts).
+  function open_(s: Step) {
+    const t = s.target;
+    if (t.view) setViewHint(t.tab, t.view);
+    if (t.tab !== "ADMIN") { ctx.go(t.tab as any); return; }
+    if (t.anchor) document.getElementById(t.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   if (!extra) return null;
   const shown = open ?? !p.complete;       // finished checklist folds away; the owner can still open it
@@ -48,14 +67,15 @@ export default function OwnerChecklist({ ctx }: { ctx: Ctx }) {
       {shown && (
         <ol className="mt-4 space-y-2">
           {steps.map((s, i) => (
-            <li key={s.key} className={`border rounded-[3px] p-3 flex gap-3 min-w-0 ${s.done ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)] bg-white"}`}>
+            <li key={s.key}><button onClick={() => open_(s)} className={`w-full text-left border rounded-[3px] p-3 flex gap-3 min-w-0 min-h-[44px] ${s.done ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)] bg-white hover:bg-[var(--bg-soft)]"}`}>
               <span className={`mono text-[12px] font-bold w-7 h-7 shrink-0 flex items-center justify-center rounded-full border ${s.done ? "bg-emerald-600 text-white border-emerald-600" : "border-[var(--border)]"}`}>{s.done ? "✓" : i + 1}</span>
               <span className="min-w-0">
                 <span className="mono text-[12px] font-bold block">{s.title}{s.detail ? <span className="font-normal opacity-60"> · {s.detail}</span> : null}</span>
                 <span className="mono text-[11px] opacity-70 leading-relaxed block mt-1">{s.hint}</span>
                 <span className="mono text-[10px] opacity-60 block mt-1">Where: {s.where}{s.manual ? " · not tracked" : ""}</span>
               </span>
-            </li>
+              <span className="mono text-[11px] font-bold ml-auto self-center shrink-0">OPEN →</span>
+            </button></li>
           ))}
         </ol>
       )}

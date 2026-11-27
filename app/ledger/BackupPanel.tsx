@@ -95,7 +95,7 @@ export default function BackupPanel() {
   const overdue = !last || daysAgo(last.created) > 30;
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 mono text-[11px]">
+    <div id="panel-backup" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 mono text-[11px] scroll-mt-4">
       <div className="flex flex-wrap justify-between gap-3 items-start">
         <div>
           <div className="serif text-[22px] font-bold">BACKUP &amp; RESTORE</div>

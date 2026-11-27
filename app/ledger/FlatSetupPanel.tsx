@@ -28,7 +28,7 @@ export default function FlatSetupPanel({ ctx }: { ctx: Ctx }) {
   const locked = flats.length > 0;
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4 sm:p-6 min-w-0">
+    <div id="panel-flat-setup" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-4 sm:p-6 min-w-0 scroll-mt-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="serif text-[20px] sm:text-[22px] font-bold">FLAT SETUP</div>
