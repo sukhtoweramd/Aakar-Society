@@ -9,7 +9,8 @@ import { applySocietyProfile, profileFromRow, writeCachedProfile } from "@/lib/s
 import { newTowerError, nextTowerSort, profileToForm, towerNameError, validateProfile, type ProfileForm } from "@/lib/setupEdit";
 import { towerViews } from "@/lib/setupView";
 import { squareLogo } from "@/lib/logoImage";
-import { currentMark } from "@/lib/societyLogo";
+import { currentMark, noLogoText } from "@/lib/societyLogo";
+import { usesLegacyAddress, wordFromPath } from "@/lib/societyWord";
 import SocietyLogo from "./SocietyLogo";
 import type { Ctx } from "./ctx";
 
@@ -120,7 +121,7 @@ export function SocietyDetails({ ctx }: { ctx: Ctx }) {
         <SocietyLogo className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[30px] serif bg-[var(--navy)] text-[var(--gold)] shrink-0" mark={currentMark()} />
         <div className="min-w-0 flex-1">
           <div className="mono text-[10px] tracking-[0.1em] opacity-60">LOGO</div>
-          <div className="text-[13px] opacity-80">{SOCIETY.logo ? "Your logo is on the screens and on bills, receipts and letters." : "No logo yet. Until you add one, the first letter of the society name is shown."}</div>
+          <div className="text-[13px] opacity-80">{SOCIETY.logo ? "Your logo is on the screens and on bills, receipts and letters." : noLogoText(typeof window === "undefined" || usesLegacyAddress(wordFromPath(window.location.pathname)))}</div>
           <div className="mono text-[10px] opacity-60 mt-1">A flat square picture works best (PNG, JPEG or WEBP). It is made small automatically.</div>
         </div>
         {main === true && <div className="flex flex-wrap gap-2">

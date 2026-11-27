@@ -74,3 +74,9 @@ test("MT_19 scripts: column + limit + logo only when present; undo restores the 
   assert.match(u, /drop column if exists logo_image/);
   assert.match(t, /raise exception E'RESULT/);
 });
+
+test("the LOGO sentence names the Om sign for the first society and the first letter for the others", async () => {
+  const { noLogoText } = await import("../lib/societyLogo");
+  assert.match(noLogoText(true), /Om sign/); assert.doesNotMatch(noLogoText(true), /first letter/);
+  assert.match(noLogoText(false), /first letter/); assert.doesNotMatch(noLogoText(false), /Om sign/);
+});
