@@ -73,7 +73,7 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
     <div className="space-y-4 fade-in">
       <OwnerChecklist ctx={ctx} />
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
+      <div id="panel-rates" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 scroll-mt-4">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
             <div className="serif text-[22px] font-bold">SOCIETY CHARGES CONTROL PANEL</div>

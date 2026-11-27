@@ -11,6 +11,7 @@ import type { TowerInfo } from "@/lib/societySetup";
 import SharePdfButton from "./SharePdfButton";
 import LedgerCard from "./LedgerCard";
 import BillingSettings from "./BillingSettings";
+import { takeViewHint } from "@/lib/viewHint";
 import { backBar } from "@/lib/printBack";
 import VerifyPayments from "./VerifyPayments";
 import { loadReports, type PayReport } from "@/lib/payReports";
@@ -21,7 +22,7 @@ type View = (typeof VIEWS)[number];
 
 export default function BillingTab({ ctx }: { ctx: Ctx }) {
   const flats = useMemo(() => [...ctx.flats].sort(sortFlats), [ctx.flats]);
-  const [view, setView] = useState<View>("LEDGER");
+  const [view, setView] = useState<View>(() => (takeViewHint("BILLING") as View | null) || "LEDGER");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [signatories, setSignatories] = useState<Signatory[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);

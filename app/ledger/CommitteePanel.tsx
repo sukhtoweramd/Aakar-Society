@@ -72,7 +72,7 @@ export default function CommitteePanel({ flats }: { flats: Flat[] }) {
   const staleCount = (members || []).filter(stale).length;
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
+    <div id="panel-committee-logins" className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6 scroll-mt-4">
       <div className="serif text-[22px] font-bold">COMMITTEE LOGINS</div>
       <div className="mono text-[11px] opacity-60 mt-1 max-w-[680px]">
         Each committee member logs in with their own email and has full admin rights. Ticking ★ Committee on a flat only shows the star; it does not give admin rights. Link each login to the member&apos;s own flat: it gives them a MY FLAT button, and when that flat&apos;s ★ Committee tick is removed, their committee login is removed too. The main admin (the society&apos;s own login) cannot be removed.
