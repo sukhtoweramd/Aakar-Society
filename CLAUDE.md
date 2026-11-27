@@ -121,6 +121,8 @@
 
 - Stamp designer + paper background (27 Nov 2026, MT_20 = `billing_settings.stamp_design` jsonb + `print_background` text; `MT_20_STAMP_BACKGROUND.sql`, `_UNDO`, `_TEST`; aanganone first, live after a fresh backup; never run `_TEST` on live): set by the society owner in BILLING -> SETTINGS (`BillingSettings.tsx`). The stamp is drawn only by `lib/stampDesign.ts` (`stampSvg`; empty parts are left out; the default design draws Aakar's old stamp exactly, `tests/fixtures/default-stamp.svg`); an uploaded stamp photo (`stamp_image`) still wins. Print code uses `stampOf(settings)`, never `stamp_image || defaultStamp()`. Paper background: own faded picture (`print_background`, `lib/printBackground.ts`, `lib/backgroundImage.ts`), else the first society's building picture, else none.
 
+- Society checklist (27 Nov 2026): ADMIN opens with `OwnerChecklist.tsx` (steps and ticks in `lib/ownerChecklist.ts`, tests `tests/ownerChecklist.test.ts`): society details, towers, flats, rates, owners, committee, payment details, signatories, first notice, backup (advice only, not tracked), go live. Read only, through the member's own client; folds away when complete. A new first-setup step is added to `checklistSteps` and its fact to `factsFrom`.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.

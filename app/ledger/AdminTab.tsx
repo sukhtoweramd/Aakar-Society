@@ -7,6 +7,7 @@ import type { Ctx } from "./ctx";
 import LoginsPanel from "./LoginsPanel";
 import CommitteePanel from "./CommitteePanel";
 import FlatSetupPanel from "./FlatSetupPanel";
+import OwnerChecklist from "./OwnerChecklist";
 import BookingAreasPanel from "./BookingAreasPanel";
 import BackupPanel from "./BackupPanel";
 import MemberScreensPanel from "./MemberScreensPanel";
@@ -70,6 +71,8 @@ export default function AdminTab({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="space-y-4 fade-in">
+      <OwnerChecklist ctx={ctx} />
+
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-6">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
