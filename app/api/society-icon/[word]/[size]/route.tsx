@@ -2,8 +2,8 @@
 // The first society and any unknown word get the static icon files of the app. No server key, no resident data.
 import { ImageResponse } from "next/og";
 import { NextRequest, NextResponse } from "next/server";
-import { iconLetter, iconPlan, isIconSize, ownFilesWord, safeLogo } from "@/lib/societyPwa";
-import { publicSociety } from "@/lib/societyPublicServer";
+import { fallbackSociety, iconLetter, iconPlan, isIconSize, ownFilesWord, safeLogo } from "@/lib/societyPwa";
+import { lookupSociety } from "@/lib/societyPublicServer";
 import { iconReadyLogo } from "@/lib/iconLogo";
 
 const STATIC: Record<string, string> = { "180": "/icons/apple-touch-icon.png", "192": "/icons/icon-192.png", "512": "/icons/icon-512.png", "maskable-512": "/icons/maskable-512.png" };
@@ -12,8 +12,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ word: strin
   const { word: raw, size } = await ctx.params;
   if (!isIconSize(size)) return new NextResponse("Not found", { status: 404 });
   const word = ownFilesWord(raw);
-  const s = word ? await publicSociety(word) : null;
-  if (!s) return NextResponse.redirect(new URL(STATIC[size], req.url), 307);
+  if (!word) return NextResponse.redirect(new URL(STATIC[size], req.url), 307);
+  const { society, failed } = await lookupSociety(word);
+  if (!society && !failed) return NextResponse.redirect(new URL(STATIC[size], req.url), 307);   // the lookup worked: there is no such society
+  const s = society || fallbackSociety(word);       // lookup failed: letter icon from the address word, never cached, never the first society's icon
   const { px, maskable, inner } = iconPlan(size);
   const logo = await iconReadyLogo(safeLogo(s.logo));
   return new ImageResponse(
@@ -29,6 +31,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ word: strin
         )}
       </div>
     ),
-    { width: px, height: px, headers: { "Cache-Control": "public, max-age=300, s-maxage=300" } },
+    { width: px, height: px, headers: { "Cache-Control": society ? "public, max-age=300, s-maxage=300" : "no-store" } },
   );
 }
