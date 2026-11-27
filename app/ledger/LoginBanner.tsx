@@ -7,6 +7,7 @@ import type { Notice } from "@/lib/society";
 import { birthdaysToday, type Birthday } from "@/lib/birthdays";
 import { FileLink, SecureImg } from "./SecureFile";
 import { societyAppName } from "@/lib/society";
+import SocietyLogo from "./SocietyLogo";
 
 type Banner = Notice & { is_banner?: boolean; banner_until?: string | null };
 const SLIDE_MS = 6000;
@@ -147,7 +148,7 @@ export default function LoginBanner({ userId, tower, isCommittee, onRead }: { us
         ) : (
           <div className="flex-1 min-h-[120px] relative overflow-hidden">
             <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full border-[18px] border-[var(--gold)] opacity-15" />
-            <div className="absolute left-6 bottom-2 serif text-[90px] leading-none text-[var(--gold)] opacity-25">ॐ</div>
+            <SocietyLogo className="absolute left-6 bottom-2 h-[90px] w-[90px] grid place-items-center serif text-[90px] leading-none text-[var(--gold)] opacity-25" />
           </div>
         )}
 

@@ -7,6 +7,8 @@ import { nameLines, nameSuffix, SOCIETY } from "@/lib/society";
 import { flatEmail, parseLogin, tenantEmail } from "@/lib/residents";
 import { InstallApp } from "./PwaRegister";
 import { cleanWord, FIRST_SOCIETY_WORD, usesLegacyAddress, wordFromPath } from "@/lib/societyWord";
+import SocietyLogo from "./SocietyLogo";
+import { markOf } from "@/lib/societyLogo";
 
 const WORD_KEY = "society-word";
 // The app swaps this screen for the ledger the moment a login succeeds, so a refusal made after that is kept here and shown when the login screen comes back.
@@ -21,7 +23,7 @@ export default function Login() {
   const pathWord = wordFromPath(usePathname());
   const [typedWord, setTypedWord] = useState("");
   const word = pathWord || cleanWord(typedWord);
-  const [society, setSociety] = useState<{ slug: string; name: string } | null>(null);
+  const [society, setSociety] = useState<{ slug: string; name: string; logo?: string } | null>(null);
   const [lookedUp, setLookedUp] = useState(false);
   useEffect(() => { try { const n = window.sessionStorage.getItem(NOTICE_KEY); if (n) { window.sessionStorage.removeItem(NOTICE_KEY); setError(n); } } catch {} }, []);
   useEffect(() => { try { const w = window.localStorage.getItem(WORD_KEY); if (w && !pathWord) setTypedWord(w); } catch {} }, [pathWord]);
@@ -31,7 +33,7 @@ export default function Login() {
     if (!word) return;
     supabase.rpc("society_public", { p_word: word }).then(({ data, error }) => {
       if (!alive) return;
-      if (!error && data) setSociety(data as { slug: string; name: string });
+      if (!error && data) setSociety(data as { slug: string; name: string; logo?: string });
       setLookedUp(!error);           // an error = the database function is not installed yet: act as if no word check exists
     });
     return () => { alive = false; };
@@ -85,7 +87,7 @@ export default function Login() {
         <div className="w-full max-w-[920px] grid md:grid-cols-[1fr_1fr] border border-[var(--border)] rounded-[4px] overflow-hidden bg-[var(--surface)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <div className="bg-[var(--navy)] text-[#fdfcf5] p-8 md:p-10 flex flex-col justify-between">
             <div>
-              <div className="h-14 w-14 rounded-full border border-[var(--gold)] grid place-items-center text-[30px] serif text-[var(--gold)]">ॐ</div>
+              <SocietyLogo className="h-14 w-14 rounded-full border border-[var(--gold)] grid place-items-center text-[30px] serif text-[var(--gold)]" mark={markOf({ logo: otherSociety ? otherSociety.logo : SOCIETY.logo, name: otherSociety?.name || SOCIETY.name, first: usesLegacyAddress(word) })} />
               <h1 className="serif text-[40px] leading-[0.95] mt-6 tracking-[0.02em] font-[800]">{nameLines(otherSociety?.name || SOCIETY.name)[0]}{nameLines(otherSociety?.name || SOCIETY.name)[1] && <br />}{nameLines(otherSociety?.name || SOCIETY.name)[1]}</h1>
               {!otherSociety && <div className="mono text-[11px] tracking-[0.3em] mt-3 opacity-80">{nameSuffix()}</div>}
             </div>

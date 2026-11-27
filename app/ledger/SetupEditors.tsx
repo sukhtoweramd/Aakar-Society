@@ -8,6 +8,9 @@ import { SOCIETY } from "@/lib/society";
 import { applySocietyProfile, profileFromRow, writeCachedProfile } from "@/lib/societySetup";
 import { newTowerError, nextTowerSort, profileToForm, towerNameError, validateProfile, type ProfileForm } from "@/lib/setupEdit";
 import { towerViews } from "@/lib/setupView";
+import { squareLogo } from "@/lib/logoImage";
+import { currentMark } from "@/lib/societyLogo";
+import SocietyLogo from "./SocietyLogo";
 import type { Ctx } from "./ctx";
 
 /** true = this login is the main admin (the database says so); false / null = not, or not known yet. */
@@ -64,6 +67,23 @@ export function SocietyDetails({ ctx }: { ctx: Ctx }) {
     setMsg({ ok: true, text: "Saved. The new details show on every screen and on the next bills, receipts and letters." });
   }
 
+  // The logo is saved on its own (not with the form): choose a picture, it is squeezed to a small square and kept at once.
+  async function saveLogo(dataUrl: string | null) {
+    setBusy(true); setMsg(null);
+    const { data, error } = await supabase.from("society_profile").update({ logo_image: dataUrl, updated_by: ctx.email, updated_at: new Date().toISOString() }).eq("id", 1).select("*").maybeSingle();
+    setBusy(false);
+    if (error || !data) { setMsg({ ok: false, text: /logo_image/.test(error?.message || "") ? "The logo needs one database step first (MT_19_SOCIETY_LOGO.sql in Supabase)." : `Not saved: ${error?.message || "only the main admin login can change this."}` }); return; }
+    const prof = profileFromRow(data);
+    applySocietyProfile(prof);
+    try { writeCachedProfile(window.localStorage, prof); } catch { /* ignore */ }
+    await ctx.reloadSetup();
+    setMsg({ ok: true, text: dataUrl ? "Logo saved. It shows on the screens and on bills, receipts and letters." : "Logo removed." });
+  }
+  async function pickLogo(file: File | undefined) {
+    if (!file) return;
+    try { await saveLogo(await squareLogo(file)); } catch (e: any) { setMsg({ ok: false, text: e?.message || "Could not use that picture." }); }
+  }
+
   if (form) return (
     <div className="mt-4 border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-4 grid gap-3 min-w-0">
       <Label t="SOCIETY NAME *"><input className="field" value={form.name} maxLength={80} onChange={(e) => set("name", e.target.value)} /></Label>
@@ -95,6 +115,21 @@ export function SocietyDetails({ ctx }: { ctx: Ctx }) {
         <Row k="ADDRESS" v={SOCIETY.address} />
         <Row k="ADDRESS LINES (LOGIN AND COVER SCREENS)" v={SOCIETY.addressLines.join(" • ")} />
         <Row k="CITY" v={SOCIETY.city} />
+      </div>
+      <div className="mt-3 border border-[var(--border)] bg-[var(--bg)] rounded-[3px] p-4 flex flex-wrap items-center gap-4">
+        <SocietyLogo className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[30px] serif bg-[var(--navy)] text-[var(--gold)] shrink-0" mark={currentMark()} />
+        <div className="min-w-0 flex-1">
+          <div className="mono text-[10px] tracking-[0.1em] opacity-60">LOGO</div>
+          <div className="text-[13px] opacity-80">{SOCIETY.logo ? "Your logo is on the screens and on bills, receipts and letters." : "No logo yet. Until you add one, the first letter of the society name is shown."}</div>
+          <div className="mono text-[10px] opacity-60 mt-1">A flat square picture works best (PNG, JPEG or WEBP). It is made small automatically.</div>
+        </div>
+        {main === true && <div className="flex flex-wrap gap-2">
+          <label className={`btn-line mono text-[11px] font-semibold tracking-[0.08em] px-4 min-h-[44px] inline-flex items-center cursor-pointer ${busy ? "opacity-50 pointer-events-none" : ""}`}>
+            {SOCIETY.logo ? "CHANGE LOGO" : "ADD LOGO"}
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; pickLogo(f); }} />
+          </label>
+          {SOCIETY.logo && <button onClick={() => { if (confirm("Remove the logo?")) saveLogo(null); }} disabled={busy} className="btn-line mono text-[11px] font-semibold tracking-[0.08em] px-4 min-h-[44px]">REMOVE</button>}
+        </div>}
       </div>
       {main === true && <button onClick={() => { setForm(profileToForm(SOCIETY)); setMsg(null); }} className="btn-line mono text-[11px] font-semibold tracking-[0.08em] px-4 min-h-[44px] mt-3">EDIT SOCIETY DETAILS</button>}
       {main === false && <div className="mono text-[10px] opacity-60 mt-3">Only the main admin login can change these.</div>}

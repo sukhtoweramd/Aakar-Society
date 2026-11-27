@@ -9,6 +9,7 @@ import DocsReport from "./DocsReport";
 import NominationReport from "./NominationReport";
 import { printFlatCards } from "@/lib/flatCard";
 import { backBar } from "@/lib/printBack";
+import { titleMarkHtml } from "@/lib/societyLogo";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -60,7 +61,7 @@ export default function ReportsTab({ ctx }: { ctx: Ctx }) {
     </style></head><body>${backBar()}
       <table>
         <thead>
-          <tr class="title"><td colspan="6"><div class="row"><div><h1>ॐ ${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT • ${esc(scope.toUpperCase())}</div></div></td></tr>
+          <tr class="title"><td colspan="6"><div class="row"><div><h1>${titleMarkHtml()}${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(SOCIETY.address)}</div></div><div class="sub">DIRECTORY REPORT • ${esc(scope.toUpperCase())}</div></div></td></tr>
           <tr class="gap"><td colspan="6"></td></tr>
           <tr><th style="width:7%">Flat</th><th style="width:24%">${isCom ? "Committee member" : "Owner / Tenant"}</th><th style="width:22%">Profession / Business</th><th style="width:16%">Spouse</th><th style="width:11%">Mobile</th><th>Email</th></tr>
         </thead>

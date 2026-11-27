@@ -83,6 +83,7 @@ export function billBalance(b: Bill, pays: Payment[]) {
   return { paid, balance: b.status === "cancelled" ? 0 : Math.round((num(b.amount) - paid) * 100) / 100 };
 }
 import { flatTotals } from "./billTotals";
+import { SEAL_IMG_CSS, sealHtml } from "./societyLogo";
 export { flatTotals, tenantBookingDue } from "./billTotals";
 
 // ---------- signatures & stamp ----------
@@ -144,7 +145,7 @@ body{background:#e9e6dc;font-family:Inter,"Segoe UI","Noto Sans Gujarati","Nirma
 .wm{position:absolute;left:50%;top:54%;width:158mm;max-height:205mm;object-fit:contain;transform:translate(-50%,-50%);z-index:-1;pointer-events:none}.nobg .wm{display:none}
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}.c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
 .head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:.6mm solid var(--navy)}
-.seal{width:17mm;height:17mm;border-radius:50%;border:.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}
+.seal{width:17mm;height:17mm;border-radius:50%;border:.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}${SEAL_IMG_CSS}
 .soc{flex:1;min-width:0}.soc h1{font-weight:800;font-size:12.5pt;line-height:1.2;letter-spacing:.01em;color:var(--navy)}.soc .a{font-size:8.2pt;color:var(--mute);margin-top:1mm}
 .title{text-align:right;flex-shrink:0;max-width:72mm;margin-left:2mm}.title .t{font-size:8pt;letter-spacing:.2em;color:var(--gold);font-weight:700}.title .f{font-weight:800;font-size:18pt;color:var(--navy);line-height:1.25;white-space:nowrap}.title .f.long{font-size:14.5pt}.title .s{font-size:8pt;color:var(--mute);white-space:nowrap;margin-top:.8mm}.title .s b{color:var(--navy)}
 .meta{display:grid;grid-template-columns:1.3fr 1fr;gap:3.5mm;margin-top:4mm}
@@ -185,7 +186,7 @@ const frameEnd = `</div></div></section>`;
 export function docPage(kind: string, big: string, small: string, inner: string, footLeft: string, footRight = "") {
   return `${frameStart()}${header(kind, big, small)}${inner}<div class="grow"></div><div class="foot"><div>${esc(footLeft)}</div><div>${esc(footRight)}</div></div>${frameEnd}`;
 }
-const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">ॐ</div>
+const header = (kind: string, big: string, small: string) => `<div class="head"><div class="seal">${sealHtml()}</div>
   <div class="soc"><h1>${esc(SOCIETY.full)}</h1><div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div><div class="a">${esc(addressOneLine())}</div></div>
   <div class="title"><div class="t">${esc(kind)}</div><div class="f${big.length > 12 ? " long" : ""}">${esc(big)}</div><div class="s">${small}</div></div></div>`;
 const flatLine = (f?: Flat) => (f ? `Flat <b>${esc(label(f))}</b> • Tower ${esc(f.tower)} • Floor ${esc(f.floor ?? "")}${f.bhk ? ` • ${esc(f.bhk)}` : ""}` : "");
@@ -361,7 +362,7 @@ export async function duesListPdf(rows: { f: Flat; due: number; count: number; o
   const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#1a1a18}
   .page{width:210mm;height:297mm;padding:14mm 13mm 12mm;display:flex;flex-direction:column;background:#fff}
   .hd{display:flex;align-items:center;gap:4mm;border-bottom:.6mm solid #0f1d3d;padding-bottom:3mm}
-  .seal{width:13mm;height:13mm;border-radius:50%;background:#0f1d3d;color:#e2c25c;display:grid;place-items:center;font-size:18pt}
+  .seal{width:13mm;height:13mm;border-radius:50%;background:#0f1d3d;color:#e2c25c;display:grid;place-items:center;font-size:18pt}${SEAL_IMG_CSS}
   h1{font-size:13pt;color:#0f1d3d;letter-spacing:.02em}.a{font-size:8pt;color:#6f6a5d;margin-top:.8mm}
   .t{margin-left:auto;text-align:right}.t b{display:block;font-size:8pt;letter-spacing:.2em;color:#b8932a}.t span{font-size:16pt;font-weight:800;color:#0f1d3d}
   .s{display:flex;justify-content:space-between;font-size:9pt;color:#6f6a5d;margin:3mm 0}
@@ -369,7 +370,7 @@ export async function duesListPdf(rows: { f: Flat; due: number; count: number; o
   td{padding:2mm;border-bottom:.25mm solid #e8e2d1}.r{text-align:right}.od{color:#b42318;font-weight:700}
   tr.tot td{font-weight:800;background:#f7f2e4;border-top:.4mm solid #0f1d3d}
   .ft{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#6f6a5d;border-top:.25mm solid #e8e2d1;padding-top:2mm}`;
-  const pages = chunks.map((ch, i) => `<section class="page"><div class="hd"><div class="seal">ॐ</div><div><h1>${esc(SOCIETY.full)}</h1>
+  const pages = chunks.map((ch, i) => `<section class="page"><div class="hd"><div class="seal">${sealHtml()}</div><div><h1>${esc(SOCIETY.full)}</h1>
     <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • ${esc(addressOneLine())}</div></div>
     <div class="t"><b>DUES LIST</b><span>${esc(scope)}</span></div></div>
     <div class="s"><span>As on <b>${dmy(today())}</b> • ${rows.length} flat${rows.length === 1 ? "" : "s"} with dues</span><span>Total due <b style="color:#b26a00">₹${inr(total)}</b></span></div>

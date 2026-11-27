@@ -2,6 +2,7 @@
 // Pure helpers only (no supabaseClient), so tests can import this file. Every value falls back to what the code has
 // always had (SOCIETY, TERRACE_TOWERS, the towers found in the flats), so a missing / empty / unreadable table changes nothing.
 import { SOCIETY, TERRACE_TOWERS } from "./society";
+import { safeLogo } from "./societyLogo";
 
 export type SocietyProfile = typeof SOCIETY;
 export type TowerInfo = { code: string; name: string; terrace: boolean };
@@ -22,7 +23,7 @@ export function profileFromRow(row: any): SocietyProfile {
   const lines = Array.isArray(row.address_lines) ? row.address_lines.filter((l: unknown) => typeof l === "string" && l.trim()).map((l: string) => l.trim()) : [];
   return {
     name: own(row.name), full: own(row.full_name), reg: own(row.reg_no), regDate: own(row.reg_date), building: own(row.building),
-    address: own(row.address), addressLines: lines, city: own(row.city), publicUrl: own(row.public_url),
+    address: own(row.address), addressLines: lines, city: own(row.city), publicUrl: own(row.public_url), logo: safeLogo(row.logo_image),
   };
 }
 
@@ -74,7 +75,7 @@ export function readCachedProfile(store: Store | null | undefined, word?: string
     const raw = store?.getItem(cacheKey(word));
     if (!raw) return null;
     const j = JSON.parse(raw);
-    return j && typeof j === "object" ? profileFromRow({ name: j.name, full_name: j.full, reg_no: j.reg, reg_date: j.regDate, building: j.building, address: j.address, address_lines: j.addressLines, city: j.city, public_url: j.publicUrl }) : null;
+    return j && typeof j === "object" ? profileFromRow({ name: j.name, full_name: j.full, reg_no: j.reg, reg_date: j.regDate, building: j.building, address: j.address, address_lines: j.addressLines, city: j.city, public_url: j.publicUrl, logo_image: j.logo }) : null;
   } catch { return null; }
 }
 export function writeCachedProfile(store: Store | null | undefined, p: SocietyProfile, word?: string | null) {

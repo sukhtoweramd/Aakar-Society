@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { familySummary, label, residentName, sortFlats, SOCIETY, titleCase, type Flat, type MemberLite, fileSlug } from "@/lib/society";
 import { VEHICLE_TYPES } from "./FlatListPanel";
 import { backButton, pdfButton } from "@/lib/printBack";
+import { titleMarkHtml } from "@/lib/societyLogo";
 
 type Vehicle = { id: string; flat_id: string; vtype: string; model: string | null; plate: string | null };
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -56,7 +57,7 @@ export default function VehicleReport({ list, members, scope }: { list: Flat[]; 
           <td>${k === 0 ? esc(g.mobile) : ""}</td>
           <td>${esc(v.vtype)}</td><td>${esc(v.model)}</td><td>${v.plate ? `<span class="plate">${esc(v.plate)}</span>` : "—"}</td></tr>`).join("")}</tbody>`).join("");
       return `<table class="${i ? "newpage" : ""}"><thead>
-        <tr class="title"><td colspan="6"><div class="row"><div><h1>ॐ ${esc(SOCIETY.full)} — VEHICLE DIRECTORY</h1>
+        <tr class="title"><td colspan="6"><div class="row"><div><h1>${titleMarkHtml()}${esc(SOCIETY.full)} — VEHICLE DIRECTORY</h1>
           <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • ${esc(scopeText)}</div></div><div class="tower">TOWER ${esc(t)}</div></div></td></tr>
         <tr class="gap"><td colspan="6"></td></tr>
         <tr><th style="width:8%">Flat</th><th style="width:24%">Resident</th><th style="width:14%">Contact</th><th style="width:15%">Type</th><th style="width:16%">Model</th><th>Number</th></tr>
