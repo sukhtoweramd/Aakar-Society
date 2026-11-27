@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { isRented, label, ownerText, sortFlats, SOCIETY, type Flat } from "@/lib/society";
 import { DOC_TYPES, docChecklist } from "@/lib/flatDocTypes";
 import { backBar } from "@/lib/printBack";
+import { titleMarkHtml } from "@/lib/societyLogo";
 
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -31,7 +32,7 @@ export default function DocsReport({ list, scope }: { list: Flat[]; scope: strin
       body{font:11px Arial,sans-serif;margin:0 14px}h1{font-size:14px;margin:6px 0 2px}.sub{opacity:.7;margin-bottom:8px}
       table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:3px 4px;text-align:center}th{background:#0f1d3d;color:#fff;font-size:9.5px}
       td.l{text-align:left}.ok{color:#047857;font-weight:700}.no{color:#b42318;font-weight:700}.na{color:#999}@page{size:A4 landscape;margin:10mm}</style></head><body>
-      ${backBar()}<h1>ॐ ${esc(SOCIETY.full)} — FLAT DOCUMENTS</h1><div class="sub">${esc(scope)} • ${esc(new Date().toLocaleDateString("en-IN"))} • ✓ uploaded ✗ missing — not needed • ${complete} of ${table.length} flats complete</div>
+      ${backBar()}<h1>${titleMarkHtml()}${esc(SOCIETY.full)} — FLAT DOCUMENTS</h1><div class="sub">${esc(scope)} • ${esc(new Date().toLocaleDateString("en-IN"))} • ✓ uploaded ✗ missing — not needed • ${complete} of ${table.length} flats complete</div>
       <table><thead><tr><th>Flat</th><th>Owner</th>${DOC_TYPES.map((d) => `<th>${esc(d.name)}</th>`).join("")}<th>Missing</th></tr></thead><tbody>
       ${shown.map((t) => `<tr><td class="l"><b>${esc(label(t.f))}</b></td><td class="l">${esc(ownerText(t.f))}</td>${DOC_TYPES.map((d) => cell(t, d.key)).join("")}<td>${t.missing}</td></tr>`).join("")}
       </tbody></table></body></html>`);

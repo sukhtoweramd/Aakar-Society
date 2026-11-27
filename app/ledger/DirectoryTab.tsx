@@ -6,6 +6,7 @@ import { SOCIETY, byCommitteeRole, byFamilyOrder, filterName, titleCase } from "
 import type { Ctx } from "./ctx";
 import ScopeChips from "./ScopeChips";
 import { backButton, pdfButton } from "@/lib/printBack";
+import { titleMarkHtml } from "@/lib/societyLogo";
 
 type Row = { flat_id: string; tower: string | null; floor: number | null; owner_name: string | null; is_committee: boolean | null; consent: boolean; member_id: string | null; member_name: string | null; relation: string | null; mobile: string | null; is_head: boolean; birth_day?: number | null; birth_month?: number | null; occupancy?: string | null; tenant_name?: string | null; committee_role?: string | null };
 type Entry = { flat_id: string; tower: string | null; owner_name: string | null; is_committee: boolean; role: string | null; consent: boolean; tenant: string | null; members: Row[] };
@@ -89,7 +90,7 @@ export default function DirectoryTab({ ctx }: { ctx: Ctx }) {
     const docTitle = committeeOnly ? "COMMITTEE DIRECTORY" : "MEMBER DIRECTORY";
     const sections = groups.map(([t, list], i) => {
       return `<table class="${i ? "newpage" : ""}"><thead>
-        <tr class="title"><td colspan="5"><div class="row"><div><h1>ॐ ${esc(SOCIETY.full)} — ${docTitle}</h1>
+        <tr class="title"><td colspan="5"><div class="row"><div><h1>${titleMarkHtml()}${esc(SOCIETY.full)} — ${docTitle}</h1>
           <div class="sub">${esc(SOCIETY.building)} • REG ${esc(SOCIETY.reg)} • ${esc(today)} • ${esc(scope)} • Family details only for flats that gave consent</div></div>
           <div class="tower">${esc(t)}</div></div></td></tr>
         <tr class="gap"><td colspan="5"></td></tr>

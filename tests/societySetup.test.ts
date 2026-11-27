@@ -28,7 +28,7 @@ test("no row, or a row without its two names, keeps today's values", () => {
 
 test("a field the society left empty stays empty: it never shows another society's value", () => {
   const p = profileFromRow({ name: "GREEN VIEW", full_name: "GREEN VIEW CHS", reg_no: "", reg_date: null, building: " ", address: "", address_lines: [], city: "", public_url: null });
-  assert.deepEqual(p, { name: "GREEN VIEW", full: "GREEN VIEW CHS", reg: "", regDate: "", building: "", address: "", addressLines: [], city: "", publicUrl: "" });
+  assert.deepEqual(p, { name: "GREEN VIEW", full: "GREEN VIEW CHS", reg: "", regDate: "", building: "", address: "", addressLines: [], city: "", publicUrl: "", logo: "" });
 });
 
 test("joinParts leaves out empty parts", () => {

@@ -4,6 +4,7 @@ import { SOCIETY, label, nameLines, nameSuffix, ownerText, committeeRoster } fro
 import { amcAlerts, loadAmc, loadAreas, type Area } from "@/lib/committee";
 import WhoToContact from "./WhoToContact";
 import { RESIDENT_TABS, type Ctx, type Tab } from "./ctx";
+import SocietyLogo from "./SocietyLogo";
 
 const TILES: { id: Tab; title: string; desc: string }[] = [
   { id: "INDEX", title: "ALL FLATS", desc: "Grid of all flats A/B/C" },
@@ -40,7 +41,7 @@ export default function CoverTab({ ctx }: { ctx: Ctx }) {
           {contacts.length > 0 && <button onClick={() => document.getElementById("who-to-contact")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="btn-line mono text-[11px] font-bold px-3 py-2 mb-5">WHO TO CONTACT ↓</button>}
           <div className="flex flex-wrap gap-6 items-start justify-between">
             <div>
-              <div className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[36px] serif bg-[var(--bg)]">ॐ</div>
+              <SocietyLogo className="h-16 w-16 rounded-full border border-[var(--gold)] grid place-items-center text-[36px] serif bg-[var(--bg)]" />
               <h1 className="serif text-[40px] md:text-[64px] leading-[0.9] mt-6 tracking-[0.02em] font-[800] break-words">{nameLines(SOCIETY.name)[0]}{nameLines(SOCIETY.name)[1] && <br />}{nameLines(SOCIETY.name)[1]}</h1>
               <div className="mono text-[12px] tracking-[0.3em] mt-3">{nameSuffix()}</div>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 mono text-[11px] max-w-[420px]">

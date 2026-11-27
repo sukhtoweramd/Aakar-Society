@@ -110,3 +110,7 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 - Then open `<live address>/sample-gardens`, log in with the demo committee email; ADMIN > RESIDENT LOGINS creates the demo flat logins (`a101@sample-gardens.flats.aakarsociety.app`) through the app.
 - `DEMO_SOCIETY_LIVE_UNDO.sql` removes only Sample Gardens (every delete names its id); then delete the demo login(s) in Supabase. Never run `SAMPLE_DATA_SOCIETY2.sql` on live (it refuses anyway).
 
+
+## MT_19 - society logo (27 Nov 2026)
+- `MT_19_SOCIETY_LOGO.sql` (+ `_UNDO`, `_TEST`): adds `society_profile.logo_image` (data URL, database limit 120 000 characters) and lets the login page's `society_public(word)` return the logo when there is one. aanganone first (run `MT_19_TEST.sql` there; its red RESULT error is expected, read PASS), live after a fresh backup. Never run `MT_19_TEST.sql` on live.
+- The app uploads the logo from ADMIN > FLAT SETUP > LOGO (society owner); until the script is run the screen says so and nothing else changes. Without a logo the first society keeps its Om sign, every other society shows the first letter of its name.

@@ -44,6 +44,7 @@ export const SOCIETY = {
   addressLines: ["Mirambica Road, Naranpura", "Ahmedabad - 380013"],
   city: "Ahmedabad",
   publicUrl: "https://aakarsociety.vercel.app", // society_profile.public_url: the address of this society's app (login messages)
+  logo: "", // society_profile.logo_image: a small square picture (data URL); empty = no logo of its own (see lib/societyLogo.ts)
 };
 
 /** Society wording for printed papers and screens (19 Nov 2026), all derived from SOCIETY (= the society profile in ADMIN → FLAT SETUP). */

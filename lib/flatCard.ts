@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 import { listFiles } from "./ledgerClient";
 import { addressOneLine, byFamilyOrder, committeePeople, label, SOCIETY, sortFlats, type Flat } from "./society";
 import { backButton, pdfButton } from "./printBack";
+import { SEAL_IMG_CSS, sealHtml } from "./societyLogo";
 
 type Member = { flat_id: string; name: string | null; relation: string | null; mobile: string | null; age: number | null; dob?: string | null; is_head: boolean | null;
   email?: string | null; occupation?: string | null; business_name?: string | null; office_address?: string | null; office_phone?: string | null };
@@ -98,7 +99,7 @@ function card(c: CardData, printed: string): string {
   <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
   <div class="content">
   <div class="head">
-    <div class="seal">ॐ</div>
+    <div class="seal">${sealHtml()}</div>
     <div class="soc"><h1>${esc(SOCIETY.full)}</h1>
       <div class="a">${esc(SOCIETY.building)} • REG. NO. ${esc(SOCIETY.reg)} • DATED ${esc(SOCIETY.regDate)}</div>
       <div class="a">${esc(addressOneLine())}</div></div>
@@ -135,7 +136,7 @@ body{background:#e9e6dc;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(
 .corner{position:absolute;width:2.6mm;height:2.6mm;background:var(--gold);transform:rotate(45deg)}
 .c1{left:-1.55mm;top:-1.55mm}.c2{right:-1.55mm;top:-1.55mm}.c3{left:-1.55mm;bottom:-1.55mm}.c4{right:-1.55mm;bottom:-1.55mm}
 .head{display:flex;align-items:center;gap:5mm;padding-bottom:3mm;border-bottom:0.6mm solid var(--navy)}
-.seal{width:17mm;height:17mm;border-radius:50%;border:0.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}
+.seal{width:17mm;height:17mm;border-radius:50%;border:0.6mm solid var(--gold);display:grid;place-items:center;font-size:24pt;color:var(--gold);background:var(--navy);flex:none}${SEAL_IMG_CSS}
 .soc{flex:1;min-width:0}
 .soc h1{font-weight:800;font-size:14pt;white-space:nowrap;letter-spacing:.02em;color:var(--navy)}
 .soc .a{font-size:8.2pt;color:var(--mute);margin-top:1mm}

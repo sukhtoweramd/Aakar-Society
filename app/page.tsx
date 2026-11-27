@@ -34,6 +34,7 @@ import PhoneHome, { PhoneBar, useIsPhone } from "./ledger/PhoneHome";
 import { usePending } from "./ledger/usePending";
 import { pendingTotals } from "@/lib/pendingTotals";
 import { SECTION_TITLE, TAB_TITLE, type Section, type Tile } from "@/lib/phoneMenu";
+import SocietyLogo from "./ledger/SocietyLogo";
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -209,7 +210,7 @@ export default function Home() {
       <LoginBanner userId={session.user.id} tower={(myFlat || homeFlat || tenantFlat || "")[0] || null} isCommittee={isCommittee} onRead={() => go("NOTICES")} />
       {isPhone && phoneHome && (
         <div className="w-full bg-[var(--navy)] text-white px-4 py-2.5 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-[var(--navy)] border border-[var(--gold)] text-[var(--gold)] grid place-items-center serif text-[18px] font-bold shrink-0">ॐ</div>
+          <SocietyLogo className="h-9 w-9 rounded-full bg-[var(--navy)] border border-[var(--gold)] text-[var(--gold)] grid place-items-center serif text-[18px] font-bold shrink-0" />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="mono text-[11px] font-bold tracking-[0.12em] text-[var(--gold)] truncate">{joinParts([SOCIETY.name, SOCIETY.building])}</div>
             <div className="mono text-[11px] opacity-80 truncate normal-case">{who}</div>
@@ -257,7 +258,7 @@ export default function Home() {
       {!isPhone && <header className="sticky top-0 z-30 w-full max-w-[100vw] border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[60px] py-2.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-[4px] bg-[var(--navy)] text-[var(--gold)] grid place-items-center serif text-[20px] font-bold">ॐ</div>
+            <SocietyLogo className="h-9 w-9 rounded-[4px] bg-[var(--navy)] text-[var(--gold)] grid place-items-center serif text-[20px] font-bold" />
             <div className="leading-none">
               <div className="serif font-bold tracking-[0.06em] text-[15px]">{SOCIETY.name}</div>
               <div className="mono text-[11px] tracking-[0.06em] opacity-60 mt-0.5">{SOCIETY.reg} • HOUSING SOCIETY LEDGER</div>

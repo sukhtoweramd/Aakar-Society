@@ -5,6 +5,7 @@ import { label, SOCIETY } from "@/lib/society";
 import { backBar } from "@/lib/printBack";
 import type { Ctx } from "./ctx";
 import { directoryCategory } from "@/lib/professions";
+import { titleMarkHtml } from "@/lib/societyLogo";
 
 type Entry = { id: string; flat_id: string | null; name: string | null; occupation: string | null; business_name: string | null; business_category: string | null; office_address: string | null; office_phone: string | null; tower: string | null };
 
@@ -61,7 +62,7 @@ export default function BusinessTab({ ctx }: { ctx: Ctx }) {
       .bar{position:sticky;top:0}
       @media screen{body{padding:24px;max-width:794px;margin:auto}}
     </style></head><body>${backBar(`<span>${shown.length} listing${shown.length === 1 ? "" : "s"} • ${esc(scope)}</span>`)}
-      <div class="head"><div><h1>ॐ ${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • Reg. ${esc(SOCIETY.reg)}</div>
+      <div class="head"><div><h1>${titleMarkHtml()}${esc(SOCIETY.full)}</h1><div class="sub">${esc(SOCIETY.building)} • Reg. ${esc(SOCIETY.reg)}</div>
         <div style="font-size:15px;font-weight:800;color:#0f1d3d">Members' Business &amp; Profession Directory</div></div>
         <div class="r">${esc(scope)}<br>${shown.length} listing${shown.length === 1 ? "" : "s"} • as on ${esc(today)}</div></div>
       <table><thead><tr><th style="width:9%">FLAT</th><th style="width:20%">NAME${sortBy === "FLAT" ? " / CATEGORY" : ""}</th><th style="width:26%">BUSINESS / PROFESSION</th><th style="width:31%">OFFICE ADDRESS</th><th style="width:14%">PHONE</th></tr></thead>

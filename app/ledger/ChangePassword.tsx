@@ -2,6 +2,7 @@
 import { useState } from "react";
 import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
+import SocietyLogo from "./SocietyLogo";
 
 export default function ChangePassword({ forced, who, onDone }: { forced: boolean; who: string; onDone: () => void }) {
   const [p1, setP1] = useState("");
@@ -25,7 +26,7 @@ export default function ChangePassword({ forced, who, onDone }: { forced: boolea
   return (
     <div className="min-h-screen bg-[var(--bg)] grid place-items-center p-4">
       <form onSubmit={submit} className="w-full max-w-[440px] bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-8">
-        <div className="h-12 w-12 rounded-full border border-[var(--gold)] grid place-items-center serif text-[24px] text-[var(--navy)]">ॐ</div>
+        <SocietyLogo className="h-12 w-12 rounded-full border border-[var(--gold)] grid place-items-center serif text-[24px] text-[var(--navy)]" />
         <div className="serif text-[22px] font-bold mt-4">{forced ? "Set your own password" : "Change password"}</div>
         <div className="mono text-[11px] opacity-60 mt-1">
           {forced ? `Welcome, ${who}. Please replace the password the committee gave you with one only you know.` : who}
