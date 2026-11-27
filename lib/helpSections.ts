@@ -36,9 +36,13 @@ const SYNONYMS: Record<string, string[]> = {
   family: ["family"], vehicle: ["vehicles"], car: ["vehicles"], document: ["documents"], minutes: ["meetings", "minutes"],
   meeting: ["meetings", "minutes"], notice: ["notices", "banners"], banner: ["notices", "banners"], contact: ["contacts", "contact"],
   directory: ["directory"], business: ["business"],
+  // setting up a society (towers and flats): words people use for it
+  logo: ["setup", "admin"], address: ["setup", "admin"], registration: ["setup", "admin"], stamp: ["admin", "settings"], background: ["admin", "settings"], checklist: ["admin"],
+  setup: ["towers", "flats"], create: ["setup", "towers"], tower: ["towers", "setup"], wing: ["towers", "setup"], flats: ["setup"],
 };
 const STOP = new Set(["the", "and", "for", "how", "can", "what", "when", "where", "who", "why", "does", "this", "that", "with",
-  "from", "into", "your", "you", "are", "was", "has", "have", "get", "use", "app", "please", "need", "want", "will", "about", "there", "which"]);
+  "from", "into", "your", "you", "are", "was", "has", "have", "get", "use", "app", "please", "need", "want", "will", "about", "there", "which",
+  "society", "name", "where"]);   // "society" is in almost every section, so it says nothing about which one is meant
 
 function words(s: string): string[] {
   return String(s || "").toLowerCase().replace(/[^a-z0-9ऀ-૿\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));

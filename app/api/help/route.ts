@@ -1,6 +1,7 @@
 // HELP assistant: answers members' questions about the app ONLY from content/help-kb.md, using Cloudflare Workers AI
 // (the same account and token as screenshot reading). Nothing is stored. Questions about money or a specific flat's data
 // are not looked up here; the assistant only explains how to use the app.
+import { cleanAnswer } from "@/lib/helpAnswer";
 import { readFileSync } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
@@ -121,7 +122,7 @@ Mention ONLY tabs, buttons and fields that appear in the guide, spelled exactly 
 Only the "YOUR FLAT'S AMOUNTS", "YOUR FLAT'S RECORDS", "YOUR FLAT'S DOCUMENTS" or "THE SOCIETY'S DUES" block, when it is present, is live data: quote it exactly, never work out other amounts, and say where in the app to see the bill or receipt. You cannot see anything else (other flats, other records). Never list documents, bills or records that are not in a live data block: if there is no block for the question, say where in the app to look (for documents: MY FLAT → FLAT DOCUMENTS checklist).
 When you answer from a live data block, open with the answer to the question (for example "Your complaint CMP/26-27/0001 is closed" or "You owe Rs X"), then the details. Do not open with a count such as "You have one complaint".
 Never ask for passwords, OTPs, bank account or card numbers.
-If the guide does not answer the question, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line, then one short sentence in the member's language suggesting they contact the app coordinator.
+First look for the answer in the guide below: if any part of it answers the question, even partly, answer from it and NEVER write NOT_FOUND. Only when no part of the guide is relevant, or the member reports an error or something broken, reply with exactly NOT_FOUND on the first line and nothing else except one short sentence in the member's language suggesting they contact the app coordinator.
 
 HELP GUIDE (the parts that match the question):
 ${guide}`;
@@ -139,9 +140,8 @@ ${guide}`;
       if (!res.ok || j.success === false) { errors.push(`${model.split("/").pop()}: ${j?.errors?.[0]?.message || res.status}`); continue; }
       let text = String(j.result?.response ?? "").trim();
       if (!text) { errors.push(`${model.split("/").pop()}: empty`); continue; }
-      const notFound = /^\s*NOT_FOUND\b/i.test(text);
-      text = text.replace(/^\s*NOT_FOUND\s*[:\-]?\s*/i, "").trim();
-      return NextResponse.json({ answer: text, notFound });
+      const { answer, notFound } = cleanAnswer(text);
+      return NextResponse.json({ answer, notFound });
     } catch (e: any) { errors.push(`${model.split("/").pop()}: ${e?.name === "TimeoutError" ? "no answer in 14 s" : e?.message}`); }
   }
   console.error("help AI errors:", errors.join(" | "));
