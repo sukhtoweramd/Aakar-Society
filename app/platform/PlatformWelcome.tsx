@@ -8,7 +8,7 @@ export const PLATFORM_HIGHLIGHTS: { title: string; text: string }[] = [
   { title: "Complaints & booking", text: "Complaints to the right member; common plot booking." },
   { title: "Events & notices", text: "Registration, passes, gate scan, notices and birthdays." },
   { title: "Committee & meetings", text: "Roles, areas, AMC contracts, minutes and action points." },
-  { title: "Private per society", text: "Each society has its own space; no one sees another's data." },
+  { title: "Private per society", text: "Each society has its own space; no one sees another society's data." },
 ];
 
 export default function PlatformWelcome() {
@@ -24,7 +24,10 @@ export default function PlatformWelcome() {
 
       <div>
         <div className="serif text-[18px]">Welcome to GrihSahara</div>
-        <p className="mono text-[13px] opacity-80 mt-1">One app that runs a housing society: bills, letters, complaints, bookings, events and notices. Members use it on their phones; the committee runs everything from the same place.</p>
+        <p className="mono text-[13px] opacity-80 mt-1">GrihSahara is a SaaS (software as a service) platform for housing societies. Each society gets its own private space on one shared cloud service: nothing to install on a server and no upgrades to manage. The committee runs the society's work from it, and members use it from their phones.</p>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {["Cloud based", "One service, many societies", "Updated centrally", "Made for phones"].map((t) => <span key={t} className="mono text-[10px] font-semibold border border-[#0e7c86] text-[#0e7c86] rounded-full px-2.5 py-1">{t}</span>)}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
