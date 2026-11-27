@@ -54,7 +54,7 @@ test("no Aakar wording typed into printed papers, the login and cover screens, o
 
 test("the stamp is built on demand from the profile (not frozen when the file loads)", () => {
   const b = readFileSync("lib/billing.ts", "utf8");
-  assert.match(b, /export const defaultStamp = \(\) =>/);
+  assert.match(b, /export const defaultStamp = \(design\?: unknown\) =>/);
   assert.doesNotMatch(b, /DEFAULT_STAMP/);
 });
 

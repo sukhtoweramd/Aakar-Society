@@ -1,9 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { COMMITTEE_ROLES, societyTitle } from "@/lib/society";
+import { COMMITTEE_ROLES, SOCIETY, regYear, societyTitle } from "@/lib/society";
 import { letterPrefixFallback, nextYearExample } from "@/lib/billingPrefix";
 import { cleanImage, defaultStamp, docNo, type Settings, type Signatory } from "@/lib/billing";
+import { STAMP_COLORS, normalizeDesign, type StampColor, type StampDesign } from "@/lib/stampDesign";
+import { fadedBackground } from "@/lib/backgroundImage";
+import { safeBackground } from "@/lib/printBackground";
+import { hasBuildingBackground, wordFromPath } from "@/lib/societyWord";
+import { backgroundSrc } from "@/lib/printBackground";
+import { usePathname } from "next/navigation";
 
 export default function BillingSettings({ settings, signatories, email, onChanged }: { settings: Settings; signatories: Signatory[]; email: string; onChanged: () => void }) {
   const [s, setS] = useState<Settings>(settings);
@@ -52,6 +58,22 @@ export default function BillingSettings({ settings, signatories, email, onChange
   async function saveStamp(url: string | null) {
     const { error } = await supabase.from("billing_settings").update({ stamp_image: url, updated_by: email, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) setError(error.message); else onChanged();
+  }
+  const pathname = usePathname();
+  const shownBg = backgroundSrc(safeBackground(s.print_background), hasBuildingBackground(wordFromPath(pathname)));
+  // Stamp designer: the choices are kept on their own (saved with SAVE STAMP DESIGN), not with the numbering form.
+  const [design, setDesign] = useState<StampDesign>(() => normalizeDesign(settings.stamp_design));
+  useEffect(() => setDesign(normalizeDesign(settings.stamp_design)), [settings.stamp_design]);
+  const designDirty = JSON.stringify(design) !== JSON.stringify(normalizeDesign(settings.stamp_design));
+  async function saveDesign() {
+    setError("");
+    const { error } = await supabase.from("billing_settings").update({ stamp_design: design, updated_by: email, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) setError(/stamp_design/.test(error.message) ? "The stamp designer needs one database step first (MT_20_STAMP_BACKGROUND.sql in Supabase)." : error.message); else { setMsg("Stamp design saved."); onChanged(); }
+  }
+  async function saveBackground(url: string | null) {
+    setError("");
+    const { error } = await supabase.from("billing_settings").update({ print_background: url, updated_by: email, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) setError(/print_background/.test(error.message) ? "The paper background needs one database step first (MT_20_STAMP_BACKGROUND.sql in Supabase)." : error.message); else { setMsg(url ? "Background saved. It prints faintly behind bills, receipts and letters." : "Background removed."); onChanged(); }
   }
   async function addSignatory() {
     if (!ns.name.trim()) { setError("Enter the signatory's name."); return; }
@@ -143,14 +165,59 @@ export default function BillingSettings({ settings, signatories, email, onChange
         </div>
       </div>
 
+      <div className="bg-[var(--surface)] border border-[var(--border)] p-5 space-y-4 min-w-0">
+        <div className="flex flex-wrap gap-5 items-center">
+          <div className="h-32 w-32 grid place-items-center bg-white border border-[var(--border)] shrink-0"><img src={s.stamp_image || defaultStamp(design)} alt="Society stamp" className="max-h-28 max-w-28" /></div>
+          <div className="flex-1 min-w-[220px]">
+            <div className="serif text-[18px] font-bold">Society stamp</div>
+            <div className="opacity-60 mt-0.5">{s.stamp_image ? "Using the uploaded stamp photo (it wins over the design below)." : "Using the design below, written from the society details (name, city, registration)."}</div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <label className="btn-line px-3 min-h-[44px] inline-flex items-center cursor-pointer">UPLOAD STAMP PHOTO<input type="file" hidden accept="image/*" onChange={(e) => pickImage(e.target.files?.[0], (u) => saveStamp(u))} /></label>
+              {s.stamp_image && <button onClick={() => saveStamp(null)} className="underline min-h-[44px]">Use the designed stamp</button>}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-[var(--border)] pt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <div className="mono text-[10px] tracking-[0.1em] opacity-60 mb-1">COLOUR</div>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(STAMP_COLORS) as StampColor[]).map((k) => (
+                <button key={k} type="button" onClick={() => setDesign((d) => ({ ...d, color: k }))} aria-label={k} aria-pressed={design.color === k}
+                  className={`h-11 w-11 rounded-full border-2 ${design.color === k ? "border-[var(--gold)] ring-2 ring-[var(--gold)]" : "border-[var(--border)]"}`} style={{ background: STAMP_COLORS[k] }} />
+              ))}
+            </div>
+          </div>
+          <label className="block text-[10px] opacity-80">MIDDLE OF THE STAMP
+            <select className="field mt-1" value={design.centre} onChange={(e) => setDesign((d) => ({ ...d, centre: e.target.value as StampDesign["centre"] }))}>
+              <option value="reg">Registration number{SOCIETY.reg ? ` (${SOCIETY.reg})` : " (none set yet: building name is used)"}</option>
+              <option value="building">Building name{SOCIETY.building ? ` (${SOCIETY.building})` : " (none set)"}</option>
+              <option value="logo" disabled={!SOCIETY.logo}>Society logo{SOCIETY.logo ? "" : " (add a logo in FLAT SETUP first)"}</option>
+            </select></label>
+          <label className="block text-[10px] opacity-80">TEXT ON THE TOP RING
+            <select className="field mt-1" value={design.ring} onChange={(e) => setDesign((d) => ({ ...d, ring: e.target.value as StampDesign["ring"] }))}>
+              <option value="full">Full name ({SOCIETY.full || "—"})</option><option value="short">Short name ({SOCIETY.name || "—"})</option></select></label>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 min-h-[44px]"><input type="checkbox" className="h-5 w-5" checked={design.city} onChange={(e) => setDesign((d) => ({ ...d, city: e.target.checked }))} /> City along the bottom{SOCIETY.city ? ` (${SOCIETY.city})` : " (none set)"}</label>
+            <label className="flex items-center gap-2 min-h-[44px]"><input type="checkbox" className="h-5 w-5" checked={design.year} onChange={(e) => setDesign((d) => ({ ...d, year: e.target.checked }))} /> Founding year{regYear() ? ` (EST. ${regYear()})` : " (none set)"}</label>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={saveDesign} disabled={!designDirty} className="btn-navy px-5 min-h-[44px] tracking-[0.1em] disabled:opacity-40">SAVE STAMP DESIGN</button>
+          {designDirty && <span className="text-amber-700 font-bold">Not saved yet: the picture shows your choices.</span>}
+        </div>
+      </div>
+
       <div className="bg-[var(--surface)] border border-[var(--border)] p-5 flex flex-wrap gap-5 items-center">
-        <div className="h-28 w-28 grid place-items-center bg-white border border-[var(--border)]"><img src={s.stamp_image || defaultStamp()} alt="Society stamp" className="max-h-24 max-w-24" /></div>
+        <div className="h-32 w-24 grid place-items-center bg-white border border-[var(--border)] overflow-hidden shrink-0">
+          {shownBg ? <img src={shownBg} alt="Paper background" className="h-full w-full object-contain" /> : <span className="opacity-50 text-center px-1">none</span>}
+        </div>
         <div className="flex-1 min-w-[220px]">
-          <div className="serif text-[18px] font-bold">Society stamp</div>
-          <div className="opacity-60 mt-0.5">{s.stamp_image ? "Using the uploaded stamp." : "Using the built-in round blue stamp. Upload a photo of the real stamp on white paper to use it instead."}</div>
-          <div className="flex gap-2 mt-2">
-            <label className="btn-line px-3 py-1.5 cursor-pointer">UPLOAD STAMP PHOTO<input type="file" hidden accept="image/*" onChange={(e) => pickImage(e.target.files?.[0], (u) => saveStamp(u))} /></label>
-            {s.stamp_image && <button onClick={() => saveStamp(null)} className="underline">Use built-in stamp</button>}
+          <div className="serif text-[18px] font-bold">Paper background</div>
+          <div className="opacity-60 mt-0.5">A faint picture behind bills, receipts, letters and notices (for example the building). {safeBackground(s.print_background) ? "Your own picture is used." : shownBg ? "Using the building picture that came with this society's papers; upload your own to replace it." : "None yet: the papers print plain."} It can be switched off when printing, in the print window.</div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <label className="btn-line px-3 min-h-[44px] inline-flex items-center cursor-pointer">{safeBackground(s.print_background) ? "CHANGE PICTURE" : "UPLOAD PICTURE"}
+              <input type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; setError(""); try { await saveBackground(await fadedBackground(f)); } catch (er: any) { setError(er.message); } }} /></label>
+            {safeBackground(s.print_background) && <button onClick={() => { if (confirm("Remove the background picture?")) saveBackground(null); }} className="underline min-h-[44px]">Remove</button>}
           </div>
         </div>
       </div>

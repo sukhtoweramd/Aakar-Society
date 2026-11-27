@@ -114,3 +114,7 @@ which only Aakar had), every `*_UNDO.sql`, and the read-only checks (`FLAT_SETUP
 ## MT_19 - society logo (27 Nov 2026)
 - `MT_19_SOCIETY_LOGO.sql` (+ `_UNDO`, `_TEST`): adds `society_profile.logo_image` (data URL, database limit 120 000 characters) and lets the login page's `society_public(word)` return the logo when there is one. aanganone first (run `MT_19_TEST.sql` there; its red RESULT error is expected, read PASS), live after a fresh backup. Never run `MT_19_TEST.sql` on live.
 - The app uploads the logo from ADMIN > FLAT SETUP > LOGO (society owner); until the script is run the screen says so and nothing else changes. Without a logo the first society keeps its Om sign, every other society shows the first letter of its name.
+
+## MT_20 - stamp designer and paper background (27 Nov 2026)
+- `MT_20_STAMP_BACKGROUND.sql` (+ `_UNDO`, `_TEST`): adds `billing_settings.stamp_design` (small JSON object, limit 2000 chars) and `billing_settings.print_background` (data URL, limit 250 000 chars). aanganone first (`MT_20_TEST.sql`: the red RESULT error is expected, read PASS), live after a fresh backup. Never run `MT_20_TEST.sql` on live.
+- The app edits both in BILLING > SETTINGS (stamp design, paper background). Without a design the built-in round blue stamp is printed (identical to before); without a background the first society keeps its building picture and every other society prints plain. An uploaded stamp photo still wins over the design.

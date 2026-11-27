@@ -13,6 +13,8 @@ export type Settings = {
   bill_signer: string | null; rcpt_signer: string | null; stamp_image: string | null;
   letter_prefix?: string; letter_last_no?: number; // after LETTERS.sql
   rent_multiplier?: number | null; // after BILLING_ANNUAL.sql: rented flats pay standard maintenance × this (1.5)
+  stamp_design?: unknown | null; // after MT_20: the stamp designer choices (lib/stampDesign.ts); null = the built-in round blue stamp
+  print_background?: string | null; // after MT_20: the society's own faint picture behind printed papers (data URL); null = default (see lib/printBackground.ts)
 };
 export type Signatory = { id: string; name: string; designation: string; signature_image: string | null; active: boolean };
 export type Line = { description: string; rate?: number | null; qty?: number | null; amount: number };
@@ -66,6 +68,7 @@ export { inWords };
 // ---------- data ----------
 export async function loadSettings(): Promise<Settings | null> {
   const { data } = await supabase.from("billing_settings").select("*").eq("id", 1).maybeSingle();
+  setPrintBackground((data as Settings | null)?.print_background);   // the papers built next use this society's own background picture
   return (data as Settings) || null;
 }
 export async function loadSignatories(): Promise<Signatory[]> {
@@ -84,6 +87,8 @@ export function billBalance(b: Bill, pays: Payment[]) {
 }
 import { flatTotals } from "./billTotals";
 import { SEAL_IMG_CSS, sealHtml } from "./societyLogo";
+import { normalizeDesign, stampDataUrl } from "./stampDesign";
+import { backgroundSrc, safeBackground } from "./printBackground";
 export { flatTotals, tenantBookingDue } from "./billTotals";
 
 // ---------- signatures & stamp ----------
@@ -118,21 +123,11 @@ export function cleanImage(file: File, maxW = 700): Promise<string> {
   });
 }
 
-/** Built-in round blue society stamp (used until a real stamp photo is uploaded). */
-/** Built-in round stamp, written from the society profile when it is needed (so a changed profile shows at once). */
-export const defaultStamp = () => {
-  const c = "#1f3a93";
-  const x = (t: string) => String(t ?? "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch]!));
-  const a = (r: number, d: number) => { const t = (d * Math.PI) / 180; return `${(300 + r * Math.cos(t)).toFixed(1)},${(300 + r * Math.sin(t)).toFixed(1)}`; };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><path id="t" d="M ${a(218, 148)} A 218,218 0 1,1 ${a(218, 32)}"/><path id="b" d="M 52,300 A 248,248 0 0,0 548,300"/></defs>
-  <g fill="none" stroke="${c}"><circle cx="300" cy="300" r="286" stroke-width="12"/><circle cx="300" cy="300" r="268" stroke-width="3"/><circle cx="300" cy="300" r="166" stroke-width="5"/></g>
-  <g font-family="Inter,Arial,sans-serif" font-weight="800" fill="${c}"><text font-size="44" letter-spacing="4"><textPath href="#t" startOffset="50%" text-anchor="middle">${x(SOCIETY.full.replace(/\bSOCIETY\b/i, "SOC."))}</textPath></text>
-  <text font-size="34" letter-spacing="6"><textPath href="#b" startOffset="50%" text-anchor="middle">★  ${x(SOCIETY.city.toUpperCase())}  ★</textPath></text></g>
-  <g fill="${c}" text-anchor="middle" font-family="Inter,Arial,sans-serif"><text x="300" y="268" font-size="26" font-weight="700" letter-spacing="6">REG. NO.</text>
-  <text x="300" y="328" font-size="58" font-weight="800" letter-spacing="2">${x(SOCIETY.reg)}</text><line x1="200" y1="350" x2="400" y2="350" stroke="${c}" stroke-width="3"/>
-  <text x="300" y="392" font-size="30" font-weight="700" letter-spacing="6">${regYear() ? `EST. ${regYear()}` : ""}</text></g></svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-};
+/** The round society stamp, written from the society profile and the stamp designer's choices when it is needed (so a changed profile shows at once).
+ *  No design (null) = the built-in round blue stamp. The drawing itself is in lib/stampDesign.ts. */
+export const defaultStamp = (design?: unknown) => stampDataUrl(normalizeDesign(design), { full: SOCIETY.full, name: SOCIETY.name, city: SOCIETY.city, reg: SOCIETY.reg, building: SOCIETY.building, year: regYear(), logo: SOCIETY.logo });
+/** The stamp to print: an uploaded stamp photo wins, else the designed stamp. */
+export const stampOf = (s: Pick<Settings, "stamp_image" | "stamp_design"> | null | undefined) => s?.stamp_image || defaultStamp(s?.stamp_design);
 
 // ---------- printing ----------
 const CSS = `@page{size:A4 portrait;margin:0}
@@ -178,8 +173,11 @@ tr.tot td{background:var(--navy)!important;color:#fff;font-weight:800;font-size:
 
 // The society's building, faint, behind every letterhead page (as on the printed letterhead). Turn off in the print bar.
 // That picture is Aakar's own building, so only the first society prints it (hasBuildingBackground); other societies' papers stay plain.
-const printsBackground = () => typeof window === "undefined" || hasBuildingBackground(wordFromPath(window.location.pathname));
-const BG_IMG = () => (printsBackground() ? `<img class="wm" src="/print/building-bg.jpg" alt="" aria-hidden="true">` : "");
+let customBackground = "";   // the society's own background picture, set whenever billing_settings is read (loadSettings)
+export const setPrintBackground = (v: unknown) => { customBackground = safeBackground(v); };
+const backgroundNow = () => backgroundSrc(customBackground, typeof window === "undefined" || hasBuildingBackground(wordFromPath(window.location.pathname)));
+const printsBackground = () => !!backgroundNow();
+const BG_IMG = () => { const src = backgroundNow(); return src ? `<img class="wm" src="${esc(src)}" alt="" aria-hidden="true">` : ""; };
 const frameStart = () => `<section class="page"><div class="frame"><div class="inner">${BG_IMG()}<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>`;
 const frameEnd = `</div></div></section>`;
 /** A generic framed A4 page with the society header (used for minutes and other documents). */
@@ -191,7 +189,7 @@ const header = (kind: string, big: string, small: string) => `<div class="head">
   <div class="title"><div class="t">${esc(kind)}</div><div class="f${big.length > 12 ? " long" : ""}">${esc(big)}</div><div class="s">${small}</div></div></div>`;
 const flatLine = (f?: Flat) => (f ? `Flat <b>${esc(label(f))}</b> • Tower ${esc(f.tower)} • Floor ${esc(f.floor ?? "")}${f.bhk ? ` • ${esc(f.bhk)}` : ""}` : "");
 function signBlock(s: Settings | null, name?: string | null, desig?: string | null, image?: string | null) {
-  const stamp = s?.stamp_image || defaultStamp();
+  const stamp = stampOf(s);
   return `<div class="sign"><img class="stamp" src="${stamp}" alt=""><div class="sig"><div class="for">For ${esc(societyTitle())}</div>
     ${image ? `<img src="${image}" alt="">` : `<div class="blank"></div>`}
     <div class="l">${name ? `<b>${esc(name)}</b>` : ""}${esc(desig ? `Hon. ${desig}` : "Authorised signatory")}</div></div></div>`;
@@ -337,7 +335,7 @@ export function letterHtml(l: Letter, c: PrintCtx): string {
       ${!l.unsigned && sigImg(c, l.signer_id) ? `<img src="${sigImg(c, l.signer_id)}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
       <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${l.unsigned ? `<span style="font-size:9.5pt">Hon. Chairman / Hon. Secretary</span>` : `<b style="color:var(--navy)">${esc(l.signer_name || "")}</b><br><span style="font-size:9.5pt">${esc(l.signer_designation ? `Hon. ${l.signer_designation}` : "Authorised signatory")}</span>`}</div>
     </div>
-    ${l.unsigned ? `<div style="width:30mm;height:30mm;border:.3mm dashed #999;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#999;text-align:center">society<br>stamp</div>` : `<img src="${c.settings?.stamp_image || defaultStamp()}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">`}
+    ${l.unsigned ? `<div style="width:30mm;height:30mm;border:.3mm dashed #999;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#999;text-align:center">society<br>stamp</div>` : `<img src="${stampOf(c.settings)}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">`}
   </div>
   <div style="margin-top:5mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>${esc(SOCIETY.city)}</b></span><span>Date: <b>${dmy(l.letter_date, true)}</b></span></div>
   <div class="grow"></div>
@@ -416,7 +414,7 @@ export function noticeHtml(n: { title: string | null; content: string | null; to
       ${g?.signature_image ? `<img src="${g.signature_image}" alt="" style="height:16mm;max-width:62mm;object-fit:contain;display:block;margin:2mm 0 1mm">` : `<div style="height:18mm"></div>`}
       <div style="border-top:.3mm solid var(--ink);padding-top:1mm;font-size:10.5pt">${g ? `<b style="color:var(--navy)">${esc(g.name)}</b><br>` : ""}<span style="font-size:9.5pt">${esc(g?.designation ? `Hon. ${g.designation}` : "Managing Committee")}</span></div>
     </div>
-    <img src="${c.settings?.stamp_image || defaultStamp()}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
+    <img src="${stampOf(c.settings)}" alt="" style="width:30mm;height:30mm;object-fit:contain;transform:rotate(-8deg);opacity:.9">
   </div>
   <div style="margin-top:4mm;font-size:10.5pt;color:#1f1d18;display:flex;gap:14mm"><span>Place: <b>${esc(SOCIETY.city)}</b></span><span>Date: <b>${dmy(date, true)}</b></span></div>
   <div class="grow"></div>
@@ -432,7 +430,7 @@ export function openPrint(title: string, pages: string[], win?: Window | null) {
   // off (remembered on this device), e.g. to save ink when printing many bills.
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${esc(window.location.origin)}/"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"><style>${CSS}</style></head><body>
     <div class="bar">${backButton()}${pdfButton()}<button onclick="window.print()">PRINT</button><span>${pages.length} page${pages.length === 1 ? "" : "s"} • A4</span>
-      ${printsBackground() ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Building background</label>` : ""}</div>${pages.join("")}
+      ${printsBackground() ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aakarBg" style="width:18px;height:18px"> Background picture</label>` : ""}</div>${pages.join("")}
     <script>(function(){var cb=document.getElementById('aakarBg');if(cb){var on=true;try{on=localStorage.getItem('aakar_print_bg')!=='0'}catch(e){}
       function set(v){cb.checked=v;document.body.classList.toggle('nobg',!v);try{localStorage.setItem('aakar_print_bg',v?'1':'0')}catch(e){}}
       set(on);cb.onchange=function(){set(cb.checked)}}
