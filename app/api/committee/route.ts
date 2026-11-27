@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { normaliseFlat, isFlatEmail } from "@/lib/residents";
+import { normaliseFlat, isFlatEmail, rulesFor } from "@/lib/residents";
 import { logAccess } from "@/lib/backup";
 import { societyCommittee } from "@/lib/mainAdmin";
-import { addMembership, membershipRow, societyOfCaller } from "@/lib/memberships";
+import { addMembership, membershipRow, societyOfCaller, societyWordOf } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
     // Optional link to the committee member's own flat ("A301"); "" / null = not linked
     const rawFlat = String(body.flat_id ?? "").trim();
-    const flatId = rawFlat ? normaliseFlat(rawFlat) : null;
+    const flatId = rawFlat ? normaliseFlat(rawFlat, rulesFor(await societyWordOf(admin, society))) : null;
     if (rawFlat && !flatId) return NextResponse.json({ error: `"${rawFlat}" is not a flat number like A-301.` }, { status: 400 });
     if (body.action === "add") {
       const email = String(body.email || "").trim().toLowerCase();

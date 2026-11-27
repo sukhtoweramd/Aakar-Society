@@ -1,7 +1,8 @@
 // Flat-number logins: the internal email must be built the same way everywhere.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flatEmail, isFlatEmail, normaliseFlat, RESIDENT_DOMAIN } from "../lib/residents";
+import { AAKAR_RULES, flatEmail, isFlatEmail, normaliseFlat as normalise, RESIDENT_DOMAIN, type FlatRules } from "../lib/residents";
+const normaliseFlat = (s: string, r: FlatRules = AAKAR_RULES) => normalise(s, r);   // Aakar's rule unless a test passes another
 
 test("normaliseFlat accepts the usual ways of typing a flat number", () => {
   for (const s of ["A-101", "a101", "A 101", " a - 101 ", "C1004"]) assert.ok(normaliseFlat(s), s);

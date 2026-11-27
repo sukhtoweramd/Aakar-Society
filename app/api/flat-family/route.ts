@@ -3,10 +3,10 @@
 // still remove people one at a time with the ✕ in the family list. The server key is never sent to the browser.
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { normaliseFlat } from "@/lib/residents";
+import { normaliseFlat, rulesFor } from "@/lib/residents";
 import { isMainAdminUser } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
-import { societyOfCaller } from "@/lib/memberships";
+import { societyOfCaller, societyWordOf } from "@/lib/memberships";
 
 export const dynamic = "force-dynamic";
 const missingTable = (msg: string) => /does not exist|could not find the table|schema cache/i.test(msg);
@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
   const admin = getAdminClient();
   if (!admin) return NextResponse.json({ error: "SUPABASE_SECRET_KEY is not set in Vercel environment variables." }, { status: 500 });
   const body = await req.json().catch(() => ({}));
-  const flat = normaliseFlat(String(body.flat || ""));
-  if (!flat) return NextResponse.json({ error: "Which flat?" }, { status: 400 });
   try {
     const society = await societyOfCaller(admin, me.userId);   // the server key skips the database wall: every query names the society
+    const flat = normaliseFlat(String(body.flat || ""), rulesFor(await societyWordOf(admin, society)));   // this society's own flat-number rule
+    if (!flat) return NextResponse.json({ error: "Which flat?" }, { status: 400 });
     if (!(await isMainAdminUser(admin, me.userId))) {
       await logAccess(admin, me.email, "refused_clear_family", flat, "", society);
       return NextResponse.json({ error: "Only the main admin login can remove everyone at once. Remove people one by one with ✕, or ask the main admin." }, { status: 403 });

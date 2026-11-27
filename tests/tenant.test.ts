@@ -1,7 +1,8 @@
 // Tenant logins (30 Oct 2026): login names, what a tenant may open, which screens. Sample flats only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flatEmail, parseLogin, tenantEmail } from "../lib/residents";
+import { AAKAR_RULES, flatEmail, parseLogin as parse, tenantEmail, type FlatRules } from "../lib/residents";
+const parseLogin = (s: string, r: FlatRules = AAKAR_RULES) => parse(s, r);   // Aakar's rule unless a test passes another
 import { folderAccess } from "../lib/r2Keys";
 import { tenantTabs } from "../lib/memberTabs";
 import { roleOf } from "../lib/roles";

@@ -2,8 +2,11 @@
 // ADMIN → FLAT SETUP → FLOORS & FLATS: create flats for every tower that has NO flats yet (a new society's towers, or a tower added later).
 // Two ways per tower: "same on every floor" (floors + flats per floor) or "type each floor" (flat numbers typed floor by floor).
 // Check the preview, then create. Main admin only; the server checks it again, refuses a tower that already has flats or a number that exists.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/ledgerClient";
+import { supabase } from "@/lib/supabaseClient";
+import { rulesFor, type FlatRules } from "@/lib/residents";
+import { wordFromPath } from "@/lib/societyWord";
 import { rupees } from "@/lib/society";
 import { buildFlatPlan, parseNumbers, planClashes, planError, planSummary, planWarnings, type TowerPlan } from "@/lib/flatPlan";
 import type { Ctx } from "./ctx";
@@ -19,6 +22,18 @@ export default function FlatGenerator({ ctx }: { ctx: Ctx }) {
   const isMain = useIsMainAdmin();
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState(false);
+  // This society's flat-number rule (joined homes): decided from the society the login belongs to; the server checks it again.
+  const [rules, setRules] = useState<FlatRules | null>(null);
+  useEffect(() => {
+    let off = false;
+    const fromPath = () => rulesFor(wordFromPath(window.location.pathname));
+    supabase.rpc("my_society").then(({ data, error }) => {
+      if (off) return;
+      const slug = error ? null : (data as { slug?: string } | null)?.slug || null;
+      setRules(slug ? rulesFor(slug) : fromPath());
+    }, () => { if (!off) setRules(fromPath()); });
+    return () => { off = true; };
+  }, []);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const get = (code: string): Row => rows[code] || EMPTY;
   const set = (code: string, patch: Partial<Row>) => { setMsg(null); setRows((r) => ({ ...r, [code]: { ...(r[code] || EMPTY), ...patch } })); };
@@ -36,10 +51,10 @@ export default function FlatGenerator({ ctx }: { ctx: Ctx }) {
     }
     return r.floors.trim() === "" ? [] : [{ ...base, floors: num(r.floors), perFloor: num(r.perFloor) }];
   }), [free, rows]); // eslint-disable-line react-hooks/exhaustive-deps
-  const error = plan.length ? planError(plan) : "";
-  const flatsList = useMemo(() => (plan.length && !error ? buildFlatPlan(plan) : []), [plan, error]);
+  const error = plan.length && rules ? planError(plan, rules) : "";
+  const flatsList = useMemo(() => (plan.length && !error && rules ? buildFlatPlan(plan, rules) : []), [plan, error, rules]);
   const clash = useMemo(() => planClashes(flatsList, ctx.flats.map((f) => f.id)), [flatsList, ctx.flats]);
-  const warnings = useMemo(() => (error ? [] : planWarnings(plan)), [plan, error]);
+  const warnings = useMemo(() => (error || !rules ? [] : planWarnings(plan, rules)), [plan, error, rules]);
   const blocked = !!error || clash.length > 0 || warnings.length > 0 || !flatsList.length;
 
   async function create() {

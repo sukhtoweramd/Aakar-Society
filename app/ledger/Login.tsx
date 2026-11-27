@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import PasswordInput from "./PasswordInput";
 import { supabase } from "@/lib/supabaseClient";
 import { nameLines, nameSuffix, SOCIETY } from "@/lib/society";
-import { flatEmail, parseLogin, tenantEmail } from "@/lib/residents";
+import { flatEmail, parseLogin, rulesFor, tenantEmail } from "@/lib/residents";
 import { InstallApp } from "./PwaRegister";
 import { cleanWord, FIRST_SOCIETY_WORD, usesLegacyAddress, wordFromPath } from "@/lib/societyWord";
 import SocietyLogo from "./SocietyLogo";
@@ -46,7 +46,7 @@ export default function Login() {
     setError("");
     setBusy(true);
     // Residents type their flat number (A-101); committee members type their email.
-    const who = email.includes("@") ? null : parseLogin(email);
+    const who = email.includes("@") ? null : parseLogin(email, rulesFor(word));   // the flat-number rule of the society being logged into
     const flat = who?.flat || null;
     if (!email.includes("@") && !flat) { setBusy(false); setError("Enter your email, or your flat number like A-101"); return; }
     if (unknownWord) { setBusy(false); setError("No society found with this word. Check the address or the word you were given."); return; }

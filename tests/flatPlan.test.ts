@@ -2,8 +2,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildFlatPlan, flatNumberFor, parseNumbers, planClashes, planError, planSummary, planWarnings, type TowerPlan } from "../lib/flatPlan";
-import { normaliseFlat } from "../lib/residents";
+import { buildFlatPlan as build, flatNumberFor, parseNumbers, planClashes, planError as planErr, planSummary, planWarnings as planWarn, type TowerPlan } from "../lib/flatPlan";
+import { AAKAR_RULES, normaliseFlat as normalise, type FlatRules } from "../lib/residents";
+// These tests are about Aakar's rule unless a test passes another one (the rule is always explicit in the app: lib/residents.ts rulesFor).
+const buildFlatPlan = (t: TowerPlan[], r: FlatRules = AAKAR_RULES) => build(t, r);
+const planError = (t: TowerPlan[], r: FlatRules = AAKAR_RULES) => planErr(t, r);
+const planWarnings = (t: TowerPlan[], r: FlatRules = AAKAR_RULES) => planWarn(t, r);
+const normaliseFlat = (s: string, r: FlatRules = AAKAR_RULES) => normalise(s, r);
 import { floorOf, flatNumber } from "../lib/society";
 
 const t = (code: string, over: Partial<TowerPlan> = {}): TowerPlan => ({ code, floors: 3, perFloor: 4, terrace: false, maint: 2000, maintTerrace: 3000, ...over });
@@ -61,7 +66,7 @@ test("summary lines", () => {
   assert.deepEqual(planSummary([t("A", { terrace: true })]), [{ code: "A", flats: 12, first: "A101", last: "A304", terraceFlats: 4 }]);
 });
 
-test("a joined-home tower (this copy's FLAT_RULES) with 2+ flats per floor gets a warning; with the rule off there is none", () => {
+test("a joined-home tower (Aakar's rule) with 2+ flats per floor gets a warning; with the rule off there is none", () => {
   assert.equal(planWarnings([t("A")]).length, 0);
   assert.equal(planWarnings([t("B", { perFloor: 1 })]).length, 0);
   assert.equal(planWarnings([t("B")]).length, 1);
@@ -73,9 +78,9 @@ test("a joined-home tower (this copy's FLAT_RULES) with 2+ flats per floor gets 
 test("server route: main admin only, refuses when flats exist, builds its own list, undoes a failed insert", () => {
   const r = readFileSync("app/api/flat-plan/route.ts", "utf8");
   assert.match(r, /isMainAdminUser/);
-  assert.match(r, /planWarnings\(towers\)/);
+  assert.match(r, /planWarnings\(towers, rules\)/);
   assert.match(r, /getAuthedClient/);
-  assert.match(r, /buildFlatPlan\(towers\)/);
+  assert.match(r, /buildFlatPlan\(towers, rules\)/);
   assert.match(r, /already has/);
   assert.match(r, /\.delete\(\)\.eq\("society_id", society\)\.in\("id"/);   // the undo names the society too (step 4d-3)
   assert.doesNotMatch(r, /body\.flats|body\.plan/);

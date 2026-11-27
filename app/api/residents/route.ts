@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getAdminClient, getAuthedClient } from "@/lib/serverAuth";
-import { flatEmail, normaliseFlat, tenantEmail } from "@/lib/residents";
+import { flatEmail, normaliseFlat, rulesFor, tenantEmail } from "@/lib/residents";
 import { isMainAdminUser, societyUsers } from "@/lib/mainAdmin";
 import { logAccess } from "@/lib/backup";
 import { addMembership, membershipRow, societyOfCaller, societyWordOf } from "@/lib/memberships";
@@ -27,12 +27,13 @@ const BAN = "876000h"; // about 100 years: the login cannot be used; its records
 
 /** Tenant login actions. The flat must exist and be marked rented; one active tenant login per flat. */
 async function tenantAction(action: string, body: any, admin: SupabaseClient, me: { email: string; db: SupabaseClient; userId: string }) {
-  const flat = normaliseFlat(String(body.flat || ""));
+  const society = await societyOfCaller(admin, me.userId);   // the server key skips the database wall: every query below names the society
+  const word = await societyWordOf(admin, society);
+  const flat = normaliseFlat(String(body.flat || ""), rulesFor(word));   // this society's own flat-number rule
   if (!flat) return NextResponse.json({ error: "Which flat?" }, { status: 400 });
   const { data: row, error: fe } = await me.db.from("flats").select("id, occupancy, tenant_name").eq("id", flat).maybeSingle();
   if (fe) throw fe;
   if (!row) return NextResponse.json({ error: "No such flat." }, { status: 404 });
-  const society = await societyOfCaller(admin, me.userId);   // the server key skips the database wall: every query below names the society
   const users = await tenantUsers(admin, society);
   const user = users.find((u) => (u.app_metadata as any)?.tenant_flat === flat);
   const { data: rec } = await admin.from("flat_tenant_logins").select("*").eq("society_id", society).eq("flat_id", flat).eq("active", true).maybeSingle();
@@ -43,7 +44,7 @@ async function tenantAction(action: string, body: any, admin: SupabaseClient, me
     if (user) { const { error } = await admin.auth.admin.deleteUser(user.id); if (error) throw error; }   // an old, revoked tenant login: removed, its records stay
     const password = newPassword();
     const { data: made, error } = await admin.auth.admin.createUser({
-      email: tenantEmail(flat, await societyWordOf(admin, society)), password, email_confirm: true,
+      email: tenantEmail(flat, word), password, email_confirm: true,
       app_metadata: { role: "tenant", tenant_flat: flat },
       user_metadata: { password_changed: false },
     });
@@ -115,6 +116,8 @@ export async function POST(req: NextRequest) {
   const action = String(body.action || "");
   try {
     const society = await societyOfCaller(admin, me.userId);
+    const word = await societyWordOf(admin, society);
+    const rules = rulesFor(word);   // this society's own flat-number rule
     // PR-15: removing a flat login, revoking a tenant login and creating several flat logins at once are main admin only.
     const manyAtOnce = action === "create" && Array.isArray(body.flats) && body.flats.length > 1;
     if (["remove", "tenant_revoke"].includes(action) || manyAtOnce) {
@@ -128,12 +131,11 @@ export async function POST(req: NextRequest) {
     const byFlat = new Map(existing.map((u) => [String((u.app_metadata as any).flat_id), u]));
 
     if (action === "create") {
-      const flats: string[] = (Array.isArray(body.flats) ? body.flats : []).map((f: string) => normaliseFlat(String(f))).filter(Boolean);
+      const flats: string[] = (Array.isArray(body.flats) ? body.flats : []).map((f: string) => normaliseFlat(String(f), rules)).filter(Boolean);
       // only flats that exist in the ledger
       const { data: rows, error } = await me.db.from("flats").select("id").in("id", flats);
       if (error) throw error;
       const valid = new Set((rows || []).map((r: any) => r.id));
-      const word = await societyWordOf(admin, society);
       const created: { flat_id: string; password: string }[] = [];
       const skipped: string[] = [];
       for (const flat of flats) {
@@ -152,7 +154,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, created, skipped });
     }
 
-    const flat = normaliseFlat(String(body.flat || ""));
+    const flat = normaliseFlat(String(body.flat || ""), rules);
     const user = flat ? byFlat.get(flat) : undefined;
     if (!flat || !user) return NextResponse.json({ error: "No login exists for that flat." }, { status: 404 });
 
