@@ -1,5 +1,5 @@
 "use client";
-// MY FLAT → REQUEST A LETTER (members). The request goes to the committee (BILLING → LETTERS); the issued letter
+// MY FLAT → REQUEST A LETTER (members). The request goes to the committee (COMMITTEE → LETTERS); the issued letter
 // then appears in MY LETTERS. Phone first.
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";

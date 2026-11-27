@@ -1,4 +1,4 @@
-// Letter requests (26 Oct 2026): a member asks for a letter; the committee issues it from BILLING → LETTERS.
+// Letter requests (26 Oct 2026): a member asks for a letter; the committee issues it from COMMITTEE → LETTERS.
 export type LetterRequest = {
   id: string; flat_id: string; letter_type: string; addressee: string | null; purpose: string | null;
   status: "requested" | "approved" | "issued" | "declined" | "withdrawn"; letter_id: string | null; reason: string | null;
