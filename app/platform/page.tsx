@@ -4,6 +4,7 @@
 // Phone first: cards, 44 px buttons, no wide tables.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import PlatformWelcome from "./PlatformWelcome";
 import { newSocietyProblems, platformTotals, suggestWord } from "@/lib/platformOwner";
 
 type Item = { id: string; slug: string; name: string; status: string; created_at: string; owner_email: string | null; flats: number; logins: { committee: number; flat: number; tenant: number } };
@@ -106,8 +107,10 @@ export default function PlatformPage() {
       <div className="mx-auto max-w-[900px] px-4 py-5 space-y-5">
         {signedIn === null && <div className="space-y-3">{[0, 1].map((i) => <div key={i} className={box + " h-24 animate-pulse"} />)}</div>}
 
+        {signedIn === false && <PlatformWelcome />}
+
         {signedIn === false && (
-          <form onSubmit={signIn} className={box + " space-y-3 max-w-[420px] mx-auto mt-6"}>
+          <form onSubmit={signIn} className={box + " space-y-3 max-w-[420px] mx-auto"}>
             <div>
               <div className="serif text-[22px]">Product owner</div>
               <div className="mono text-[12px] opacity-70 mt-1">Sign in to create and look after societies.</div>
