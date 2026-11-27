@@ -69,3 +69,13 @@ test("every step opens somewhere, and opening only navigates: the ticks never de
   }
   assert.match(readFileSync("app/ledger/billing/BillingTab.tsx", "utf8"), /takeViewHint\("BILLING"\)/);
 });
+
+test("the card shows at once and fills in; the slow backup list does not hold the rest back", () => {
+  const c = readFileSync("app/ledger/OwnerChecklist.tsx", "utf8");
+  assert.doesNotMatch(c, /if \(!extra\) return null/);                    // no hiding until everything has loaded
+  assert.match(c, /const loading = !extra;/); assert.match(c, /"Checking…"/);
+  assert.match(c, /setBackupDays\(/);                                      // backup answer arrives on its own
+  const base = c.slice(c.indexOf("Promise.all"), c.indexOf("setExtra("));
+  assert.doesNotMatch(base, /api\(/);                                      // the quick counts never wait for the backup call
+  assert.match(c, /loading \? \{ \.\.\.s0, done: false, detail: undefined \}/);   // while checking, no step shows a tick
+});
