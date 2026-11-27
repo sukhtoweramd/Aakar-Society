@@ -18,3 +18,14 @@ test("the cover reads the flag through the member's own client and never types L
   assert.ok(!/●\s*LIVE/.test(s), "the cover must not say LIVE in static text");
   assert.ok(!/admin\.from|getAdminClient/.test(s), "no server key on the cover");
 });
+
+test("the TEST MODE banner is for committee logins only, reads the real flag through the login's own client, and is placed once", () => {
+  const b = readFileSync(join(__dirname, "..", "app/ledger/TestModeBanner.tsx"), "utf8");
+  assert.match(b, /from\("society_live"\)/);
+  assert.match(b, /if \(!isCommittee\)/);
+  assert.match(b, /ledgerStatus\(live\)/);
+  assert.ok(!/admin\.from|getAdminClient/.test(b));
+  const p = readFileSync(join(__dirname, "..", "app/page.tsx"), "utf8");
+  assert.equal((p.match(/<TestModeBanner/g) || []).length, 1);
+  assert.match(p, /<TestModeBanner isCommittee=\{isCommittee\}/);
+});

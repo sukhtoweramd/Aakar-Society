@@ -35,6 +35,7 @@ import { usePending } from "./ledger/usePending";
 import { pendingTotals } from "@/lib/pendingTotals";
 import { SECTION_TITLE, TAB_TITLE, type Section, type Tile } from "@/lib/phoneMenu";
 import SocietyLogo from "./ledger/SocietyLogo";
+import TestModeBanner from "./ledger/TestModeBanner";
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -225,6 +226,7 @@ export default function Home() {
           sub={isCommittee ? (tab === "DETAIL" && selectedId ? `FLAT ${label({ id: selectedId, flat_no: selectedId } as any)}` : "COMMITTEE") : (myFlat || tenantFlat) ? `FLAT ${label({ id: (myFlat || tenantFlat)!, flat_no: (myFlat || tenantFlat)! } as any)}` : ""}
           title={section ? SECTION_TITLE[section] : tab === "DETAIL" ? (isCommittee ? "Flat detail" : "My flat") : TAB_TITLE[tab] || tab} />
       )}
+      <TestModeBanner isCommittee={isCommittee} onOpenAdmin={() => go("ADMIN")} />
       {/* Top strip */}
       {!isPhone && <div className="w-full bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em] uppercase">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 min-h-[38px] py-1.5 flex items-center justify-between gap-2 flex-wrap">
