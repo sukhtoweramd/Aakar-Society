@@ -36,6 +36,11 @@ export function currentMark(): Mark {
   return markOf({ logo: SOCIETY.logo, name: SOCIETY.name, first });
 }
 
+/** The sentence under LOGO in ADMIN when no logo is saved: the first society keeps its Om sign, every other one shows its first letter. */
+export const noLogoText = (first: boolean) => first
+  ? "No logo yet. Until you add one, the Om sign is shown."
+  : "No logo yet. Until you add one, the first letter of the society name is shown.";
+
 const escText = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 /** For the round seal on printed papers: the picture filling the circle, or the sign / letter. */
