@@ -25,7 +25,7 @@ test("platform manifest is its own app: own id, scope and name, nothing of Aakar
 test("platform layout points at the platform manifest, and the platform has its own tab and apple icons", () => {
   const l = read("app/platform/layout.tsx");
   assert.match(l, /manifest: "\/platform\.webmanifest"/);
-  assert.match(l, /title: "AanganOne Platform"/);
+  assert.match(l, /title: "GrihSahara Platform"/);
   assert.deepEqual(pngSize("app/platform/apple-icon.png"), [180, 180]);
   assert.ok(existsSync(join(root, "app/platform/icon.png")));
   assert.match(read("app/layout.tsx"), /manifest: "\/manifest\.webmanifest"/);   // the society app keeps its own manifest

@@ -12,7 +12,7 @@ export default function PlatformPwa() {
   }, []);
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-3 pointer-events-none">
-      <div className="mx-auto max-w-[420px] pointer-events-auto"><InstallApp variant="card" label="AanganOne Platform" /></div>
+      <div className="mx-auto max-w-[420px] pointer-events-auto"><InstallApp variant="card" label="GrihSahara Platform" /></div>
     </div>
   );
 }

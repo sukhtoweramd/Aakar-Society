@@ -96,7 +96,7 @@ export default function PlatformPage() {
       <div className="sticky top-0 z-20 bg-[var(--navy)] text-[#fdfcf5] mono text-[12px] tracking-[0.06em]">
         <div className="mx-auto max-w-[900px] px-4 min-h-[48px] flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="font-semibold uppercase">AanganOne • Platform</div>
+            <div className="font-semibold uppercase">GrihSahara • Platform</div>
             {signedIn && who && <div className="opacity-70 normal-case truncate text-[11px]">{who}</div>}
           </div>
           {signedIn && <button onClick={signOut} className="min-h-[44px] px-3 underline shrink-0">Sign out</button>}
