@@ -1,5 +1,5 @@
 // ADMIN is a menu of tiles; each tile opens ONE section (27 Nov 2026). Pure: the list and its order live here, the screen is app/ledger/AdminTab.tsx.
-export type AdminSection = "CHECKLIST" | "FLATSETUP" | "RATES" | "BOOKING" | "COMMITTEE" | "LOGINS" | "SCREENS" | "BACKUP" | "TEST" | "AI" | "HELP" | "STORAGE";
+export type AdminSection = "CHECKLIST" | "FLATSETUP" | "RATES" | "BOOKING" | "COMMITTEE" | "LOGINS" | "SCREENS" | "BACKUP" | "TEST" | "AI" | "HELP" | "STORAGE" | "LEGAL";
 export type SectionInfo = { key: AdminSection; title: string; desc: string; icon: string };
 
 export const ADMIN_SECTIONS: SectionInfo[] = [
@@ -15,6 +15,7 @@ export const ADMIN_SECTIONS: SectionInfo[] = [
   { key: "AI", title: "Screenshot reading", desc: "AI reads \"I have paid\" pictures", icon: "🤖" },
   { key: "HELP", title: "Help guide", desc: "Text the HELP assistant answers from", icon: "❓" },
   { key: "STORAGE", title: "Storage used", desc: "Files and database size", icon: "🗄" },
+  { key: "LEGAL", title: "Legal documents", desc: "Terms and privacy notice (preview)", icon: "⚖" },
 ];
 
 export const isAdminSection = (s: unknown): s is AdminSection => ADMIN_SECTIONS.some((x) => x.key === s);
