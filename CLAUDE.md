@@ -127,6 +127,15 @@
 
 - ADMIN menu (27 Nov 2026): ADMIN opens as tiles (`lib/adminSections.ts`, `AdminTab.tsx`); each tile shows ONE panel with a "← ADMIN" button. A NEW admin panel = a new entry in `ADMIN_SECTIONS` and one `section === "KEY"` line in `AdminTab.tsx` (`tests/adminSections.test.ts` checks every panel is drawn once). The charges form state lives in `AdminTab`, so it survives moving between sections.
 
+## Legal documents and acceptance (Nov 2026, in progress - see `legal/README.md`)
+- The words of every legal document live in ONE file, `lib/legalDocs.ts` (`{{society}}` / `{{platform}}` placeholders; society names are never typed in). A published version is never edited: a change is `version + 1`.
+  `npx tsx scripts/legalSeed.ts` writes `legal/LG_02_DOCS_SEED.sql` (registry rows with the SHA-256 of the text); `tests/legalDocs.test.ts` fails if the file is out of date.
+- Tables (`legal/LG_01_LEGAL_TABLES.sql`, run by hand, test project first): `legal_documents` (platform registry, like `societies`: not society data) and `legal_acceptances` (society id, login id, role, flat, key, version, hash, time; society wall; append only).
+  An acceptance is written ONLY by `accept_legal_document(key, version)` (society and login come from the session; draft, old versions and documents for another role are refused). Logins have select only on the table; the society owner (`is_main_admin()`) reads the whole society's rows, others their own.
+  `legal_acceptances` is NOT in `BACKUP_TABLES` / restore on purpose: a restore must never wipe evidence. It was created with the society_id default and the wall in its own script, so it is not added to MT_02 / MT_04 / MT_08 (run-once scripts that must not be re-run after MT_17).
+- PR 1 publishes nothing and changes nothing for members; ADMIN -> LEGAL DOCUMENTS only previews the drafts. Later PRs: per-person family sharing, first-login acceptance, onboarding agreement, platform agreements (Service Agreement, DPA), audit screen.
+- Never claim guaranteed DPDP compliance in any document. GrihSahara (the platform owner login, no role, no membership) never reads society records: `/api/platform` returns counts only.
+
 ## Never in this repo (it is public)
 - Real keys, passwords or residents' data. Keys live only in Vercel environment variables.
 - Screenshots and mock-ups use sample data only.
